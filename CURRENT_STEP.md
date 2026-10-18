@@ -1,26 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `0.2`  
+**Paso activo:** `1.2`
 **Estado:** pendiente  
-**Título:** Preparar repositorio y reglas de trabajo
+**Título:** Crear el servidor Express mínimo
 
 ## Objetivo
 
-Crear o confirmar los archivos base del repositorio y verificar que `.env` y `node_modules` estén ignorados.
+Crear el servidor mínimo con Node.js y Express, y exponer una ruta de salud.
 
 ## Permitido en este paso
 
-- Crear o confirmar `.gitignore` y la estructura inicial de documentación.
-- Verificar que `.env` y `node_modules` estén ignorados.
+- Crear `server/` con Node.js, Express y módulos ES.
+- Crear `GET /api/v1/health` con respuesta JSON simple.
+- Agregar manejo básico de errores y comando de desarrollo.
 
 ## Fuera de alcance
 
-- No cambiar lógica de aplicación.
-- No ejecutar pasos posteriores de la hoja de ruta.
+- No conectar MongoDB ni implementar autenticación todavía.
 
 ## Criterios de aceptación
 
-- Los archivos de base son correctos y el primer commit está disponible si el usuario decide realizarlo.
+- El servidor arranca y `GET /api/v1/health` devuelve HTTP 200.
 
 ## Al terminar
 

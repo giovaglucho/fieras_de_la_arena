@@ -1,0 +1,24 @@
+.welcome {
+  max-width: 36rem;
+}
+
+.welcome__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #c75b39;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.welcome h1 {
+  margin: 0;
+  color: #f5e8d0;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  line-height: 1.05;
+}
+
+.welcome p:last-child {
+  margin: 1rem 0 0;
+  color: #c9bca6;
+}

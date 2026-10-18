@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-Documentación inicial creada. El paso activo inicial es `0.1`: verificar las herramientas y el estado del repositorio sin modificar archivos. El primer paso que genera código es `1.1`: crear una aplicación React mínima con Vite dentro de `client/`. Todavía no hay backend ni sistemas de juego implementados.
+El cliente mínimo con React y Vite está en `client/`. El paso activo es `1.1`; todavía no hay backend ni sistemas de juego implementados.
 
 ## Tecnología prevista
 
