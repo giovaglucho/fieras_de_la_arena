@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente mínimo con React y Vite está en `client/`. El paso activo es `1.1`; todavía no hay backend ni sistemas de juego implementados.
+El cliente mínimo con React y Vite está en `client/`. El servidor Express mínimo está en `server/` y expone `GET /api/v1/health`. El paso activo es `1.3`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
 
 ## Tecnología prevista
 
