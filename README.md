@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores y un modelo `User` con índices únicos; el registro aún no está implementado. El paso activo es `2.2`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
+El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, un modelo `User` con índices únicos y un endpoint de registro probado. El login, el logout y las sesiones persistentes aún no están implementados. El paso activo es `2.3`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
 
 ## Requisitos
 
@@ -31,7 +31,7 @@ Abre una terminal en la raíz del repositorio y crea la configuración local a p
 Copy-Item .env.example .env
 ```
 
-El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. `CLIENT_URL` y `SESSION_SECRET` quedan documentadas para pasos posteriores.
+El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. `SESSION_SECRET` está incluido en el ejemplo para configurar las sesiones del paso activo, pero las sesiones aún no están implementadas. `CLIENT_URL` queda documentada para pasos posteriores.
 
 En una primera terminal, instala e inicia el cliente:
 

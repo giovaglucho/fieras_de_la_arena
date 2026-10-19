@@ -347,6 +347,9 @@ Representa una cuenta y sus credenciales.
 
 Reglas:
 
+- `username` se normaliza quitando espacios al inicio y al final y convirtiéndolo a minúsculas; admite de 3 a 24 letras ASCII, números o guion bajo.
+- `email` se normaliza quitando espacios al inicio y al final y convirtiéndolo a minúsculas; debe tener formato de correo válido y no superar 254 caracteres.
+- La contraseña debe tener entre 8 y 72 bytes UTF-8; se conserva exactamente como se envía y se almacena únicamente su hash bcrypt.
 - Nunca almacenar ni devolver la contraseña original.
 - Nunca devolver `passwordHash` al frontend.
 - Índices únicos para nombre y correo normalizados.
@@ -441,6 +444,8 @@ Requisitos de API:
 - No aceptar `userId`, ELO, XP, nivel, ganador ni estadísticas finales desde el cliente como datos autoritativos.
 - Evitar respuestas que permitan enumerar correos o averiguar si una contraseña es correcta.
 - Comprobar permisos en servidor, no solo ocultar botones en React.
+
+El registro acepta únicamente `username`, `email` y `password`. Un registro correcto devuelve HTTP 201 con `id`, `username` y `email` públicos, sin iniciar sesión. Los conflictos de nombre o correo devuelven el mismo error HTTP 409 para no distinguir cuál valor está ocupado.
 
 ---
 

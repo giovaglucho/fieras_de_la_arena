@@ -1,18 +1,17 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `2.2`
+**Paso activo:** `2.3`
 **Estado:** pendiente
-**Título:** Implementar registro
+**Título:** Implementar login, logout y sesión persistente
 
 ## Objetivo
 
-Implementar registro.
+Implementar login, logout y sesión persistente.
 
 ## Permitido en este paso
 
-- Validar datos en servidor, normalizar valores y hashear contraseña.
-- Manejar duplicados con error público consistente.
-- No iniciar sesión automáticamente a menos que se defina y documente como parte de este paso.
+- Configurar sesiones almacenadas en MongoDB y cookie segura según entorno.
+- Regenerar sesión al login y destruirla al logout.
 
 ## Fuera de alcance
 
@@ -20,7 +19,7 @@ Implementar registro.
 
 ## Criterios de aceptación
 
-- registro válido funciona; inválidos y duplicados se rechazan; nunca se devuelve el hash.
+- sesión funciona al recargar y logout la invalida.
 
 ## Al terminar
 

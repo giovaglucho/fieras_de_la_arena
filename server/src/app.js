@@ -1,8 +1,12 @@
 import express from "express";
 import { isDatabaseConnected } from "./database.js";
 import { ApiError, errorHandler } from "./middleware/errorHandler.js";
+import authRouter from "./routes/auth.js";
 
 const app = express();
+
+app.use(express.json());
+app.use("/api/v1/auth", authRouter);
 
 app.get("/api/v1/health", (request, response) => {
   const databaseConnected = isDatabaseConnected();

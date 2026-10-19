@@ -17,6 +17,15 @@ export function errorHandler(error, request, response, next) {
     return next(error);
   }
 
+  if (error?.type === "entity.parse.failed") {
+    return response.status(400).json({
+      error: {
+        code: "INVALID_JSON",
+        message: "El cuerpo de la solicitud no contiene JSON válido."
+      }
+    });
+  }
+
   if (error instanceof ApiError) {
     return response.status(error.statusCode).json({
       error: {

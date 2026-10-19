@@ -7,6 +7,7 @@ import { ApiError, errorHandler } from "../src/middleware/errorHandler.js";
 
 const errorTestApp = express();
 
+errorTestApp.use(express.json());
 errorTestApp.get("/known-error", (request, response, next) => {
   next(new ApiError(422, "INVALID_INPUT", "Los datos no son válidos."));
 });
@@ -57,6 +58,22 @@ test("responde rutas inexistentes con el formato común", async () => {
     error: {
       code: "NOT_FOUND",
       message: "Ruta no encontrada."
+    }
+  });
+});
+
+test("rechaza JSON mal formado con un error público de solicitud", async () => {
+  const response = await fetch(`${errorTestBaseUrl}/known-error`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{"
+  });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: "INVALID_JSON",
+      message: "El cuerpo de la solicitud no contiene JSON válido."
     }
   });
 });
