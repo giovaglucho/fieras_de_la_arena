@@ -1,11 +1,79 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { ApiError } from "../middleware/errorHandler.js";
+import { SESSION_COOKIE_NAME } from "../middleware/session.js";
 import User from "../models/User.js";
+import { validateLogin } from "../validators/login.js";
 import { validateRegistration } from "../validators/registration.js";
 
 const BCRYPT_SALT_ROUNDS = 12;
 const router = Router();
+
+router.post("/login", async (request, response, next) => {
+  const login = validateLogin(request.body);
+
+  if (!login) {
+    return next(
+      new ApiError(400, "INVALID_LOGIN_DATA", "Los datos de inicio de sesión no son válidos.")
+    );
+  }
+
+  try {
+    const user = await User.findOne({
+      $or: [{ username: login.identifier }, { email: login.identifier }]
+    }).select("+passwordHash");
+
+    if (
+      !user ||
+      user.status !== "active" ||
+      !(await bcrypt.compare(login.password, user.passwordHash))
+    ) {
+      return next(
+        new ApiError(401, "INVALID_CREDENTIALS", "El usuario o la contraseña no son válidos.")
+      );
+    }
+
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    await new Promise((resolve, reject) => {
+      request.session.regenerate((error) => (error ? reject(error) : resolve()));
+    });
+    request.session.userId = user._id.toString();
+    await new Promise((resolve, reject) => {
+      request.session.save((error) => (error ? reject(error) : resolve()));
+    });
+
+    return response.status(200).json({
+      user: {
+        id: user._id.toString(),
+        username: user.username,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/logout", async (request, response, next) => {
+  if (!request.session.userId) {
+    return next(
+      new ApiError(401, "AUTHENTICATION_REQUIRED", "Debes iniciar sesión para cerrar sesión.")
+    );
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      request.session.destroy((error) => (error ? reject(error) : resolve()));
+    });
+
+    response.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+    return response.status(204).end();
+  } catch (error) {
+    return next(error);
+  }
+});
 
 router.post("/register", async (request, response, next) => {
   const registration = validateRegistration(request.body);

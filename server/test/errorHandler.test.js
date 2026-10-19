@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import express from "express";
 import apiApp from "../src/app.js";
 import { ApiError, errorHandler } from "../src/middleware/errorHandler.js";
+import { sessionStore } from "../src/middleware/session.js";
 
 const errorTestApp = express();
 
@@ -36,6 +37,7 @@ after(async () => {
   await Promise.all([apiServer, errorTestServer].map((server) => new Promise((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   })));
+  await sessionStore.close();
 });
 
 test("responde errores conocidos con su estado y cuerpo", async () => {

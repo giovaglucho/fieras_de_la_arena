@@ -1,17 +1,17 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `2.3`
+**Paso activo:** `2.4`
 **Estado:** pendiente
-**Título:** Implementar login, logout y sesión persistente
+**Título:** Implementar `GET /auth/me` y middleware de autenticación
 
 ## Objetivo
 
-Implementar login, logout y sesión persistente.
+Implementar `GET /auth/me` y middleware de autenticación.
 
 ## Permitido en este paso
 
-- Configurar sesiones almacenadas en MongoDB y cookie segura según entorno.
-- Regenerar sesión al login y destruirla al logout.
+- Definir respuesta de usuario público sin campos sensibles.
+- Proteger una ruta de prueba.
 
 ## Fuera de alcance
 
@@ -19,7 +19,7 @@ Implementar login, logout y sesión persistente.
 
 ## Criterios de aceptación
 
-- sesión funciona al recargar y logout la invalida.
+- anónimo obtiene 401; autenticado obtiene solo sus datos permitidos.
 
 ## Al terminar
 

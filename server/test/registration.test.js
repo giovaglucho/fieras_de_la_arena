@@ -5,6 +5,7 @@ import { after, before, test } from "node:test";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import app from "../src/app.js";
+import { sessionStore } from "../src/middleware/session.js";
 import User from "../src/models/User.js";
 
 const runId = randomUUID().replaceAll("-", "");
@@ -35,6 +36,8 @@ after(async () => {
     await User.deleteMany({ username: new RegExp(`^${usernamePrefix}`) });
     await mongoose.disconnect();
   }
+
+  await sessionStore.close();
 });
 
 function registrationUrl() {

@@ -447,6 +447,8 @@ Requisitos de API:
 
 El registro acepta únicamente `username`, `email` y `password`. Un registro correcto devuelve HTTP 201 con `id`, `username` y `email` públicos, sin iniciar sesión. Los conflictos de nombre o correo devuelven el mismo error HTTP 409 para no distinguir cuál valor está ocupado.
 
+El inicio de sesión acepta únicamente `identifier` y `password`; `identifier` puede ser el nombre de usuario o el correo electrónico registrado.
+
 ---
 
 ## 8. Frontend y navegación
