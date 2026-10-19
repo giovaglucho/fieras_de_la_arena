@@ -1,5 +1,6 @@
 import app from "./app.js";
 import { connectToDatabase } from "./database.js";
+import { logOperationalError } from "./utils/operationalLogger.js";
 
 const port = Number(process.env.PORT ?? 3000);
 
@@ -11,7 +12,7 @@ async function startServer() {
   try {
     await connectToDatabase();
   } catch (error) {
-    console.error(`No se pudo iniciar el servidor: ${error.message}`);
+    logOperationalError("server.startup_failed", error);
     process.exitCode = 1;
     return;
   }

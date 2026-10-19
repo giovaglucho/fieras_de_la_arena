@@ -1,3 +1,5 @@
+import { logOperationalError } from "../utils/operationalLogger.js";
+
 export class ApiError extends Error {
   constructor(statusCode, code, message) {
     super(message);
@@ -35,7 +37,11 @@ export function errorHandler(error, request, response, next) {
     });
   }
 
-  console.error("Error no controlado en la API:", error);
+  logOperationalError("api.unhandled_error", error, {
+    method: request.method,
+    route: request.route?.path ?? "unmatched",
+    statusCode: 500
+  });
   return response.status(500).json({
     error: {
       code: "INTERNAL_SERVER_ERROR",

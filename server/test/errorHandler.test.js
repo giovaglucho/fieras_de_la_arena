@@ -14,7 +14,14 @@ errorTestApp.get("/known-error", (request, response, next) => {
 });
 
 errorTestApp.get("/unexpected-error", () => {
-  throw new Error("Detalle interno confidencial.");
+  const cause = Object.assign(
+    new Error("Cookie: session=valor-privado"),
+    { code: "ETIMEDOUT" }
+  );
+  throw Object.assign(
+    new Error("mongodb://usuario:clave@servidor/db?password=valor-privado", { cause }),
+    { code: "E_UNEXPECTED" }
+  );
 });
 
 errorTestApp.use(errorHandler);
@@ -145,7 +152,17 @@ test("rechaza JSON mal formado con un error público de solicitud", async () => 
 });
 
 test("oculta los detalles de errores internos", async () => {
-  const response = await fetch(`${errorTestBaseUrl}/unexpected-error`);
+  const logEntries = [];
+  const originalConsoleError = console.error;
+  console.error = (entry) => logEntries.push(entry);
+
+  let response;
+  try {
+    response = await fetch(`${errorTestBaseUrl}/unexpected-error`);
+  } finally {
+    console.error = originalConsoleError;
+  }
+
   const body = await response.json();
 
   assert.equal(response.status, 500);
@@ -155,5 +172,18 @@ test("oculta los detalles de errores internos", async () => {
       message: "Ocurrió un error interno."
     }
   });
-  assert.doesNotMatch(JSON.stringify(body), /confidencial|Error:|at /);
+  assert.equal(logEntries.length, 1);
+
+  const logEntry = JSON.parse(logEntries[0]);
+  assert.deepEqual(logEntry, {
+    event: "api.unhandled_error",
+    errors: [
+      { name: "Error", code: "E_UNEXPECTED" },
+      { name: "Error", code: "ETIMEDOUT" }
+    ],
+    method: "GET",
+    route: "/unexpected-error",
+    statusCode: 500
+  });
+  assert.doesNotMatch(logEntries[0], /usuario|clave|valor-privado|servidor\/db/);
 });

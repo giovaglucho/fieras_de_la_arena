@@ -15,9 +15,10 @@ export async function connectToDatabase(uri = process.env.MONGODB_URI) {
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: SERVER_SELECTION_TIMEOUT_MS
     });
-  } catch {
+  } catch (error) {
     throw new Error(
-      "No se pudo conectar con MongoDB. Comprueba MONGODB_URI y que el servicio esté disponible."
+      "No se pudo conectar con MongoDB. Comprueba MONGODB_URI y que el servicio esté disponible.",
+      { cause: error }
     );
   }
 

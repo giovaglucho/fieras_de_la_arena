@@ -63,7 +63,7 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-El servidor lee el `.env` de la raíz del repositorio mediante la opción `--env-file` de Node.js. Para comprobar el endpoint de salud desde otra terminal:
+El servidor lee el `.env` de la raíz del repositorio mediante la opción `--env-file` de Node.js. Los errores inesperados se registran como JSON en la terminal del servidor, con el evento, el tipo/código del error y, para solicitudes API, el método, la ruta y el estado. No se incluyen mensajes ni trazas de excepción para evitar exponer datos sensibles. Para comprobar el endpoint de salud desde otra terminal:
 
 ```powershell
 Invoke-RestMethod http://localhost:3000/api/v1/health
