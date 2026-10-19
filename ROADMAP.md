@@ -182,7 +182,7 @@ Esta hoja ordena el desarrollo desde cero hasta una versión publicable. **No se
 ## Etapa 6 — Clasificación y perfiles completos
 
 ### 6.1 Crear endpoint de clasificación
-- Clasificación por ELO, nivel y cantidad de alumnos; ordenar y paginar desde servidor.
+- Clasificación por ELO y nivel; ordenar y paginar desde servidor.
 - **Aceptación:** empates de orden resueltos de forma consistente y parámetros limitados.
 
 ### 6.2 Crear interfaz de clasificación
@@ -210,7 +210,7 @@ Esta hoja ordena el desarrollo desde cero hasta una versión publicable. **No se
 - **Aceptación:** no se exponen correos u otros datos privados de alumnos.
 
 ### 7.4 Añadir clasificación de alumnos
-- Ordenar por conteo confirmado de alumnos.
+- Exponer la clasificación por conteo confirmado de alumnos.
 - **Aceptación:** la fuente del conteo es consistente y no depende de valores manipulables del cliente.
 
 ## Etapa 8 — Robustez y seguridad

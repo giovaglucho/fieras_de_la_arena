@@ -451,6 +451,8 @@ Requisitos de API:
 
 `GET /api/v1/arena/attempts` devuelve `{ dateKey, limit, used, remaining }`, con el día calculado en UTC. `POST /api/v1/arena/fight` recibe únicamente `{ requestId }`; el rival y el resultado son decididos por el servidor. Repetir la misma clave para el mismo luchador devuelve el combate persistido sin consumir otro intento ni aplicar recompensas nuevamente. `GET /api/v1/arena/history` acepta `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`), y devuelve `{ battles, pagination: { page, limit, totalItems, totalPages } }` ordenado por fecha descendente.
 
+`GET /api/v1/leaderboards` es público; acepta `category` (`elo` por defecto o `level`), `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`). Devuelve `{ fighters, pagination: { page, limit, totalItems, totalPages } }`. El servidor ordena la categoría elegida de mayor a menor y resuelve los empates por ID de luchador de menor a mayor. Cada luchador incluye únicamente los campos del perfil público y el nombre de usuario.
+
 El registro acepta únicamente `username`, `email` y `password`. Un registro correcto devuelve HTTP 201 con `id`, `username` y `email` públicos, sin iniciar sesión. Los conflictos de nombre o correo devuelven el mismo error HTTP 409 para no distinguir cuál valor está ocupado.
 
 El inicio de sesión acepta únicamente `identifier` y `password`; `identifier` puede ser el nombre de usuario o el correo electrónico registrado.

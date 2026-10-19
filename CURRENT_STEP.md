@@ -1,24 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `5.7`
-**Estado:** completado
-**Título:** Crear historial de combates
+**Paso activo:** `6.2`
+**Estado:** pendiente
+**Título:** Crear interfaz de clasificación
 
 ## Objetivo
 
-Crear historial de combates.
+Crear interfaz de clasificación.
 
 ## Permitido en este paso
 
-- Lista paginada y acceso al detalle.
+- Cambiar categoría y navegar páginas.
+- Enlaces a perfiles públicos.
 
 ## Fuera de alcance
 
-- Crear el endpoint de clasificación; corresponde al paso 6.1.
+- Completar el dashboard del jugador; corresponde al paso 6.3.
+- Clasificación por cantidad de alumnos; corresponde al paso 7.4.
 
 ## Criterios de aceptación
 
-- Registros del jugador correcto, orden consistente y estados vacío/carga/error.
+- se muestra información pública y el orden coincide con el servidor.
 
 ## Al terminar
 
