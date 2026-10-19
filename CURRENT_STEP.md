@@ -1,28 +1,29 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `2.6`
+**Paso activo:** `3.1`
 **Estado:** pendiente
-**Título:** Integrar estado de sesión y rutas protegidas
+**Título:** Crear modelo Fighter e índices
 
 ## Objetivo
 
-Integrar en el cliente el estado de sesión real, resolver su carga tras una recarga y al iniciar o cerrar sesión, y proteger las rutas según la sesión confirmada por el backend.
+Crear el modelo Fighter y sus índices, con una relación única por usuario, nombre normalizado único, nivel, XP, ELO, estadísticas base, contadores y código de invitación.
 
 ## Permitido en este paso
 
-- Añadir un contexto React sencillo para la sesión.
-- Resolver la carga del estado de sesión al recargar la aplicación.
-- Integrar el inicio de sesión y el cierre de sesión con el estado de sesión del cliente.
-- Hacer que las rutas protegidas se comporten según el estado real de la sesión.
+- Crear el modelo Fighter y sus índices.
+- Definir en el modelo la relación única por usuario, el nombre normalizado único, nivel, XP, ELO, estadísticas base, contadores y código de invitación.
 
 ## Fuera de alcance
 
-- Crear luchadores o implementar rutas, modelos y funciones de juego de pasos posteriores.
-- No implementar tareas posteriores de la hoja de ruta.
+- Crear la API para crear luchadores o aceptar del cliente atributos, ELO o nivel; corresponde al paso 3.2.
+- Crear el flujo visual de creación de luchador; corresponde al paso 3.3.
+- Crear perfiles propios o públicos; corresponde al paso 3.4.
+- Calcular estadísticas derivadas por nivel; corresponde al paso 3.5.
+- Implementar tareas posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- las rutas protegidas se comportan según el estado real de la sesión; no basta con ocultar enlaces.
+- no se puede vincular más de un luchador a la misma cuenta.
 
 ## Al terminar
 

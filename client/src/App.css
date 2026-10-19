@@ -3,7 +3,8 @@
 }
 
 .home-layout,
-.auth-layout {
+.auth-layout,
+.session-layout {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
@@ -189,6 +190,47 @@
     var(--color-background);
 }
 
+.session-layout {
+  justify-content: space-between;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgb(153 67 42 / 11%), transparent 31rem),
+    var(--color-background);
+}
+
+.session-card {
+  display: grid;
+  width: min(100%, 29rem);
+  gap: 1rem;
+  margin: auto;
+  padding: clamp(1.5rem, 6vw, 2.6rem);
+  border: 1px solid rgb(245 232 208 / 11%);
+  border-radius: 0.8rem;
+  background: rgb(42 31 25 / 92%);
+  box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 26%);
+}
+
+.session-card h1 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 7vw, 2.5rem);
+  letter-spacing: -0.035em;
+}
+
+.session-card .auth-intro,
+.session-card .request-error {
+  margin: 0;
+}
+
+.session-card .button {
+  width: 100%;
+}
+
+.session-layout[role='status'] {
+  justify-content: center;
+  color: var(--color-muted);
+}
+
 .auth-card {
   width: min(100%, 29rem);
   margin: auto;
@@ -352,7 +394,8 @@
 
 @media (max-width: 480px) {
   .home-layout,
-  .auth-layout {
+  .auth-layout,
+  .session-layout {
     padding: 1.25rem 1rem;
   }
 

@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { registerUser } from './api/auth.js'
+import { useSession } from './context/SessionContext.jsx'
 import './App.css'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,24}$/
@@ -41,35 +44,6 @@ function validateLogin(formData) {
   return errors
 }
 
-async function sendAuthRequest(endpoint, values) {
-  let response
-
-  try {
-    response = await fetch(`/api/v1/auth/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(values),
-    })
-  } catch {
-    throw new Error('No se pudo conectar con el servidor. Comprueba que esté en ejecución e inténtalo de nuevo.')
-  }
-
-  let result
-
-  try {
-    result = await response.json()
-  } catch {
-    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
-  }
-
-  if (!response.ok) {
-    throw new Error(result?.error?.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.')
-  }
-
-  return result.user
-}
-
 function Field({ id, label, error, ...inputProps }) {
   const errorId = `${id}-error`
 
@@ -93,6 +67,9 @@ function Field({ id, label, error, ...inputProps }) {
 
 function AuthPage({ mode }) {
   const isRegister = mode === 'register'
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { login } = useSession()
   const [fieldErrors, setFieldErrors] = useState({})
   const [requestError, setRequestError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -124,8 +101,12 @@ function AuthPage({ mode }) {
     setIsSubmitting(true)
 
     try {
-      const user = await sendAuthRequest(isRegister ? 'register' : 'login', values)
-      setSuccess(user)
+      if (isRegister) {
+        setSuccess(await registerUser(values))
+      } else {
+        await login(values)
+        navigate(location.state?.from || '/dashboard', { replace: true })
+      }
     } catch (error) {
       setRequestError(error.message)
     } finally {
@@ -149,13 +130,13 @@ function AuthPage({ mode }) {
 
   return (
     <main className="auth-layout">
-      <a className="brand" href="/" aria-label="Fieras de la Arena, inicio">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
         <span className="brand__mark" aria-hidden="true">FA</span>
         <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </a>
+      </Link>
 
       <section className="auth-card" aria-labelledby="auth-title">
-        <a className="back-link" href="/">← Volver al inicio</a>
+        <Link className="back-link" to="/">← Volver al inicio</Link>
         <p className="eyebrow">{isRegister ? 'Únete a la arena' : 'Qué bueno verte de nuevo'}</p>
         <h1 id="auth-title">{isRegister ? 'Crea tu cuenta' : 'Inicia sesión'}</h1>
         <p className="auth-intro">
@@ -173,9 +154,9 @@ function AuthPage({ mode }) {
                 ? `Tu cuenta ${success.username} está lista. Ahora puedes iniciar sesión.`
                 : `Bienvenido de nuevo, ${success.username}.`}
             </p>
-            <a className="button button--primary" href={isRegister ? '/login' : '/'}>
-              {isRegister ? 'Ir a iniciar sesión' : 'Volver al inicio'}
-            </a>
+            <Link className="button button--primary" to="/login">
+              Ir a iniciar sesión
+            </Link>
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit} onChange={handleChange} noValidate>
@@ -258,9 +239,9 @@ function AuthPage({ mode }) {
         {!success && (
           <p className="auth-switch">
             {isRegister ? '¿Ya tienes una cuenta?' : '¿Aún no tienes una cuenta?'}{' '}
-            <a href={isRegister ? '/login' : '/register'}>
+            <Link to={isRegister ? '/login' : '/register'}>
               {isRegister ? 'Inicia sesión' : 'Regístrate'}
-            </a>
+            </Link>
           </p>
         )}
       </section>
@@ -272,10 +253,10 @@ function AuthPage({ mode }) {
 function HomePage() {
   return (
     <main className="home-layout">
-      <a className="brand" href="/" aria-label="Fieras de la Arena, inicio">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
         <span className="brand__mark" aria-hidden="true">FA</span>
         <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </a>
+      </Link>
       <section className="home-hero">
         <p className="eyebrow">Tu leyenda empieza aquí</p>
         <h1>Entra a la arena.<br /><span>Forja tu historia.</span></h1>
@@ -283,8 +264,8 @@ function HomePage() {
           Crea tu cuenta y prepárate para demostrar de qué estás hecho.
         </p>
         <div className="home-actions">
-          <a className="button button--primary" href="/register">Crear cuenta</a>
-          <a className="button button--secondary" href="/login">Iniciar sesión</a>
+          <Link className="button button--primary" to="/register">Crear cuenta</Link>
+          <Link className="button button--secondary" to="/login">Iniciar sesión</Link>
         </div>
       </section>
       <p className="home-footer">Fieras de la Arena <span>·</span> Combate. Progresa. Compite.</p>
@@ -292,18 +273,92 @@ function HomePage() {
   )
 }
 
+function ProtectedRoute() {
+  const location = useLocation()
+  const { status, error, refreshSession } = useSession()
+
+  if (status === 'loading') {
+    return <main className="session-layout" role="status">Comprobando tu sesión…</main>
+  }
+
+  if (status === 'error') {
+    return (
+      <main className="session-layout">
+        <section className="session-card" aria-labelledby="session-error-title">
+          <h1 id="session-error-title">No se pudo comprobar tu sesión</h1>
+          <p className="request-error" role="alert">{error}</p>
+          <button className="button button--primary" type="button" onClick={refreshSession}>
+            Intentar de nuevo
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  if (status !== 'authenticated') {
+    return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  return <Outlet />
+}
+
+function DashboardPage() {
+  const navigate = useNavigate()
+  const { user, logout } = useSession()
+  const [logoutError, setLogoutError] = useState('')
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    setIsLoggingOut(true)
+    setLogoutError('')
+
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } catch (error) {
+      setLogoutError(error.message)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
+  return (
+    <main className="session-layout">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+        <span className="brand__mark" aria-hidden="true">FA</span>
+        <span>Fieras <span className="brand__muted">de la Arena</span></span>
+      </Link>
+      <section className="session-card" aria-labelledby="dashboard-title">
+        <p className="eyebrow">Sesión activa</p>
+        <h1 id="dashboard-title">Bienvenido, {user.username}</h1>
+        <p className="auth-intro">Tu sesión fue confirmada por el servidor.</p>
+        {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
+        <button
+          className="button button--secondary"
+          type="button"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+        </button>
+      </section>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+    </main>
+  )
+}
+
 function App() {
-  const path = window.location.pathname
-
-  if (path === '/register') {
-    return <AuthPage mode="register" />
-  }
-
-  if (path === '/login') {
-    return <AuthPage mode="login" />
-  }
-
-  return <HomePage />
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/register" element={<AuthPage mode="register" />} />
+      <Route path="/login" element={<AuthPage mode="login" />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }
 
 export default App
