@@ -97,6 +97,32 @@ async function createFighter(cookie, body) {
   });
 }
 
+async function getMyFighter(cookie) {
+  return fetch(`${baseUrl}/api/v1/fighters/me`, {
+    headers: { Cookie: cookie }
+  });
+}
+
+test("GET /fighters/me requiere una sesión", async () => {
+  const response = await fetch(`${baseUrl}/api/v1/fighters/me`);
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: "AUTHENTICATION_REQUIRED",
+      message: "Debes iniciar sesión para acceder a este recurso."
+    }
+  });
+});
+
+test("GET /fighters/me informa cuando la cuenta todavía no tiene luchador", async () => {
+  const cookie = await login(1);
+  const response = await getMyFighter(cookie);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { fighter: null });
+});
+
 test("POST /fighters requiere una sesión", async () => {
   const response = await fetch(`${baseUrl}/api/v1/fighters`, {
     method: "POST",
@@ -172,6 +198,15 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   assert.equal(responseBodies[conflictIndex].error.code, "FIGHTER_ALREADY_EXISTS");
   fighterName = body.fighter.name;
   assert.doesNotMatch(JSON.stringify(body), /userId|referralCode/i);
+
+  const ownFighterResponse = await getMyFighter(cookie);
+  assert.equal(ownFighterResponse.status, 200);
+  assert.deepEqual(await ownFighterResponse.json(), {
+    fighter: {
+      id: body.fighter.id,
+      name: body.fighter.name
+    }
+  });
 
   const storedFighter = await Fighter.findById(body.fighter.id);
   assert.equal(storedFighter.userId.toString(), userIds[0].toString());

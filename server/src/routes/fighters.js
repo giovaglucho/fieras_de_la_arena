@@ -21,6 +21,22 @@ function toPublicFighter(fighter) {
   };
 }
 
+router.get("/me", requireAuth, async (request, response, next) => {
+  try {
+    const fighter = await Fighter.findOne({ userId: request.user._id })
+      .select("_id name")
+      .lean();
+
+    return response.status(200).json({
+      fighter: fighter
+        ? { id: fighter._id.toString(), name: fighter.name }
+        : null
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post("/", requireAuth, async (request, response, next) => {
   const fighterData = validateFighterCreation(request.body);
 

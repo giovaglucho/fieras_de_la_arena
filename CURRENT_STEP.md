@@ -1,27 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `3.3`
+**Paso activo:** `3.4`
 **Estado:** pendiente
-**Título:** Crear flujo visual de creación
+**Título:** Crear perfil propio y perfil público
 
 ## Objetivo
 
-Implementar el flujo visual para crear un luchador, disponible solo para cuentas que todavía no tienen uno, y permitir mostrar errores de nombre y confirmar la creación.
+Endpoints con lista explícita de campos públicos y página de resumen básico del luchador.
 
 ## Permitido en este paso
 
-- Pantalla solo para cuentas sin luchador.
-- Mostrar errores de nombre y confirmar creación.
+- Endpoints con lista explícita de campos públicos.
+- Página de resumen básico del luchador.
 
 ## Fuera de alcance
 
-- Crear perfiles propios o públicos; corresponde al paso 3.4.
 - Calcular estadísticas derivadas por nivel; corresponde al paso 3.5.
 - Implementar tareas posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- formulario completo y estado consistente tras recargar.
+- no se filtran correo ni datos privados; IDs inexistentes devuelven 404.
 
 ## Al terminar
 

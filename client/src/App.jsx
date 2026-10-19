@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { registerUser } from './api/auth.js'
+import { createFighter, fetchMyFighter } from './api/fighters.js'
 import { useSession } from './context/SessionContext.jsx'
 import './App.css'
 
@@ -302,6 +303,180 @@ function ProtectedRoute() {
   return <Outlet />
 }
 
+function FighterStatusRoute({ needsCreation = false }) {
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [hasFighter, setHasFighter] = useState(false)
+  const [reloadVersion, setReloadVersion] = useState(0)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchMyFighter()
+      .then((fighter) => {
+        if (isCurrent) {
+          setHasFighter(Boolean(fighter))
+          setStatus('ready')
+          setError('')
+        }
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setError(requestError.message)
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [reloadVersion])
+
+  if (status === 'loading') {
+    return <main className="session-layout" role="status">Comprobando tu luchador…</main>
+  }
+
+  if (status === 'error') {
+    return (
+      <main className="session-layout">
+        <section className="session-card" aria-labelledby="fighter-check-error-title">
+          <h1 id="fighter-check-error-title">No se pudo comprobar tu luchador</h1>
+          <p className="request-error" role="alert">{error}</p>
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => setReloadVersion((version) => version + 1)}
+          >
+            Intentar de nuevo
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  if (needsCreation && hasFighter) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  if (!needsCreation && !hasFighter) {
+    return <Navigate to="/create-fighter" replace />
+  }
+
+  return <Outlet />
+}
+
+function CreateFighterPage() {
+  const navigate = useNavigate()
+  const [fieldError, setFieldError] = useState('')
+  const [requestError, setRequestError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [createdFighter, setCreatedFighter] = useState(null)
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    const name = event.currentTarget.elements.name.value.trim()
+
+    setFieldError('')
+    setRequestError('')
+
+    if (name.length < 3 || name.length > 18) {
+      setFieldError('El nombre debe tener entre 3 y 18 caracteres.')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      setCreatedFighter(await createFighter(name))
+    } catch (error) {
+      if (error.code === 'INVALID_FIGHTER_DATA' || error.code === 'FIGHTER_NAME_TAKEN') {
+        setFieldError(error.message)
+      } else if (error.code === 'FIGHTER_ALREADY_EXISTS') {
+        navigate('/dashboard', { replace: true })
+      } else {
+        setRequestError(error.message)
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  function handleChange() {
+    setFieldError('')
+    setRequestError('')
+  }
+
+  return (
+    <main className="auth-layout">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+        <span className="brand__mark" aria-hidden="true">FA</span>
+        <span>Fieras <span className="brand__muted">de la Arena</span></span>
+      </Link>
+
+      <section className="auth-card" aria-labelledby="fighter-title">
+        <Link className="back-link" to="/">Volver al inicio</Link>
+        <p className="eyebrow">Tu camino empieza aquí</p>
+        <h1 id="fighter-title">Crea tu luchador</h1>
+        <p className="auth-intro">
+          Elige un nombre para tu fiera. Podrás comenzar con ella en la arena.
+        </p>
+
+        {createdFighter ? (
+          <div className="success-panel" role="status" aria-live="polite">
+            <span className="success-panel__icon" aria-hidden="true">✓</span>
+            <h2>¡Luchador creado!</h2>
+            <p><strong>{createdFighter.name}</strong> ya está listo para entrar en la arena.</p>
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={() => navigate('/dashboard', { replace: true })}
+            >
+              Ir al panel
+            </button>
+          </div>
+        ) : (
+          <form className="auth-form" onSubmit={handleSubmit} onChange={handleChange} noValidate>
+            <div className="form-field">
+              <label htmlFor="fighter-name">Nombre del luchador</label>
+              <input
+                id="fighter-name"
+                name="name"
+                type="text"
+                autoComplete="off"
+                maxLength={18}
+                placeholder="ej. Colmillo de Bronce"
+                required
+                aria-invalid={Boolean(fieldError)}
+                aria-describedby={fieldError ? 'fighter-name-error' : 'fighter-name-hint'}
+              />
+              {fieldError ? (
+                <p className="field-error" id="fighter-name-error" role="alert">
+                  {fieldError}
+                </p>
+              ) : (
+                <p className="form-hint" id="fighter-name-hint">
+                  Entre 3 y 18 caracteres. El nombre debe estar disponible.
+                </p>
+              )}
+            </div>
+
+            {requestError && <p className="request-error" role="alert">{requestError}</p>}
+
+            <button
+              className="button button--primary"
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creando luchador…' : 'Crear luchador'}
+            </button>
+          </form>
+        )}
+      </section>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> Una fiera, una leyenda</p>
+    </main>
+  )
+}
+
 function DashboardPage() {
   const navigate = useNavigate()
   const { user, logout } = useSession()
@@ -354,7 +529,12 @@ function App() {
       <Route path="/register" element={<AuthPage mode="register" />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route element={<FighterStatusRoute />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Route>
+        <Route element={<FighterStatusRoute needsCreation />}>
+          <Route path="/create-fighter" element={<CreateFighterPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
