@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, un modelo `User` con índices únicos, endpoints de registro, login, logout y consulta de la sesión autenticada, y middleware de autenticación. Las sesiones persistentes se almacenan en MongoDB. El paso activo es `2.5`, definido en `CURRENT_STEP.md`: crear las pantallas de registro y login y conectarlas con la API existente. Todavía no hay sistemas de juego implementados.
+El cliente React con Vite está en `client/` e incluye una página inicial y pantallas de registro e inicio de sesión conectadas a la API. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, un modelo `User` con índices únicos, endpoints de registro, login, logout y consulta de la sesión autenticada, y middleware de autenticación. Las sesiones persistentes se almacenan en MongoDB. El paso activo es `2.6`, definido en `CURRENT_STEP.md`: integrar el estado de sesión en React y proteger rutas según el estado confirmado por el backend. Todavía no se ha integrado el estado de sesión del cliente ni hay sistemas de juego implementados.
 
 ## Requisitos
 
