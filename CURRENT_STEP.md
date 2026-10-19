@@ -1,21 +1,22 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `3.1`
+**Paso activo:** `3.2`
 **Estado:** pendiente
-**Título:** Crear modelo Fighter e índices
+**Título:** Crear el luchador mediante API
 
 ## Objetivo
 
-Crear el modelo Fighter y sus índices, con una relación única por usuario, nombre normalizado único, nivel, XP, ELO, estadísticas base, contadores y código de invitación.
+Implementar la creación del luchador de una cuenta mediante la API, validando el nombre y asignando sus valores iniciales en el servidor, sin permitir que el cliente manipule sus estadísticas, ELO o nivel.
 
 ## Permitido en este paso
 
-- Crear el modelo Fighter y sus índices.
-- Definir en el modelo la relación única por usuario, el nombre normalizado único, nivel, XP, ELO, estadísticas base, contadores y código de invitación.
+- Exigir sesión para crear un luchador.
+- Validar el nombre en el servidor.
+- Asignar los valores iniciales desde el servidor.
+- No aceptar atributos, ELO o nivel libres del cliente.
 
 ## Fuera de alcance
 
-- Crear la API para crear luchadores o aceptar del cliente atributos, ELO o nivel; corresponde al paso 3.2.
 - Crear el flujo visual de creación de luchador; corresponde al paso 3.3.
 - Crear perfiles propios o públicos; corresponde al paso 3.4.
 - Calcular estadísticas derivadas por nivel; corresponde al paso 3.5.
@@ -23,7 +24,7 @@ Crear el modelo Fighter y sus índices, con una relación única por usuario, no
 
 ## Criterios de aceptación
 
-- no se puede vincular más de un luchador a la misma cuenta.
+- Solo se crea un luchador por cuenta y no se pueden manipular estadísticas.
 
 ## Al terminar
 

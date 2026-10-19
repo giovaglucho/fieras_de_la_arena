@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente React con Vite está en `client/` e incluye una página inicial, pantallas de registro e inicio de sesión conectadas a la API y un contexto que carga el estado de sesión desde el backend. La ruta `/dashboard` está protegida según la sesión confirmada por el servidor y permite cerrar sesión. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, un modelo `User` con índices únicos, endpoints de registro, login, logout y consulta de la sesión autenticada, middleware de autenticación y sesiones persistentes almacenadas en MongoDB. El paso activo es `3.1`, definido en `CURRENT_STEP.md`: crear el modelo `Fighter` y sus índices. Todavía no se ha implementado el modelo Fighter ni hay sistemas de juego.
+El cliente React con Vite está en `client/` e incluye una página inicial, pantallas de registro e inicio de sesión conectadas a la API y un contexto que carga el estado de sesión desde el backend. La ruta `/dashboard` está protegida según la sesión confirmada por el servidor y permite cerrar sesión. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, modelos `User` y `Fighter` con sus índices, endpoints de registro, login, logout y consulta de la sesión autenticada, middleware de autenticación y sesiones persistentes almacenadas en MongoDB. El paso activo es `3.2`, definido en `CURRENT_STEP.md`: crear el luchador mediante API. La API para crear luchadores y los demás sistemas de juego todavía no están implementados.
 
 ## Requisitos
 
