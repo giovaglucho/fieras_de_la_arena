@@ -170,7 +170,7 @@ Reglas iniciales:
 1. Se crea una instantánea de ambos luchadores y de la versión de las reglas.
 2. Se genera una semilla aleatoria en el servidor y se ejecuta una simulación reproducible.
 3. El orden de actuación se determina principalmente por velocidad; los empates se resuelven mediante la semilla.
-4. Cada atacante calcula daño a partir de ataque, defensa del rival y una pequeña variación aleatoria controlada.
+4. Cada atacante calcula el daño multiplicando su ataque por un porcentaje entero uniforme entre 90 % y 110 % (ambos incluidos), redondeando hacia abajo y restando la defensa del rival.
 5. El daño mínimo de un golpe que impacta es 1.
 6. La pelea termina cuando la vida de un participante llega a 0 o se alcanza el máximo de 30 acciones.
 7. Si se alcanza el límite, gana quien conserve más vida; si también hay empate, el resultado es empate.

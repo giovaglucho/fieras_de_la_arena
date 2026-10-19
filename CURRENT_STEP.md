@@ -1,30 +1,31 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `4.2`
+**Paso activo:** `4.3`
 **Estado:** pendiente
-**Título:** Implementar simulación determinista
+**Título:** Probar motor y límites
 
 ## Objetivo
 
-Semilla proporcionada, orden de actuación, daño y condición de finalización.
+Añadir pruebas para daño mínimo, orden de turno, fin por KO, máximo de acciones y empates.
 
 ## Permitido en este paso
 
-- Semilla proporcionada.
-- Orden de actuación.
-- Daño.
-- Condición de finalización.
+- Añadir pruebas para daño mínimo.
+- Añadir pruebas para orden de turno.
+- Añadir pruebas para fin por KO.
+- Añadir pruebas para máximo de acciones.
+- Añadir pruebas para empates.
 
 ## Fuera de alcance
 
-- Añadir pruebas de límites del motor para daño mínimo, orden de turno, fin por KO, máximo de acciones y empates; corresponde al paso 4.3 de la hoja de ruta.
 - Implementar cálculo de XP, nivel o ELO; corresponde al paso 4.4 de la hoja de ruta.
-- Implementar persistencia de combates o el caso de uso de combate; corresponden a los pasos 4.5 y 4.6 de la hoja de ruta.
-- Implementar arena, límite diario, matchmaking, interfaz u otras tareas posteriores de la hoja de ruta.
+- Crear el modelo Battle e historial persistente; corresponde al paso 4.5 de la hoja de ruta.
+- Implementar el caso de uso de combate; corresponde al paso 4.6 de la hoja de ruta.
+- Implementar arena, límite diario, selección de oponente, interfaz u otras tareas posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Misma entrada + misma semilla da mismo resultado y eventos.
+- Suite del motor pasa sin conectar a base de datos.
 
 ## Al terminar
 
