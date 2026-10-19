@@ -1,26 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `5.5`
+**Paso activo:** `5.6`
 **Estado:** pendiente
-**Título:** Crear pantalla Arena
+**Título:** Crear pantalla de resultado y eventos
 
 ## Objetivo
 
-Crear pantalla Arena.
+Crear pantalla de resultado y eventos.
 
 ## Permitido en este paso
 
-- Mostrar intentos restantes y un botón que inicie la pelea.
-- Controlar doble clic, espera, error y confirmación.
+- Mostrar rival, resultado, XP, cambio ELO y secuencia de acciones.
 
 ## Fuera de alcance
 
-- Crear la pantalla de resultado y eventos; corresponde al paso 5.6.
 - Crear el historial de combates; corresponde al paso 5.7.
 
 ## Criterios de aceptación
 
-- El estado visual coincide con la respuesta del servidor y no se inventan resultados.
+- Refleja el registro persistido; recargar la página no cambia el resultado.
 
 ## Al terminar
 

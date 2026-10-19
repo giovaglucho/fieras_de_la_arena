@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { fetchArenaAttempts, startArenaFight } from './api/arena.js'
 import { registerUser } from './api/auth.js'
 import { createFighter, fetchMyFighter, fetchPublicProfile } from './api/fighters.js'
 import { useSession } from './context/SessionContext.jsx'
@@ -615,6 +616,7 @@ function DashboardPage() {
         <FighterSummary fighter={fighter} eyebrow="Tu luchador" showPublicLink />
         <section className="session-card fighter-dashboard__actions" aria-label="Acciones de cuenta">
           {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
+          <Link className="button button--primary" to="/arena">Entrar a la Arena</Link>
           <button
             className="button button--secondary"
             type="button"
@@ -625,6 +627,148 @@ function DashboardPage() {
           </button>
         </section>
       </div>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+    </main>
+  )
+}
+
+function ArenaPage() {
+  const [attempts, setAttempts] = useState(null)
+  const [attemptStatus, setAttemptStatus] = useState('loading')
+  const [attemptError, setAttemptError] = useState('')
+  const [reloadAttemptsVersion, setReloadAttemptsVersion] = useState(0)
+  const [fightStatus, setFightStatus] = useState('idle')
+  const [fightError, setFightError] = useState('')
+  const fightInProgress = useRef(false)
+  const requestId = useRef(null)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    setAttemptStatus('loading')
+    setAttemptError('')
+
+    fetchArenaAttempts()
+      .then((result) => {
+        if (isCurrent) {
+          setAttempts(result)
+          setAttemptStatus('ready')
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setAttempts(null)
+          setAttemptError(error.message)
+          setAttemptStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [reloadAttemptsVersion])
+
+  async function handleFight() {
+    if (
+      fightInProgress.current ||
+      attemptStatus !== 'ready' ||
+      !attempts ||
+      attempts.remaining === 0
+    ) {
+      return
+    }
+
+    fightInProgress.current = true
+    setFightStatus('submitting')
+    setFightError('')
+    setAttempts(null)
+    setAttemptStatus('loading')
+
+    try {
+      if (!requestId.current) {
+        requestId.current = crypto.randomUUID()
+      }
+
+      await startArenaFight(requestId.current)
+      requestId.current = null
+      setFightStatus('success')
+    } catch (error) {
+      setFightError(error.message)
+      setFightStatus('error')
+    } finally {
+      fightInProgress.current = false
+      setReloadAttemptsVersion((version) => version + 1)
+    }
+  }
+
+  function handleRetryAttempts() {
+    setAttempts(null)
+    setAttemptStatus('loading')
+    setReloadAttemptsVersion((version) => version + 1)
+  }
+
+  const isFightDisabled =
+    fightStatus === 'submitting' ||
+    attemptStatus !== 'ready' ||
+    !attempts ||
+    attempts.remaining === 0
+
+  return (
+    <main className="session-layout arena-layout">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+        <span className="brand__mark" aria-hidden="true">FA</span>
+        <span>Fieras <span className="brand__muted">de la Arena</span></span>
+      </Link>
+
+      <section className="session-card arena-card" aria-labelledby="arena-title">
+        <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
+        <p className="eyebrow">El siguiente desafío te espera</p>
+        <h1 id="arena-title">La Arena</h1>
+        <p className="auth-intro">Los combates y sus intentos disponibles se resuelven en el servidor.</p>
+
+        <div className="arena-attempts" aria-live="polite">
+          {attemptStatus === 'loading' ? (
+            <p role="status">Consultando tus intentos…</p>
+          ) : attemptStatus === 'error' ? (
+            <>
+              <p className="request-error" role="alert">{attemptError}</p>
+              <button className="button button--secondary" type="button" onClick={handleRetryAttempts}>
+                Consultar de nuevo
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="eyebrow">Intentos de hoy · UTC</p>
+              <p className="arena-attempts__count">
+                <strong>{attempts.remaining}</strong> de {attempts.limit} disponibles
+              </p>
+              <p className="arena-attempts__date">Fecha del servidor: {attempts.dateKey}</p>
+            </>
+          )}
+        </div>
+
+        {fightStatus === 'success' && (
+          <p className="arena-message arena-message--success" role="status" aria-live="polite">
+            El servidor confirmó y registró tu combate.
+          </p>
+        )}
+        {fightStatus === 'error' && (
+          <p className="request-error" role="alert">{fightError}</p>
+        )}
+
+        <button
+          className="button button--primary"
+          type="button"
+          onClick={handleFight}
+          disabled={isFightDisabled}
+        >
+          {fightStatus === 'submitting'
+            ? 'Iniciando combate…'
+            : attempts?.remaining === 0
+              ? 'No quedan intentos'
+              : 'Iniciar combate'}
+        </button>
+      </section>
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
   )
@@ -697,6 +841,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<FighterStatusRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/arena" element={<ArenaPage />} />
         </Route>
         <Route element={<FighterStatusRoute needsCreation />}>
           <Route path="/create-fighter" element={<CreateFighterPage />} />
