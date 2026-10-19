@@ -1,17 +1,18 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `1.5`
+**Paso activo:** `2.2`
 **Estado:** pendiente
-**Título:** Añadir formato común de errores y validación base
+**Título:** Implementar registro
 
 ## Objetivo
 
-Definir una respuesta de error consistente y middleware final. Introducir una librería de validación solo si hace falta para el primer endpoint que la use.
+Implementar registro.
 
 ## Permitido en este paso
 
-- Definir una respuesta de error consistente y middleware final.
-- Introducir una librería de validación solo si hace falta para el primer endpoint que la use.
+- Validar datos en servidor, normalizar valores y hashear contraseña.
+- Manejar duplicados con error público consistente.
+- No iniciar sesión automáticamente a menos que se defina y documente como parte de este paso.
 
 ## Fuera de alcance
 
@@ -19,7 +20,7 @@ Definir una respuesta de error consistente y middleware final. Introducir una li
 
 ## Criterios de aceptación
 
-- Errores conocidos devuelven código HTTP y cuerpo coherentes; no se muestran trazas internas.
+- registro válido funciona; inválidos y duplicados se rechazan; nunca se devuelve el hash.
 
 ## Al terminar
 

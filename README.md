@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. El paso activo es `1.5`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
+El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores y un modelo `User` con índices únicos; el registro aún no está implementado. El paso activo es `2.2`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
 
 ## Requisitos
 
