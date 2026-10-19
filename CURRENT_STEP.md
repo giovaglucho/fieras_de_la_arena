@@ -1,24 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `8.3`
+**Paso activo:** `8.4`
 **Estado:** pendiente
-**Título:** Revisar validación, filtrado y autorización
+**Título:** Añadir logs operativos seguros
 
 ## Objetivo
 
-Revisar validación, filtrado y autorización.
+Añadir logs operativos seguros.
 
 ## Permitido en este paso
 
-- Probar payloads manipulados, IDs inválidos y campos no permitidos.
+- Errores con contexto útil sin credenciales, cookies ni secretos.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.4 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.5 y posteriores.
 
 ## Criterios de aceptación
 
-- operaciones sensibles solo aceptan las propiedades esperadas.
+- fallos investigables sin filtrar datos sensibles.
 
 ## Al terminar
 

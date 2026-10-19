@@ -76,6 +76,18 @@ router.post("/logout", async (request, response, next) => {
     );
   }
 
+  if (
+    request.body !== undefined &&
+    (request.body === null ||
+      typeof request.body !== "object" ||
+      Array.isArray(request.body) ||
+      Object.keys(request.body).length > 0)
+  ) {
+    return next(
+      new ApiError(400, "INVALID_LOGOUT_DATA", "Cerrar sesión no admite datos de entrada.")
+    );
+  }
+
   try {
     await new Promise((resolve, reject) => {
       request.session.destroy((error) => (error ? reject(error) : resolve()));

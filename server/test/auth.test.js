@@ -93,6 +93,23 @@ test("rechaza credenciales inválidas con una respuesta genérica", async () => 
   });
 });
 
+test("rechaza campos no permitidos al iniciar sesión", async () => {
+  const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      identifier: user.username,
+      password: "arena password 123",
+      userId: user._id.toString(),
+      role: "admin"
+    })
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get("set-cookie"), null);
+  assert.equal((await response.json()).error.code, "INVALID_LOGIN_DATA");
+});
+
 test("GET /auth/me requiere sesión y devuelve solo los datos públicos", async () => {
   const anonymousResponse = await fetch(`${baseUrl}/api/v1/auth/me`);
 
@@ -168,6 +185,26 @@ test("requiere una sesión para cerrar sesión", async () => {
       message: "Debes iniciar sesión para cerrar sesión."
     }
   });
+});
+
+test("rechaza datos en logout sin destruir la sesión", async () => {
+  const login = await requestLogin(user.username);
+  const { cookie } = readSessionCookie(login);
+  const logout = await fetch(`${baseUrl}/api/v1/auth/logout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookie
+    },
+    body: JSON.stringify({ userId: user._id.toString(), role: "admin" })
+  });
+  const session = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: cookie }
+  });
+
+  assert.equal(logout.status, 400);
+  assert.equal((await logout.json()).error.code, "INVALID_LOGOUT_DATA");
+  assert.equal(session.status, 200);
 });
 
 test("limita los intentos de inicio de sesión por IP", async () => {
