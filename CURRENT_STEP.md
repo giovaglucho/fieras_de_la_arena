@@ -1,27 +1,28 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `5.2`
+**Paso activo:** `5.3`
 **Estado:** pendiente
-**Título:** Implementar selección de rival
+**Título:** Añadir rival de entrenamiento de respaldo
 
 ## Objetivo
 
-Implementar selección de rival.
+Añadir un rival de entrenamiento de respaldo.
 
 ## Permitido en este paso
 
-- Buscar oponente distinto y razonablemente cercano en ELO.
-- Ampliar el rango progresivamente según configuración.
+- Usarlo únicamente si no se encuentra rival real según las reglas acordadas.
+- Recompensa baja y sin cambio de ELO.
 
 ## Fuera de alcance
 
-- Añadir rival de entrenamiento de respaldo; corresponde al paso 5.3.
 - Exponer endpoints de arena e historial; corresponde al paso 5.4.
-- Crear pantallas de arena, resultado e historial; corresponden a los pasos 5.5, 5.6 y 5.7.
+- Crear la pantalla Arena; corresponde al paso 5.5.
+- Crear la pantalla de resultado y eventos; corresponde al paso 5.6.
+- Crear el historial de combates; corresponde al paso 5.7.
 
 ## Criterios de aceptación
 
-- Nunca se selecciona al propio luchador y la búsqueda termina de manera controlada.
+- Pelea identificada como entrenamiento y excluida de la clasificación competitiva.
 
 ## Al terminar
 
