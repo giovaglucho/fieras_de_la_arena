@@ -1,9 +1,15 @@
 import express from "express";
+import { isDatabaseConnected } from "./database.js";
 
 const app = express();
 
 app.get("/api/v1/health", (request, response) => {
-  response.status(200).json({ status: "ok" });
+  const databaseConnected = isDatabaseConnected();
+
+  response.status(databaseConnected ? 200 : 503).json({
+    status: databaseConnected ? "ok" : "unavailable",
+    database: databaseConnected ? "connected" : "disconnected"
+  });
 });
 
 app.use((request, response) => {

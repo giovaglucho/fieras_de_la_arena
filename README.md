@@ -15,7 +15,49 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente mínimo con React y Vite está en `client/`. El servidor Express mínimo está en `server/` y expone `GET /api/v1/health`. El paso activo es `1.3`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
+El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. El paso activo es `1.5`, definido en `CURRENT_STEP.md`. Todavía no hay sistemas de juego implementados.
+
+## Requisitos
+
+- Node.js `20.19+` o `22.12+` (requisito de la versión actual de Vite).
+- npm.
+- En el entorno donde se comprobó el proyecto: Node.js `v24.20.0` y npm `11.19.0`.
+
+## Ejecución local en Windows PowerShell
+
+Abre una terminal en la raíz del repositorio y crea la configuración local a partir del ejemplo:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. `CLIENT_URL` y `SESSION_SECRET` quedan documentadas para pasos posteriores.
+
+En una primera terminal, instala e inicia el cliente:
+
+```powershell
+Set-Location client
+npm.cmd install
+npm.cmd run dev
+```
+
+Abre la URL local que indique Vite (normalmente `http://localhost:5173`).
+
+En una segunda terminal, vuelve a la raíz del repositorio, instala e inicia el servidor:
+
+```powershell
+Set-Location server
+npm.cmd install
+npm.cmd run dev
+```
+
+El servidor lee el `.env` de la raíz del repositorio mediante la opción `--env-file` de Node.js. Para comprobar el endpoint de salud desde otra terminal:
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/v1/health
+```
+
+La respuesta debe incluir `status` con valor `ok` y `database` con valor `connected`. Si MongoDB deja de estar disponible, el endpoint devuelve HTTP 503 y refleja `database: "disconnected"`. El cliente y el servidor se ejecutan en terminales independientes; para detener cada uno, pulsa `Ctrl+C` en su terminal.
 
 ## Tecnología prevista
 
