@@ -1,25 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `4.5`
+**Paso activo:** `4.6`
 **Estado:** pendiente
-**Título:** Crear modelo Battle e historial persistente
+**Título:** Implementar caso de uso de combate
 
 ## Objetivo
 
-Crear el modelo Battle y el historial persistente.
+Implementar el caso de uso de combate.
 
 ## Permitido en este paso
 
-- Guardar instantáneas, eventos, semilla, versión y resultados.
+- Servicio coordina validaciones, motor, persistencia y recompensas.
+- Añadir mecanismo de idempotencia.
 
 ## Fuera de alcance
 
-- Implementar el caso de uso de combate: servicio que coordina validaciones, motor, persistencia y recompensas, y mecanismo de idempotencia; corresponde al paso 4.6 de la hoja de ruta.
-- Implementar arena, límite diario, selección de oponente, interfaz u otras tareas posteriores de la hoja de ruta.
+- Implementar el límite diario, selección de oponente o arena; corresponden a pasos posteriores de la hoja de ruta.
+- Implementar endpoints o interfaz de combate e historial; corresponden a pasos posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Se puede reconstruir una pelea previa aunque cambie el luchador.
+- Un mismo request no duplica pelea ni recompensa; fallos no aparentan una victoria.
 
 ## Al terminar
 
