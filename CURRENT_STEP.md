@@ -1,25 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `2.4`
+**Paso activo:** `2.5`
 **Estado:** pendiente
-**Título:** Implementar `GET /auth/me` y middleware de autenticación
+**Título:** Crear pantallas de registro y login
 
 ## Objetivo
 
-Implementar `GET /auth/me` y middleware de autenticación.
+Crear las pantallas de registro y login y conectarlas con la API existente, manteniendo al backend como autoridad.
 
 ## Permitido en este paso
 
-- Definir respuesta de usuario público sin campos sensibles.
-- Proteger una ruta de prueba.
+- Formularios, validación visible, carga y mensajes de error.
+- Conectar con la API existente.
 
 ## Fuera de alcance
 
+- Integrar estado de sesión y rutas protegidas (paso 2.6).
 - No implementar tareas posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- anónimo obtiene 401; autenticado obtiene solo sus datos permitidos.
+- el recorrido funciona en navegador; el backend sigue siendo la autoridad.
 
 ## Al terminar
 

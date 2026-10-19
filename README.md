@@ -15,7 +15,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, un modelo `User` con índices únicos y endpoints de registro, login y logout. Las sesiones persistentes se almacenan en MongoDB. El paso activo es `2.4`, definido en `CURRENT_STEP.md`: implementar `GET /api/v1/auth/me` y middleware de autenticación. Todavía no hay sistemas de juego implementados.
+El cliente mínimo con React y Vite está en `client/`. El servidor Express está en `server/`, se conecta a MongoDB con Mongoose y expone `GET /api/v1/health`. Ya cuenta con manejo común de errores, un modelo `User` con índices únicos, endpoints de registro, login, logout y consulta de la sesión autenticada, y middleware de autenticación. Las sesiones persistentes se almacenan en MongoDB. El paso activo es `2.5`, definido en `CURRENT_STEP.md`: crear las pantallas de registro y login y conectarlas con la API existente. Todavía no hay sistemas de juego implementados.
 
 ## Requisitos
 
@@ -34,6 +34,7 @@ Copy-Item .env.example .env
 El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales: reemplaza `SESSION_SECRET` por un valor aleatorio de al menos 32 bytes y no uses el valor de ejemplo. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. Las sesiones se guardan en MongoDB, usan una cookie `httpOnly` con `sameSite=lax` y activan `secure` en producción. `CLIENT_URL` queda documentada para pasos posteriores.
 
 El endpoint `POST /api/v1/auth/login` recibe `identifier` (nombre de usuario o correo) y `password`. `POST /api/v1/auth/logout` destruye una sesión iniciada.
+`GET /api/v1/auth/me` requiere la cookie de sesión y devuelve únicamente `id`, `username` y `email` de la cuenta autenticada; sin sesión responde HTTP 401.
 
 En una primera terminal, instala e inicia el cliente:
 

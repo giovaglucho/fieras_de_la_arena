@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { ApiError } from "../middleware/errorHandler.js";
+import requireAuth from "../middleware/requireAuth.js";
 import { SESSION_COOKIE_NAME } from "../middleware/session.js";
 import User from "../models/User.js";
 import { validateLogin } from "../validators/login.js";
@@ -8,6 +9,18 @@ import { validateRegistration } from "../validators/registration.js";
 
 const BCRYPT_SALT_ROUNDS = 12;
 const router = Router();
+
+function toPublicUser(user) {
+  return {
+    id: user._id.toString(),
+    username: user.username,
+    email: user.email
+  };
+}
+
+router.get("/me", requireAuth, (request, response) => {
+  return response.status(200).json({ user: toPublicUser(request.user) });
+});
 
 router.post("/login", async (request, response, next) => {
   const login = validateLogin(request.body);
@@ -44,13 +57,7 @@ router.post("/login", async (request, response, next) => {
       request.session.save((error) => (error ? reject(error) : resolve()));
     });
 
-    return response.status(200).json({
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        email: user.email
-      }
-    });
+    return response.status(200).json({ user: toPublicUser(user) });
   } catch (error) {
     return next(error);
   }
@@ -92,13 +99,7 @@ router.post("/register", async (request, response, next) => {
       passwordHash
     });
 
-    return response.status(201).json({
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        email: user.email
-      }
-    });
+    return response.status(201).json({ user: toPublicUser(user) });
   } catch (error) {
     if (error?.code === 11000) {
       return next(

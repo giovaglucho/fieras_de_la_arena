@@ -84,6 +84,33 @@ test("rechaza credenciales inválidas con una respuesta genérica", async () => 
   });
 });
 
+test("GET /auth/me requiere sesión y devuelve solo los datos públicos", async () => {
+  const anonymousResponse = await fetch(`${baseUrl}/api/v1/auth/me`);
+
+  assert.equal(anonymousResponse.status, 401);
+  assert.deepEqual(await anonymousResponse.json(), {
+    error: {
+      code: "AUTHENTICATION_REQUIRED",
+      message: "Debes iniciar sesión para acceder a este recurso."
+    }
+  });
+
+  const login = await requestLogin(user.username);
+  const { cookie } = readSessionCookie(login);
+  const meResponse = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: cookie }
+  });
+
+  assert.equal(meResponse.status, 200);
+  assert.deepEqual(await meResponse.json(), {
+    user: {
+      id: user._id.toString(),
+      username: user.username,
+      email: user.email
+    }
+  });
+});
+
 test("acepta el correo como identificador y regenera la sesión al iniciar", async () => {
   const response = await requestLogin(user.email.toUpperCase());
   const body = await response.json();
