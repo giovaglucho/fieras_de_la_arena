@@ -15,9 +15,9 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos y clasificación. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
+El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificación general y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor. La clasificación de alumnos por cantidad de referidos todavía no está implementada.
 
-**Paso activo: 7.3 — Crear sección de alumnos**. Los pasos 7.1 y 7.2 fueron aprobados; la sección de alumnos todavía no está implementada.
+**Paso activo: 7.4 — Añadir clasificación de alumnos**. Los pasos 7.1, 7.2 y 7.3 fueron aprobados.
 
 ## Requisitos
 
@@ -41,7 +41,7 @@ El endpoint `POST /api/v1/auth/login` recibe `identifier` (nombre de usuario o c
 `GET /api/v1/fighters/me` requiere sesión y devuelve `{ "fighter": null }` si la cuenta aún no creó un luchador, o el perfil propio con `id`, `username`, `name`, `level`, `xp`, `elo`, `baseStats`, `stats` (estadísticas efectivas calculadas por el servidor), `xpToNextLevel`, `wins`, `losses` y `draws`; sin sesión responde HTTP 401.
 `GET /api/v1/fighters/:id` y `GET /api/v1/profiles/:username` son públicos y devuelven los campos públicos del luchador por ID o nombre de usuario, sin las estadísticas efectivas ni el umbral de XP del endpoint propio. Si el perfil no existe, responden HTTP 404. Ninguna respuesta de perfil incluye correo, `userId`, `referralCode`, contraseña ni datos de sesión.
 `POST /api/v1/fighters` requiere esa misma sesión y recibe únicamente `{ "name": "Nombre" }`. El servidor valida un nombre de 3 a 18 caracteres y asigna los valores iniciales; las cuentas que ya tienen un luchador reciben HTTP 409.
-`GET /api/v1/referrals/me` requiere sesión y un luchador, y devuelve únicamente su `referralCode`; responde HTTP 404 si la cuenta todavía no tiene luchador. El código se genera en el servidor al crear el luchador y no se acepta como entrada.
+`GET /api/v1/referrals/me` requiere sesión y un luchador; devuelve el `referralCode` propio y `students`, una lista de cuentas asociadas con el nombre de usuario público y, si existe, el nombre y nivel del luchador. No incluye correos, IDs ni otros datos privados. Responde HTTP 404 si la cuenta todavía no tiene luchador. El código se genera en el servidor al crear el luchador y no se acepta como entrada. La sección `/students` permite copiar un enlace de invitación y consultar esta lista.
 
 En una primera terminal, instala e inicia el cliente:
 

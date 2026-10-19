@@ -10,11 +10,13 @@ import { SESSION_COOKIE_NAME, sessionStore } from "../src/middleware/session.js"
 import User from "../src/models/User.js";
 
 const runId = randomUUID().replaceAll("-", "");
-const userIds = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
+const userIds = Array.from({ length: 3 }, () => new mongoose.Types.ObjectId());
 const sessionIds = new Set();
 const server = createServer(app);
 let baseUrl;
 let fighterName;
+const studentUsername = `student_${runId.slice(0, 12)}`;
+const studentFighterName = `alumno_${runId.slice(0, 10)}`;
 
 before(async () => {
   if (!process.env.MONGODB_URI) {
@@ -40,8 +42,20 @@ before(async () => {
       username: `fighter_${runId.slice(12, 24)}`,
       email: `second-${runId}@example.test`,
       passwordHash
+    },
+    {
+      _id: userIds[2],
+      username: studentUsername,
+      email: `student-${runId}@example.test`,
+      passwordHash,
+      referredByUserId: userIds[0]
     }
   ]);
+  await Fighter.create({
+    userId: userIds[2],
+    name: studentFighterName,
+    referralCode: `student-${runId}`
+  });
 
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -248,9 +262,20 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
 
   const referralCodeResponse = await getMyReferralCode(cookie);
   assert.equal(referralCodeResponse.status, 200);
-  assert.deepEqual(await referralCodeResponse.json(), {
-    referralCode: storedFighter.referralCode
+  const referralOverview = await referralCodeResponse.json();
+  assert.deepEqual(referralOverview, {
+    referralCode: storedFighter.referralCode,
+    students: [
+      {
+        username: studentUsername,
+        fighter: { name: studentFighterName, level: 1 }
+      }
+    ]
   });
+  assert.doesNotMatch(
+    JSON.stringify(referralOverview.students),
+    /email|password|session|referralCode|referredByUserId|userId|_id/i
+  );
 
   const secondFighter = await createFighter(cookie, { name: "OtroNombre" });
   assert.equal(secondFighter.status, 409);

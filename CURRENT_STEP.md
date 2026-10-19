@@ -1,24 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `7.3`
+**Paso activo:** `7.4`
 **Estado:** pendiente
-**Título:** Crear sección de alumnos
+**Título:** Añadir clasificación de alumnos
 
 ## Objetivo
 
-Crear sección de alumnos.
+Añadir clasificación de alumnos.
 
 ## Permitido en este paso
 
-- Mostrar enlace copiable y lista/resumen de cuentas referidas según privacidad definida.
+- Exponer la clasificación por conteo confirmado de alumnos.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 7.4 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.1 y posteriores.
 
 ## Criterios de aceptación
 
-- No se exponen correos u otros datos privados de alumnos.
+- La fuente del conteo es consistente y no depende de valores manipulables del cliente.
 
 ## Al terminar
 
