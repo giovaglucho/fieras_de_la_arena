@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
 import { SESSION_COOKIE_NAME } from "../middleware/session.js";
+import Fighter from "../models/Fighter.js";
 import User from "../models/User.js";
 import { validateLogin } from "../validators/login.js";
 import { validateRegistration } from "../validators/registration.js";
@@ -93,11 +94,37 @@ router.post("/register", async (request, response, next) => {
 
   try {
     const passwordHash = await bcrypt.hash(registration.password, BCRYPT_SALT_ROUNDS);
-    const user = await User.create({
+    const user = new User({
       username: registration.username,
       email: registration.email,
       passwordHash
     });
+
+    if (registration.referralCode) {
+      const fighter = await Fighter.findOne({ referralCode: registration.referralCode })
+        .select("userId");
+      const referrer = fighter
+        ? await User.findById(fighter.userId).select("_id referredByUserId")
+        : null;
+
+      if (
+        !referrer ||
+        referrer._id.equals(user._id) ||
+        referrer.referredByUserId?.equals(user._id)
+      ) {
+        return next(
+          new ApiError(
+            400,
+            "INVALID_REFERRAL_CODE",
+            "El código de invitación no es válido."
+          )
+        );
+      }
+
+      user.referredByUserId = referrer._id;
+    }
+
+    await user.save();
 
     return response.status(201).json({ user: toPublicUser(user) });
   } catch (error) {

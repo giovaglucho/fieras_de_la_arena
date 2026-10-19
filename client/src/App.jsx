@@ -14,6 +14,7 @@ function validateRegistration(formData) {
   const username = formData.get('username').trim().toLowerCase()
   const email = formData.get('email').trim()
   const password = formData.get('password')
+  const referralCode = formData.get('referralCode').trim()
   const passwordBytes = new TextEncoder().encode(password).length
 
   if (!USERNAME_PATTERN.test(username)) {
@@ -26,6 +27,10 @@ function validateRegistration(formData) {
 
   if (passwordBytes < 8 || passwordBytes > 72) {
     errors.password = 'La contraseña debe tener entre 8 y 72 bytes.'
+  }
+
+  if (referralCode && !/^[a-f0-9]{32}$/i.test(referralCode)) {
+    errors.referralCode = 'El código debe tener 32 caracteres hexadecimales.'
   }
 
   return errors
@@ -95,6 +100,9 @@ function AuthPage({ mode }) {
           username: formData.get('username').trim().toLowerCase(),
           email: formData.get('email').trim().toLowerCase(),
           password: formData.get('password'),
+          ...(formData.get('referralCode').trim()
+            ? { referralCode: formData.get('referralCode').trim().toLowerCase() }
+            : {}),
         }
       : {
           identifier: formData.get('identifier').trim(),
@@ -199,6 +207,16 @@ function AuthPage({ mode }) {
                   error={fieldErrors.password}
                 />
                 <p className="form-hint">Entre 8 y 72 bytes. Tu contraseña se guarda de forma segura.</p>
+                <Field
+                  id="referralCode"
+                  name="referralCode"
+                  type="text"
+                  label="Código de invitación (opcional)"
+                  autoComplete="off"
+                  maxLength={32}
+                  placeholder="Código de 32 caracteres"
+                  error={fieldErrors.referralCode}
+                />
               </>
             ) : (
               <>

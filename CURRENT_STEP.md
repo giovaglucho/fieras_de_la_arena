@@ -1,25 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `7.2`
+**Paso activo:** `7.3`
 **Estado:** pendiente
-**Título:** Aceptar invitación durante el registro
+**Título:** Crear sección de alumnos
 
 ## Objetivo
 
-Aceptar invitación durante el registro.
+Crear sección de alumnos.
 
 ## Permitido en este paso
 
-- Validar código; registrar referente una única vez.
-- Prevenir referencias propias y ciclos triviales.
+- Mostrar enlace copiable y lista/resumen de cuentas referidas según privacidad definida.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 7.3 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 7.4 y posteriores.
 
 ## Criterios de aceptación
 
-- Cuenta nueva se vincula correctamente y no puede cambiar de referente.
+- No se exponen correos u otros datos privados de alumnos.
 
 ## Al terminar
 

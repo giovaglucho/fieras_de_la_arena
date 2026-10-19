@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import app from "../src/app.js";
 import { sessionStore } from "../src/middleware/session.js";
+import Fighter from "../src/models/Fighter.js";
 import User from "../src/models/User.js";
 
 const runId = randomUUID().replaceAll("-", "");
@@ -33,7 +34,10 @@ after(async () => {
   });
 
   if (mongoose.connection.readyState === 1) {
-    await User.deleteMany({ username: new RegExp(`^${usernamePrefix}`) });
+    const users = await User.find({ username: new RegExp(`^${usernamePrefix}`) }).select("_id");
+    const userIds = users.map((user) => user._id);
+    await Fighter.deleteMany({ userId: { $in: userIds } });
+    await User.deleteMany({ _id: { $in: userIds } });
     await mongoose.disconnect();
   }
 
@@ -53,6 +57,21 @@ function registrationData(overrides = {}) {
     password: "arena password 123",
     ...overrides
   };
+}
+
+async function createReferrer(suffix) {
+  const user = await User.create({
+    username: `${usernamePrefix}_ref${suffix}`,
+    email: `${suffix}-${runId}@example.test`,
+    passwordHash: "test-hash"
+  });
+  const fighter = await Fighter.create({
+    userId: user._id,
+    name: `f-${runId.slice(0, 8)}-${suffix}`,
+    referralCode: randomUUID().replaceAll("-", "")
+  });
+
+  return { user, fighter };
 }
 
 async function register(data) {
@@ -87,6 +106,7 @@ test("crea una cuenta normalizada y solo devuelve los campos públicos", async (
   assert.ok(user.passwordHash);
   assert.notEqual(user.passwordHash, password);
   assert.equal(await bcrypt.compare(password, user.passwordHash), true);
+  assert.equal(user.referredByUserId, null);
 });
 
 test("rechaza entradas inválidas y campos de cuenta no permitidos", async () => {
@@ -99,6 +119,7 @@ test("rechaza entradas inválidas y campos de cuenta no permitidos", async () =>
     registrationData({ email: "nombre@-dominio.example" }),
     registrationData({ password: "corta" }),
     registrationData({ password: "á".repeat(37) }),
+    registrationData({ referralCode: "no-es-un-codigo" }),
     registrationData({ role: "admin" })
   ];
 
@@ -109,6 +130,47 @@ test("rechaza entradas inválidas y campos de cuenta no permitidos", async () =>
     assert.equal(response.status, 400);
     assert.equal(body.error.code, "INVALID_REGISTRATION_DATA");
   }
+});
+
+test("vincula la cuenta nueva al dueño del código de invitación válido", async () => {
+  const referrer = await createReferrer("one");
+  const response = await register(
+    registrationData({ referralCode: ` ${referrer.fighter.referralCode.toUpperCase()} ` })
+  );
+  const body = await response.json();
+  const user = await User.findById(body.user.id);
+
+  assert.equal(response.status, 201);
+  assert.equal(user.referredByUserId.toString(), referrer.user._id.toString());
+  assert.doesNotMatch(JSON.stringify(body), /referredByUserId|referralCode/i);
+});
+
+test("rechaza un código de invitación que no corresponde a un luchador", async () => {
+  const data = registrationData({ referralCode: randomUUID().replaceAll("-", "") });
+  const response = await register(data);
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, "INVALID_REFERRAL_CODE");
+  assert.equal(await User.exists({ username: data.username }), null);
+});
+
+test("no permite cambiar el referente de una cuenta ya creada", async () => {
+  const firstReferrer = await createReferrer("first");
+  const secondReferrer = await createReferrer("second");
+  const data = registrationData({ referralCode: firstReferrer.fighter.referralCode });
+  const created = await register(data);
+  const createdUser = await created.json();
+
+  const repeatedRegistration = await register({
+    ...data,
+    referralCode: secondReferrer.fighter.referralCode
+  });
+  const user = await User.findById(createdUser.user.id);
+
+  assert.equal(created.status, 201);
+  assert.equal(repeatedRegistration.status, 409);
+  assert.equal(user.referredByUserId.toString(), firstReferrer.user._id.toString());
 });
 
 test("rechaza username y correo duplicados con el mismo error público", async () => {
