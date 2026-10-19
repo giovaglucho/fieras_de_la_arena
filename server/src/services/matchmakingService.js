@@ -3,6 +3,7 @@ import Battle from "../models/Battle.js";
 import Fighter from "../models/Fighter.js";
 import User from "../models/User.js";
 import { MATCHMAKING_CONFIG } from "../config/matchmaking.js";
+import { TRAINING_OPPONENT } from "../config/trainingOpponent.js";
 
 export class MatchmakingServiceError extends Error {
   constructor(statusCode, code, message) {
@@ -22,6 +23,10 @@ function compareCandidates(requesterElo, first, second) {
 function withoutUser(candidate) {
   const { userId, ...opponent } = candidate;
   return opponent;
+}
+
+function createOpponent(candidate, battleType) {
+  return { ...withoutUser(candidate), battleType };
 }
 
 async function findPreviousOpponentId(requesterFighterId) {
@@ -96,7 +101,7 @@ export async function selectOpponent(requesterFighterId) {
       : candidates;
 
     if (alternatives.length > 0) {
-      return withoutUser(alternatives[0]);
+      return createOpponent(alternatives[0], "pvp");
     }
 
     if (previousOpponentFallback === null && candidates.length > 0) {
@@ -105,6 +110,6 @@ export async function selectOpponent(requesterFighterId) {
   }
 
   return previousOpponentFallback
-    ? withoutUser(previousOpponentFallback)
-    : null;
+    ? createOpponent(previousOpponentFallback, "pvp")
+    : createOpponent(TRAINING_OPPONENT, "training");
 }

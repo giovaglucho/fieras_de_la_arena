@@ -4,6 +4,7 @@ import { after, afterEach, before, beforeEach, test } from "node:test";
 import mongoose from "mongoose";
 import Battle from "../src/models/Battle.js";
 import Fighter from "../src/models/Fighter.js";
+import { TRAINING_OPPONENT } from "../src/config/trainingOpponent.js";
 import { CombatServiceError, resolveCombat } from "../src/services/combatService.js";
 
 const runId = randomUUID().replaceAll("-", "");
@@ -29,7 +30,8 @@ async function createFighters(options = {}) {
 function combatRequest(suffix, battleType = "pvp") {
   return {
     requesterFighterId: fighterIds[0],
-    opponentFighterId: fighterIds[1],
+    opponentFighterId:
+      battleType === "training" ? TRAINING_OPPONENT._id : fighterIds[1],
     battleType,
     requestId: requestId(suffix)
   };
@@ -165,14 +167,47 @@ test("rechaza reutilizar una clave idempotente para participantes diferentes", a
   );
 });
 
-test("un entrenamiento concede 5 XP y no cambia ELO", async () => {
-  await createFighters();
-  const battle = await resolveCombat(combatRequest("training", "training"));
-  const fighters = await Fighter.find({ _id: { $in: fighterIds } }).sort({ _id: 1 });
+test("un entrenamiento solo recompensa al jugador y no cambia ELO", async () => {
+  const [requester, opponent] = await createFighters();
+  const request = combatRequest("training", "training");
+  const battle = await resolveCombat(request);
+  const repeatedBattle = await resolveCombat(request);
+  const [updatedRequester, unchangedOpponent] = await Promise.all([
+    Fighter.findById(requester._id),
+    Fighter.findById(opponent._id)
+  ]);
 
-  assert.ok(battle.participants.every(({ result }) => result.xpGained === 5));
+  assert.equal(repeatedBattle._id.toString(), battle._id.toString());
+  assert.equal(battle.battleType, "training");
+  assert.equal(battle.participants[1].snapshot.name, TRAINING_OPPONENT.name);
+  assert.deepEqual(
+    battle.participants[1].snapshot.stats.toObject(),
+    TRAINING_OPPONENT.baseStats
+  );
+  assert.equal(battle.participants[0].result.xpGained, 5);
+  assert.equal(battle.participants[1].result.xpGained, 0);
   assert.ok(battle.participants.every(({ result }) => result.eloChange === 0));
-  assert.ok(fighters.every((fighter) => fighter.elo === 1000));
+  assert.equal(updatedRequester.xp, 5);
+  assert.equal(updatedRequester.elo, requester.elo);
+  assert.equal(unchangedOpponent.xp, opponent.xp);
+  assert.equal(unchangedOpponent.elo, opponent.elo);
+  assert.equal(await Fighter.exists({ _id: TRAINING_OPPONENT._id }), null);
+});
+
+test("rechaza usar un luchador persistido como rival de entrenamiento", async () => {
+  await createFighters();
+
+  await assert.rejects(
+    resolveCombat({
+      ...combatRequest("training-real-opponent", "training"),
+      opponentFighterId: fighterIds[1]
+    }),
+    (error) =>
+      error instanceof CombatServiceError &&
+      error.statusCode === 400 &&
+      error.code === "INVALID_COMBAT_REQUEST"
+  );
+  assert.equal((await findBattles()).length, 0);
 });
 
 test("un error al aplicar recompensas revierte la pelea y evita aparentar una victoria", async () => {

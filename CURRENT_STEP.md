@@ -1,28 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `5.3`
+**Paso activo:** `5.4`
 **Estado:** pendiente
-**Título:** Añadir rival de entrenamiento de respaldo
+**Título:** Exponer endpoints de arena e historial
 
 ## Objetivo
 
-Añadir un rival de entrenamiento de respaldo.
+Exponer endpoints de arena e historial.
 
 ## Permitido en este paso
 
-- Usarlo únicamente si no se encuentra rival real según las reglas acordadas.
-- Recompensa baja y sin cambio de ELO.
+- Consultar intentos restantes, iniciar combate y listar historial con paginación.
 
 ## Fuera de alcance
 
-- Exponer endpoints de arena e historial; corresponde al paso 5.4.
 - Crear la pantalla Arena; corresponde al paso 5.5.
 - Crear la pantalla de resultado y eventos; corresponde al paso 5.6.
 - Crear el historial de combates; corresponde al paso 5.7.
 
 ## Criterios de aceptación
 
-- Pelea identificada como entrenamiento y excluida de la clasificación competitiva.
+- Validación, autorización, límite diario e idempotencia comprobados con pruebas API.
 
 ## Al terminar
 

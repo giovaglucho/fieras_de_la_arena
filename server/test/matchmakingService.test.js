@@ -6,6 +6,7 @@ import Battle from "../src/models/Battle.js";
 import Fighter from "../src/models/Fighter.js";
 import User from "../src/models/User.js";
 import { MATCHMAKING_CONFIG } from "../src/config/matchmaking.js";
+import { TRAINING_OPPONENT } from "../src/config/trainingOpponent.js";
 import {
   MatchmakingServiceError,
   selectOpponent
@@ -113,6 +114,7 @@ test("elige al rival activo más cercano en ELO y nunca se elige a sí mismo", a
     MATCHMAKING_CONFIG.eloRangeSteps,
     [200, 400, 800, 1600]
   );
+  assert.equal(opponent.battleType, "pvp");
   assert.equal(opponent._id.toString(), closestOpponent._id.toString());
   assert.notEqual(opponent._id.toString(), requester._id.toString());
   assert.equal("userId" in opponent, false);
@@ -124,14 +126,20 @@ test("amplía el rango por etapas hasta encontrar un rival", async () => {
 
   const opponent = await selectOpponent(requester._id);
 
+  assert.equal(opponent.battleType, "pvp");
   assert.equal(opponent._id.toString(), expandedRangeOpponent._id.toString());
 });
 
-test("termina con null si no hay rivales dentro del rango máximo", async () => {
+test("selecciona el rival de entrenamiento si no hay rivales dentro del rango máximo", async () => {
   requester = await createFighter({ elo: 50000 });
   await createFighter({ elo: 51601 });
 
-  assert.equal(await selectOpponent(requester._id), null);
+  const opponent = await selectOpponent(requester._id);
+
+  assert.equal(opponent.battleType, "training");
+  assert.equal(opponent._id, TRAINING_OPPONENT._id);
+  assert.equal(opponent.name, TRAINING_OPPONENT.name);
+  assert.deepEqual(opponent.baseStats, TRAINING_OPPONENT.baseStats);
 });
 
 test("incluye rivales situados exactamente en el límite máximo", async () => {
@@ -140,6 +148,7 @@ test("incluye rivales situados exactamente en el límite máximo", async () => {
 
   const opponent = await selectOpponent(requester._id);
 
+  assert.equal(opponent.battleType, "pvp");
   assert.equal(opponent._id.toString(), opponentAtLimit._id.toString());
 });
 
@@ -151,6 +160,7 @@ test("prefiere un rival distinto al del combate PvP anterior cuando hay alternat
 
   const opponent = await selectOpponent(requester._id);
 
+  assert.equal(opponent.battleType, "pvp");
   assert.equal(opponent._id.toString(), alternative._id.toString());
 });
 
@@ -161,6 +171,7 @@ test("permite repetir el rival anterior si no hay otra alternativa", async () =>
 
   const opponent = await selectOpponent(requester._id);
 
+  assert.equal(opponent.battleType, "pvp");
   assert.equal(opponent._id.toString(), previousOpponent._id.toString());
 });
 

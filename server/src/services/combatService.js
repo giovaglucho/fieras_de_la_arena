@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Battle from "../models/Battle.js";
 import Fighter from "../models/Fighter.js";
+import { TRAINING_OPPONENT } from "../config/trainingOpponent.js";
 import { calculateFighterStats } from "../game-engine/fighterStats.js";
 import {
   applyExperience,
@@ -81,6 +82,17 @@ function validateRequest(input) {
   }
 
   if (
+    input.battleType === "training" &&
+    opponentFighterId !== TRAINING_OPPONENT._id
+  ) {
+    throw new CombatServiceError(
+      400,
+      "INVALID_COMBAT_REQUEST",
+      "El rival del combate de entrenamiento no es válido."
+    );
+  }
+
+  if (
     typeof input.requestId !== "string" ||
     input.requestId.length === 0 ||
     input.requestId.length > MAX_REQUEST_ID_LENGTH ||
@@ -155,7 +167,12 @@ function createSnapshot(fighter) {
     name: fighter.name,
     level: fighter.level,
     elo: fighter.elo,
-    stats: calculateFighterStats(fighter.level, fighter.baseStats.toObject())
+    stats: calculateFighterStats(
+      fighter.level,
+      typeof fighter.baseStats.toObject === "function"
+        ? fighter.baseStats.toObject()
+        : fighter.baseStats
+    )
   };
 }
 
@@ -218,12 +235,16 @@ export async function resolveCombat(input) {
         return;
       }
 
+      const isTraining = request.battleType === "training";
       const requestedIds = [
         request.requesterFighterId,
         request.opponentFighterId
       ];
-      const fighters = await Fighter.find({ _id: { $in: requestedIds } }).session(session);
-      if (fighters.length !== 2) {
+      const persistedIds = isTraining
+        ? [request.requesterFighterId]
+        : requestedIds;
+      const fighters = await Fighter.find({ _id: { $in: persistedIds } }).session(session);
+      if (fighters.length !== persistedIds.length) {
         throw new CombatServiceError(
           404,
           "COMBATANT_NOT_FOUND",
@@ -232,7 +253,15 @@ export async function resolveCombat(input) {
       }
 
       const fighterById = new Map(fighters.map((fighter) => [fighter._id.toString(), fighter]));
-      const orderedFighters = requestedIds.map((fighterId) => fighterById.get(fighterId));
+      const orderedFighters = isTraining
+        ? [
+            fighterById.get(request.requesterFighterId),
+            {
+              ...TRAINING_OPPONENT,
+              _id: new mongoose.Types.ObjectId(TRAINING_OPPONENT._id)
+            }
+          ]
+        : requestedIds.map((fighterId) => fighterById.get(fighterId));
       const snapshots = orderedFighters.map(createSnapshot);
       const seed = randomUUID();
       const combatResult = simulateCombat({ fighters: snapshots, seed });
@@ -250,10 +279,11 @@ export async function resolveCombat(input) {
       const results = orderedFighters.map((fighter, index) =>
         createParticipantResult(
           fighter,
-          calculateXpReward({
-            outcome: outcomes[index],
-            isTraining: request.battleType === "training"
-          }),
+          isTraining
+            ? index === 0
+              ? calculateXpReward({ outcome: outcomes[index], isTraining: true })
+              : 0
+            : calculateXpReward({ outcome: outcomes[index] }),
           changes[index]
         )
       );
@@ -277,7 +307,12 @@ export async function resolveCombat(input) {
         events: combatResult.events
       });
       await completedBattle.save({ session });
-      await applyRewards(orderedFighters, outcomes, results, session);
+      await applyRewards(
+        isTraining ? orderedFighters.slice(0, 1) : orderedFighters,
+        isTraining ? outcomes.slice(0, 1) : outcomes,
+        isTraining ? results.slice(0, 1) : results,
+        session
+      );
     });
 
     return completedBattle;
