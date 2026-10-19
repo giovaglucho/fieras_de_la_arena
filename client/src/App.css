@@ -537,6 +537,128 @@
   font-weight: 800;
 }
 
+.leaderboard-card {
+  width: min(100%, 54rem);
+}
+
+.leaderboard-card h1 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 7vw, 2.5rem);
+  letter-spacing: -0.035em;
+}
+
+.leaderboard-card .auth-intro {
+  margin: 0;
+}
+
+.leaderboard__controls {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.leaderboard__controls label {
+  color: var(--color-paper);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.leaderboard__controls select {
+  min-height: 3rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #59473b;
+  border-radius: 0.4rem;
+  background: #211915;
+  color: var(--color-paper);
+}
+
+.leaderboard__controls select:focus-visible,
+.leaderboard__profile-link:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.leaderboard__message {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.leaderboard__message .button {
+  width: 100%;
+}
+
+.leaderboard__table-scroll {
+  overflow-x: auto;
+  border: 1px solid rgb(245 232 208 / 11%);
+  border-radius: 0.45rem;
+}
+
+.leaderboard__table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.leaderboard__table th,
+.leaderboard__table td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid rgb(245 232 208 / 10%);
+  white-space: nowrap;
+}
+
+.leaderboard__table th {
+  background: rgb(33 25 21 / 65%);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.leaderboard__table td {
+  color: var(--color-paper);
+}
+
+.leaderboard__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.leaderboard__profile-link {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--color-copper-light);
+  text-decoration: none;
+}
+
+.leaderboard__profile-link:hover {
+  text-decoration: underline;
+}
+
+.leaderboard__profile-link span {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.leaderboard__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.leaderboard__pagination > span {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.leaderboard__pagination .button {
+  width: auto;
+  flex-shrink: 0;
+}
+
 .battle-events {
   display: grid;
   gap: 0.75rem;
@@ -746,6 +868,15 @@
   }
 
   .battle-history__pagination .button {
+    width: 100%;
+  }
+
+  .leaderboard__pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .leaderboard__pagination .button {
     width: 100%;
   }
 

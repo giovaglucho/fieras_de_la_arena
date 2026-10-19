@@ -1,26 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `6.2`
+**Paso activo:** `6.3`
 **Estado:** pendiente
-**Título:** Crear interfaz de clasificación
+**Título:** Completar dashboard del jugador
 
 ## Objetivo
 
-Crear interfaz de clasificación.
+Completar dashboard del jugador.
 
 ## Permitido en este paso
 
-- Cambiar categoría y navegar páginas.
-- Enlaces a perfiles públicos.
+- Nivel, XP siguiente, estadísticas, ELO, últimos combates e intentos diarios.
 
 ## Fuera de alcance
 
-- Completar el dashboard del jugador; corresponde al paso 6.3.
-- Clasificación por cantidad de alumnos; corresponde al paso 7.4.
+- No iniciar ningún paso posterior de `ROADMAP.md`.
 
 ## Criterios de aceptación
 
-- se muestra información pública y el orden coincide con el servidor.
+- todos los valores vienen de API y hay estados de carga/error.
 
 ## Al terminar
 
