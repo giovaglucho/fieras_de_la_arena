@@ -1,24 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `8.1`
+**Paso activo:** `8.2`
 **Estado:** pendiente
-**Título:** Añadir límites de peticiones
+**Título:** Revisar cabeceras, CORS y configuración de sesión
 
 ## Objetivo
 
-Añadir límites de peticiones.
+Revisar cabeceras, CORS y configuración de sesión.
 
 ## Permitido en este paso
 
-- Registro, login, creación de peleas y consultas sensibles.
+- Configurar Helmet y orígenes/cookies según modo local o producción.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.2 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.3 y posteriores.
 
 ## Criterios de aceptación
 
-- exceso devuelve 429 y no deja el estado parcial inconsistente.
+- cliente autorizado funciona; orígenes ajenos no se habilitan sin motivo.
 
 ## Al terminar
 

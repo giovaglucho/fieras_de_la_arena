@@ -4,6 +4,10 @@ import Fighter from "../models/Fighter.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
 import {
+  fightRateLimit,
+  sensitiveReadRateLimit
+} from "../middleware/rateLimit.js";
+import {
   CombatServiceError,
   resolveCombat
 } from "../services/combatService.js";
@@ -33,7 +37,7 @@ function createApiError(error) {
   return error;
 }
 
-router.get("/attempts", requireAuth, async (request, response, next) => {
+router.get("/attempts", requireAuth, sensitiveReadRateLimit, async (request, response, next) => {
   try {
     const attempts = await getDailyAttempts(request.user._id);
     return response.status(200).json({
@@ -47,7 +51,7 @@ router.get("/attempts", requireAuth, async (request, response, next) => {
   }
 });
 
-router.post("/fight", requireAuth, async (request, response, next) => {
+router.post("/fight", requireAuth, fightRateLimit, async (request, response, next) => {
   const fightRequest = validateFightRequest(request.body);
   if (!fightRequest) {
     return next(
@@ -112,7 +116,7 @@ router.post("/fight", requireAuth, async (request, response, next) => {
   }
 });
 
-router.get("/history", requireAuth, async (request, response, next) => {
+router.get("/history", requireAuth, sensitiveReadRateLimit, async (request, response, next) => {
   const pagination = validateHistoryPagination(request.query);
   if (!pagination) {
     return next(

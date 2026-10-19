@@ -12,6 +12,7 @@ const runId = randomUUID().replaceAll("-", "");
 const server = createServer(app);
 const sessionIds = new Set();
 let user;
+let sensitiveReadUser;
 let baseUrl;
 
 before(async () => {
@@ -22,6 +23,7 @@ before(async () => {
   await mongoose.connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000
   });
+  app.set("trust proxy", "loopback");
   await User.init();
   user = await User.create({
     username: `auth_${runId.slice(0, 12)}`,
@@ -42,15 +44,21 @@ after(async () => {
       _id: { $in: [...sessionIds] }
     });
     await User.deleteOne({ _id: user._id });
+    if (sensitiveReadUser) {
+      await User.deleteOne({ _id: sensitiveReadUser._id });
+    }
     await sessionStore.close();
     await mongoose.disconnect();
   }
 });
 
-async function requestLogin(identifier, password = "arena password 123") {
+async function requestLogin(identifier, password = "arena password 123", ip) {
   return fetch(`${baseUrl}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(ip ? { "X-Forwarded-For": ip } : {})
+    },
     body: JSON.stringify({ identifier, password })
   });
 }
@@ -159,4 +167,50 @@ test("requiere una sesión para cerrar sesión", async () => {
       message: "Debes iniciar sesión para cerrar sesión."
     }
   });
+});
+
+test("limita los intentos de inicio de sesión por IP", async () => {
+  const ip = "203.0.113.10";
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await requestLogin("unknown-rate-limit-user", "incorrecta", ip);
+    assert.equal(response.status, 401);
+  }
+
+  const exceeded = await requestLogin("unknown-rate-limit-user", "incorrecta", ip);
+  assert.equal(exceeded.status, 429);
+  assert.equal(exceeded.headers.get("set-cookie"), null);
+  assert.deepEqual(await exceeded.json(), {
+    error: {
+      code: "RATE_LIMIT_EXCEEDED",
+      message: "Has enviado demasiadas solicitudes. Inténtalo de nuevo más tarde."
+    }
+  });
+});
+
+test("limita las consultas privadas por cuenta", async () => {
+  sensitiveReadUser = await User.create({
+    username: `read_${runId.slice(0, 12)}`,
+    email: `read-${runId}@example.test`,
+    passwordHash: await bcrypt.hash("arena password 123", 12)
+  });
+  const login = await requestLogin(
+    sensitiveReadUser.username,
+    "arena password 123",
+    "203.0.113.11"
+  );
+  const { cookie } = readSessionCookie(login);
+
+  for (let requestCount = 0; requestCount < 60; requestCount += 1) {
+    const response = await fetch(`${baseUrl}/api/v1/auth/me`, {
+      headers: { Cookie: cookie }
+    });
+    assert.equal(response.status, 200);
+  }
+
+  const exceeded = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(exceeded.status, 429);
+  assert.equal((await exceeded.json()).error.code, "RATE_LIMIT_EXCEEDED");
 });

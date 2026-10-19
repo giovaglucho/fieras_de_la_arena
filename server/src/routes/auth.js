@@ -2,6 +2,11 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
+import {
+  loginRateLimit,
+  registrationRateLimit,
+  sensitiveReadRateLimit
+} from "../middleware/rateLimit.js";
 import { SESSION_COOKIE_NAME } from "../middleware/session.js";
 import Fighter from "../models/Fighter.js";
 import User from "../models/User.js";
@@ -19,11 +24,11 @@ function toPublicUser(user) {
   };
 }
 
-router.get("/me", requireAuth, (request, response) => {
+router.get("/me", requireAuth, sensitiveReadRateLimit, (request, response) => {
   return response.status(200).json({ user: toPublicUser(request.user) });
 });
 
-router.post("/login", async (request, response, next) => {
+router.post("/login", loginRateLimit, async (request, response, next) => {
   const login = validateLogin(request.body);
 
   if (!login) {
@@ -83,7 +88,7 @@ router.post("/logout", async (request, response, next) => {
   }
 });
 
-router.post("/register", async (request, response, next) => {
+router.post("/register", registrationRateLimit, async (request, response, next) => {
   const registration = validateRegistration(request.body);
 
   if (!registration) {

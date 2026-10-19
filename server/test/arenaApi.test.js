@@ -258,10 +258,12 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
 
   const exhaustedResponse = await postFight(cookie, { requestId: `arena-${runId}-4` });
   assert.equal(exhaustedResponse.status, 429);
+  assert.equal((await exhaustedResponse.json()).error.code, "RATE_LIMIT_EXCEEDED");
   assert.equal(
-    (await exhaustedResponse.json()).error.code,
-    "DAILY_BATTLE_LIMIT_REACHED"
+    (await DailyActivity.findOne({ userId: user._id })).battlesUsed,
+    3
   );
+  assert.equal(await Battle.countDocuments({ requesterFighterId: fighter._id }), 3);
 
   const firstPageResponse = await fetch(
     `${baseUrl}/api/v1/arena/history?page=1&limit=2`,

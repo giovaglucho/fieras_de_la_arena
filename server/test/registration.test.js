@@ -14,6 +14,7 @@ const usernamePrefix = `reg${runId.slice(0, 12)}`;
 const server = createServer(app);
 let baseUrl;
 let registrationCounter = 0;
+let requestIpCounter = 1;
 
 before(async () => {
   if (!process.env.MONGODB_URI) {
@@ -23,6 +24,7 @@ before(async () => {
   await mongoose.connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000
   });
+  app.set("trust proxy", "loopback");
   await User.init();
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -74,10 +76,13 @@ async function createReferrer(suffix) {
   return { user, fighter };
 }
 
-async function register(data) {
+async function register(data, ip = `192.0.2.${requestIpCounter++}`) {
   return fetch(registrationUrl(), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Forwarded-For": ip
+    },
     body: JSON.stringify(data)
   });
 }
@@ -202,4 +207,19 @@ test("rechaza username y correo duplicados con el mismo error público", async (
       message: "No se pudo completar el registro con esos datos."
     }
   });
+});
+
+test("limita los registros por IP sin crear la cuenta bloqueada", async () => {
+  const ip = "198.51.100.10";
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await register(registrationData(), ip);
+    assert.equal(response.status, 201);
+  }
+
+  const blockedData = registrationData();
+  const exceeded = await register(blockedData, ip);
+  assert.equal(exceeded.status, 429);
+  assert.equal((await exceeded.json()).error.code, "RATE_LIMIT_EXCEEDED");
+  assert.equal(await User.exists({ username: blockedData.username }), null);
 });

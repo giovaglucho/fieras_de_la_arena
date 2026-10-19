@@ -2,11 +2,12 @@ import { Router } from "express";
 import Fighter from "../models/Fighter.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { sensitiveReadRateLimit } from "../middleware/rateLimit.js";
 import User from "../models/User.js";
 
 const router = Router();
 
-router.get("/me", requireAuth, async (request, response, next) => {
+router.get("/me", requireAuth, sensitiveReadRateLimit, async (request, response, next) => {
   try {
     const fighter = await Fighter.findOne({ userId: request.user._id })
       .select("referralCode");

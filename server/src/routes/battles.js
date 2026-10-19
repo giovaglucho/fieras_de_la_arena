@@ -4,11 +4,12 @@ import Battle from "../models/Battle.js";
 import Fighter from "../models/Fighter.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { sensitiveReadRateLimit } from "../middleware/rateLimit.js";
 import serializeBattle from "../utils/serializeBattle.js";
 
 const router = Router();
 
-router.get("/:id", requireAuth, async (request, response, next) => {
+router.get("/:id", requireAuth, sensitiveReadRateLimit, async (request, response, next) => {
   if (!mongoose.isObjectIdOrHexString(request.params.id)) {
     return next(
       new ApiError(404, "BATTLE_NOT_FOUND", "No se encontró el combate solicitado.")
