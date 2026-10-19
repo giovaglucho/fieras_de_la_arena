@@ -1575,17 +1575,17 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/register" element={<AuthPage mode="register" />} />
-      <Route path="/login" element={<AuthPage mode="login" />} />
+      <Route path="/register" element={<AuthPage key="register" mode="register" />} />
+      <Route path="/login" element={<AuthPage key="login" mode="login" />} />
       <Route element={<ProtectedRoute />}>
-        <Route element={<FighterStatusRoute />}>
+        <Route element={<FighterStatusRoute key="has-fighter" />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/arena" element={<ArenaPage />} />
           <Route path="/history" element={<BattleHistoryPage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/battles/:id" element={<BattleResultPage />} />
         </Route>
-        <Route element={<FighterStatusRoute needsCreation />}>
+        <Route element={<FighterStatusRoute key="needs-creation" needsCreation />}>
           <Route path="/create-fighter" element={<CreateFighterPage />} />
         </Route>
       </Route>

@@ -1,24 +1,29 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `8.4`
+**Paso activo:** `8.6`
 **Estado:** pendiente
-**Título:** Añadir logs operativos seguros
+**Título:** Revisar accesibilidad y diseño adaptable
 
 ## Objetivo
 
-Añadir logs operativos seguros.
+Revisar accesibilidad y diseño adaptable.
 
 ## Permitido en este paso
 
-- Errores con contexto útil sin credenciales, cookies ni secretos.
+- Teclado.
+- Etiquetas.
+- Foco.
+- Contraste.
+- Pantallas pequeñas.
+- Estados de error.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.5 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 9.1 y posteriores.
 
 ## Criterios de aceptación
 
-- fallos investigables sin filtrar datos sensibles.
+- no hay bloqueos visuales en los tamaños de pantalla probados.
 
 ## Al terminar
 
