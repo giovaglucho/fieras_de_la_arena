@@ -1,30 +1,27 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `3.2`
+**Paso activo:** `3.3`
 **Estado:** pendiente
-**Título:** Crear el luchador mediante API
+**Título:** Crear flujo visual de creación
 
 ## Objetivo
 
-Implementar la creación del luchador de una cuenta mediante la API, validando el nombre y asignando sus valores iniciales en el servidor, sin permitir que el cliente manipule sus estadísticas, ELO o nivel.
+Implementar el flujo visual para crear un luchador, disponible solo para cuentas que todavía no tienen uno, y permitir mostrar errores de nombre y confirmar la creación.
 
 ## Permitido en este paso
 
-- Exigir sesión para crear un luchador.
-- Validar el nombre en el servidor.
-- Asignar los valores iniciales desde el servidor.
-- No aceptar atributos, ELO o nivel libres del cliente.
+- Pantalla solo para cuentas sin luchador.
+- Mostrar errores de nombre y confirmar creación.
 
 ## Fuera de alcance
 
-- Crear el flujo visual de creación de luchador; corresponde al paso 3.3.
 - Crear perfiles propios o públicos; corresponde al paso 3.4.
 - Calcular estadísticas derivadas por nivel; corresponde al paso 3.5.
 - Implementar tareas posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Solo se crea un luchador por cuenta y no se pueden manipular estadísticas.
+- formulario completo y estado consistente tras recargar.
 
 ## Al terminar
 

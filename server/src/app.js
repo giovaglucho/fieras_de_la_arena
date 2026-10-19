@@ -3,12 +3,14 @@ import { isDatabaseConnected } from "./database.js";
 import { ApiError, errorHandler } from "./middleware/errorHandler.js";
 import sessionMiddleware from "./middleware/session.js";
 import authRouter from "./routes/auth.js";
+import fightersRouter from "./routes/fighters.js";
 
 const app = express();
 
 app.use(express.json());
 app.use(sessionMiddleware);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/fighters", fightersRouter);
 
 app.get("/api/v1/health", (request, response) => {
   const databaseConnected = isDatabaseConnected();
