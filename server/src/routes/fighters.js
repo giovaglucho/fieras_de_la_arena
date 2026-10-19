@@ -1,36 +1,63 @@
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
+import mongoose from "mongoose";
 import Fighter from "../models/Fighter.js";
+import User from "../models/User.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { toPublicFighter } from "../serializers/publicFighter.js";
 import { validateFighterCreation } from "../validators/fighterCreation.js";
 
 const router = Router();
 
-function toPublicFighter(fighter) {
-  return {
-    id: fighter._id.toString(),
-    name: fighter.name,
-    level: fighter.level,
-    xp: fighter.xp,
-    elo: fighter.elo,
-    baseStats: fighter.baseStats.toObject(),
-    wins: fighter.wins,
-    losses: fighter.losses,
-    draws: fighter.draws
-  };
-}
-
 router.get("/me", requireAuth, async (request, response, next) => {
   try {
     const fighter = await Fighter.findOne({ userId: request.user._id })
-      .select("_id name")
-      .lean();
+      .select("_id name level xp elo baseStats wins losses draws");
 
     return response.status(200).json({
       fighter: fighter
-        ? { id: fighter._id.toString(), name: fighter.name }
+        ? {
+            ...toPublicFighter(fighter),
+            username: request.user.username
+          }
         : null
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/:id", async (request, response, next) => {
+  if (!mongoose.isObjectIdOrHexString(request.params.id)) {
+    return next(
+      new ApiError(404, "PROFILE_NOT_FOUND", "No se encontró el perfil del luchador.")
+    );
+  }
+
+  try {
+    const fighter = await Fighter.findById(request.params.id)
+      .select("_id userId name level xp elo baseStats wins losses draws");
+
+    if (!fighter) {
+      return next(
+        new ApiError(404, "PROFILE_NOT_FOUND", "No se encontró el perfil del luchador.")
+      );
+    }
+
+    const user = await User.findById(fighter.userId).select("_id username");
+
+    if (!user) {
+      return next(
+        new ApiError(404, "PROFILE_NOT_FOUND", "No se encontró el perfil del luchador.")
+      );
+    }
+
+    return response.status(200).json({
+      fighter: {
+        ...toPublicFighter(fighter),
+        username: user.username
+      }
     });
   } catch (error) {
     return next(error);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { registerUser } from './api/auth.js'
-import { createFighter, fetchMyFighter } from './api/fighters.js'
+import { createFighter, fetchMyFighter, fetchPublicProfile } from './api/fighters.js'
 import { useSession } from './context/SessionContext.jsx'
 import './App.css'
 
@@ -477,11 +477,92 @@ function CreateFighterPage() {
   )
 }
 
+function FighterSummary({ fighter, eyebrow, showPublicLink = false }) {
+  return (
+    <section className="session-card fighter-profile" aria-labelledby="fighter-profile-title">
+      <p className="eyebrow">{eyebrow}</p>
+      <h1 id="fighter-profile-title">{fighter.name}</h1>
+      <p className="auth-intro">@{fighter.username}</p>
+
+      <dl className="fighter-profile__metrics">
+        <div>
+          <dt>Nivel</dt>
+          <dd>{fighter.level}</dd>
+        </div>
+        <div>
+          <dt>Experiencia</dt>
+          <dd>{fighter.xp} XP</dd>
+        </div>
+        <div>
+          <dt>ELO</dt>
+          <dd>{fighter.elo}</dd>
+        </div>
+        <div>
+          <dt>Récord</dt>
+          <dd>{fighter.wins} V · {fighter.losses} D · {fighter.draws} E</dd>
+        </div>
+      </dl>
+
+      <div className="fighter-profile__stats" aria-label="Estadísticas base">
+        <h2>Estadísticas base</h2>
+        <dl>
+          <div><dt>Vida</dt><dd>{fighter.baseStats.health}</dd></div>
+          <div><dt>Ataque</dt><dd>{fighter.baseStats.attack}</dd></div>
+          <div><dt>Defensa</dt><dd>{fighter.baseStats.defense}</dd></div>
+          <div><dt>Velocidad</dt><dd>{fighter.baseStats.speed}</dd></div>
+        </dl>
+      </div>
+
+      {showPublicLink && (
+        <Link
+          className="button button--secondary fighter-profile__link"
+          to={`/profile/${encodeURIComponent(fighter.username)}`}
+        >
+          Ver perfil público
+        </Link>
+      )}
+    </section>
+  )
+}
+
 function DashboardPage() {
   const navigate = useNavigate()
-  const { user, logout } = useSession()
+  const { logout } = useSession()
+  const [fighter, setFighter] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [profileError, setProfileError] = useState('')
+  const [reloadVersion, setReloadVersion] = useState(0)
   const [logoutError, setLogoutError] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchMyFighter()
+      .then((result) => {
+        if (isCurrent) {
+          if (!result) {
+            setProfileError('No se encontró el luchador de esta cuenta.')
+            setStatus('error')
+            return
+          }
+
+          setFighter(result)
+          setProfileError('')
+          setStatus('ready')
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setProfileError(error.message)
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [reloadVersion])
 
   async function handleLogout() {
     setIsLoggingOut(true)
@@ -497,26 +578,111 @@ function DashboardPage() {
     }
   }
 
+  if (status === 'loading') {
+    return <main className="session-layout" role="status">Cargando el perfil de tu luchador…</main>
+  }
+
+  if (status === 'error') {
+    return (
+      <main className="session-layout">
+        <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+          <span className="brand__mark" aria-hidden="true">FA</span>
+          <span>Fieras <span className="brand__muted">de la Arena</span></span>
+        </Link>
+        <section className="session-card" aria-labelledby="dashboard-error-title">
+          <h1 id="dashboard-error-title">No se pudo cargar el perfil</h1>
+          <p className="request-error" role="alert">{profileError}</p>
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => setReloadVersion((version) => version + 1)}
+          >
+            Intentar de nuevo
+          </button>
+        </section>
+        <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+      </main>
+    )
+  }
+
   return (
     <main className="session-layout">
       <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
         <span className="brand__mark" aria-hidden="true">FA</span>
         <span>Fieras <span className="brand__muted">de la Arena</span></span>
       </Link>
-      <section className="session-card" aria-labelledby="dashboard-title">
-        <p className="eyebrow">Sesión activa</p>
-        <h1 id="dashboard-title">Bienvenido, {user.username}</h1>
-        <p className="auth-intro">Tu sesión fue confirmada por el servidor.</p>
-        {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
-        <button
-          className="button button--secondary"
-          type="button"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-        >
-          {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
-        </button>
-      </section>
+      <div className="fighter-dashboard">
+        <FighterSummary fighter={fighter} eyebrow="Tu luchador" showPublicLink />
+        <section className="session-card fighter-dashboard__actions" aria-label="Acciones de cuenta">
+          {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
+          <button
+            className="button button--secondary"
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+          </button>
+        </section>
+      </div>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+    </main>
+  )
+}
+
+function PublicProfilePage() {
+  const { username } = useParams()
+  const [fighter, setFighter] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [reloadVersion, setReloadVersion] = useState(0)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchPublicProfile(username)
+      .then((result) => {
+        if (isCurrent) {
+          setFighter(result)
+          setError('')
+          setStatus('ready')
+        }
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setError(requestError.message)
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [username, reloadVersion])
+
+  return (
+    <main className="session-layout">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+        <span className="brand__mark" aria-hidden="true">FA</span>
+        <span>Fieras <span className="brand__muted">de la Arena</span></span>
+      </Link>
+      {status === 'loading' ? (
+        <section className="session-card" role="status">Cargando perfil público…</section>
+      ) : status === 'error' ? (
+        <section className="session-card" aria-labelledby="public-profile-error-title">
+          <h1 id="public-profile-error-title">No se pudo cargar el perfil</h1>
+          <p className="request-error" role="alert">{error}</p>
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => setReloadVersion((version) => version + 1)}
+          >
+            Intentar de nuevo
+          </button>
+        </section>
+      ) : (
+        <FighterSummary fighter={fighter} eyebrow="Perfil público" />
+      )}
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
   )
@@ -536,6 +702,7 @@ function App() {
           <Route path="/create-fighter" element={<CreateFighterPage />} />
         </Route>
       </Route>
+      <Route path="/profile/:username" element={<PublicProfilePage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

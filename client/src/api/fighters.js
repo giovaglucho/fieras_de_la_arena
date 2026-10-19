@@ -1,10 +1,11 @@
 const FIGHTERS_URL = '/api/v1/fighters'
+const PROFILES_URL = '/api/v1/profiles'
 
-async function fighterRequest(path, options = {}) {
+async function apiRequest(url, options = {}) {
   let response
 
   try {
-    response = await fetch(`${FIGHTERS_URL}${path}`, {
+    response = await fetch(url, {
       credentials: 'include',
       ...options,
     })
@@ -29,6 +30,10 @@ async function fighterRequest(path, options = {}) {
   return result
 }
 
+function fighterRequest(path, options = {}) {
+  return apiRequest(`${FIGHTERS_URL}${path}`, options)
+}
+
 function readFighter(result) {
   const fighter = result?.fighter
 
@@ -47,8 +52,45 @@ function readFighter(result) {
   return fighter
 }
 
+function readFighterProfile(result) {
+  const fighter = result?.fighter
+  const stats = fighter?.baseStats
+  const hasValidStats = stats &&
+    ['health', 'attack', 'defense', 'speed'].every((key) => Number.isFinite(stats[key]))
+
+  if (
+    !fighter ||
+    typeof fighter.id !== 'string' ||
+    typeof fighter.username !== 'string' ||
+    typeof fighter.name !== 'string' ||
+    !Number.isFinite(fighter.level) ||
+    !Number.isFinite(fighter.xp) ||
+    !Number.isFinite(fighter.elo) ||
+    !Number.isFinite(fighter.wins) ||
+    !Number.isFinite(fighter.losses) ||
+    !Number.isFinite(fighter.draws) ||
+    !hasValidStats
+  ) {
+    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
+  }
+
+  return fighter
+}
+
 export async function fetchMyFighter() {
-  return readFighter(await fighterRequest('/me'))
+  const result = await fighterRequest('/me')
+
+  if (result?.fighter === null) {
+    return null
+  }
+
+  return readFighterProfile(result)
+}
+
+export async function fetchPublicProfile(username) {
+  const result = await apiRequest(`${PROFILES_URL}/${encodeURIComponent(username)}`)
+
+  return readFighterProfile(result)
 }
 
 export async function createFighter(name) {

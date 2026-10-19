@@ -203,8 +203,8 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   assert.equal(ownFighterResponse.status, 200);
   assert.deepEqual(await ownFighterResponse.json(), {
     fighter: {
-      id: body.fighter.id,
-      name: body.fighter.name
+      ...body.fighter,
+      username: `fighter_${runId.slice(0, 12)}`
     }
   });
 
@@ -223,4 +223,57 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   });
   assert.equal(duplicateName.status, 409);
   assert.equal((await duplicateName.json()).error.code, "FIGHTER_NAME_TAKEN");
+});
+
+test("los perfiles públicos exponen solo los campos de juego permitidos", async () => {
+  const fighter = await Fighter.findOne({ userId: userIds[0] });
+  const publicById = await fetch(`${baseUrl}/api/v1/fighters/${fighter._id}`);
+  const publicByUsername = await fetch(
+    `${baseUrl}/api/v1/profiles/fighter_${runId.slice(0, 12)}`
+  );
+  const publicByIdBody = await publicById.json();
+  const publicByUsernameBody = await publicByUsername.json();
+  const expectedProfile = {
+    id: fighter._id.toString(),
+    name: fighter.name,
+    level: fighter.level,
+    xp: fighter.xp,
+    elo: fighter.elo,
+    baseStats: {
+      health: fighter.baseStats.health,
+      attack: fighter.baseStats.attack,
+      defense: fighter.baseStats.defense,
+      speed: fighter.baseStats.speed
+    },
+    wins: fighter.wins,
+    losses: fighter.losses,
+    draws: fighter.draws,
+    username: `fighter_${runId.slice(0, 12)}`
+  };
+
+  assert.equal(publicById.status, 200);
+  assert.deepEqual(publicByIdBody, { fighter: expectedProfile });
+  assert.equal(publicByUsername.status, 200);
+  assert.deepEqual(publicByUsernameBody, { fighter: expectedProfile });
+  for (const profile of [publicByIdBody, publicByUsernameBody]) {
+    assert.doesNotMatch(
+      JSON.stringify(profile),
+      /email|password|session|referralCode|userId/i
+    );
+  }
+});
+
+test("los perfiles inexistentes responden 404, incluso con un ID inválido", async () => {
+  const missingId = new mongoose.Types.ObjectId().toString();
+  const missingFighter = await fetch(`${baseUrl}/api/v1/fighters/${missingId}`);
+  const invalidId = await fetch(`${baseUrl}/api/v1/fighters/no-es-un-id`);
+  const missingUsername = await fetch(`${baseUrl}/api/v1/profiles/usuario_inexistente`);
+  const userWithoutFighter = await fetch(
+    `${baseUrl}/api/v1/profiles/fighter_${runId.slice(12, 24)}`
+  );
+
+  for (const response of [missingFighter, invalidId, missingUsername, userWithoutFighter]) {
+    assert.equal(response.status, 404);
+    assert.equal((await response.json()).error.code, "PROFILE_NOT_FOUND");
+  }
 });

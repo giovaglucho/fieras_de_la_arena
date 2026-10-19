@@ -1,26 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `3.4`
+**Paso activo:** `3.5`
 **Estado:** pendiente
-**Título:** Crear perfil propio y perfil público
+**Título:** Calcular estadísticas derivadas por nivel
 
 ## Objetivo
 
-Endpoints con lista explícita de campos públicos y página de resumen básico del luchador.
+Centralizar en el servidor la fórmula de estadísticas derivadas por nivel para vida, ataque, defensa y velocidad.
 
 ## Permitido en este paso
 
-- Endpoints con lista explícita de campos públicos.
-- Página de resumen básico del luchador.
+- Centralizar la fórmula inicial de vida, ataque, defensa y velocidad en el servidor.
+- Añadir pruebas unitarias de valores representativos.
 
 ## Fuera de alcance
 
-- Calcular estadísticas derivadas por nivel; corresponde al paso 3.5.
-- Implementar tareas posteriores de la hoja de ruta.
+- Implementar la subida de nivel y el cálculo de XP o ELO; corresponden a pasos posteriores de la hoja de ruta.
+- Implementar cualquier otra tarea posterior de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- no se filtran correo ni datos privados; IDs inexistentes devuelven 404.
+- La misma entrada produce siempre las mismas estadísticas.
 
 ## Al terminar
 

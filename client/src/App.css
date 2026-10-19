@@ -231,6 +231,91 @@
   color: var(--color-muted);
 }
 
+.fighter-dashboard {
+  display: grid;
+  width: min(100%, 38rem);
+  gap: 1rem;
+  margin: auto;
+}
+
+.fighter-profile {
+  width: 100%;
+  margin: 0;
+}
+
+.fighter-profile .eyebrow,
+.fighter-profile .auth-intro {
+  margin: 0;
+}
+
+.fighter-profile h1 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 7vw, 2.5rem);
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.fighter-profile__metrics,
+.fighter-profile__stats dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.fighter-profile__metrics div,
+.fighter-profile__stats dl div {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem;
+  border: 1px solid rgb(245 232 208 / 11%);
+  border-radius: 0.45rem;
+  background: rgb(33 25 21 / 65%);
+}
+
+.fighter-profile__metrics dt,
+.fighter-profile__stats dt {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.fighter-profile__metrics dd,
+.fighter-profile__stats dd {
+  margin: 0;
+  color: var(--color-paper);
+  font-weight: 750;
+}
+
+.fighter-profile__stats {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.fighter-profile__stats h2 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.fighter-profile__stats dl {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fighter-profile__link {
+  width: 100%;
+}
+
+.fighter-dashboard__actions {
+  display: grid;
+  width: 100%;
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem;
+}
+
 .auth-card {
   width: min(100%, 29rem);
   margin: auto;
@@ -401,6 +486,10 @@
 
   .auth-card {
     padding: 1.4rem 1.2rem;
+  }
+
+  .fighter-profile__stats dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .back-link {
