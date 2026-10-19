@@ -233,14 +233,26 @@
 
 .fighter-dashboard {
   display: grid;
-  width: min(100%, 38rem);
+  width: min(100%, 64rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin: auto;
+}
+
+.fighter-dashboard > .session-card {
+  width: 100%;
+  margin: 0;
 }
 
 .fighter-profile {
   width: 100%;
   margin: 0;
+}
+
+.fighter-dashboard > .fighter-profile,
+.dashboard-recent,
+.fighter-dashboard__actions {
+  grid-column: 1 / -1;
 }
 
 .fighter-profile .eyebrow,
@@ -311,9 +323,72 @@
 .fighter-dashboard__actions {
   display: grid;
   width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin: 0;
   padding: 1rem;
+}
+
+.dashboard-panel {
+  align-content: start;
+}
+
+.dashboard-panel h2 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.dashboard-panel > p {
+  margin: 0;
+}
+
+.dashboard-progress__bar {
+  width: 100%;
+  height: 0.8rem;
+  accent-color: var(--color-copper-light);
+}
+
+.dashboard-progress__label,
+.dashboard-panel__muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.dashboard-attempts__count {
+  color: var(--color-muted);
+}
+
+.dashboard-attempts__count strong {
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.dashboard-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dashboard-panel__heading a {
+  color: var(--color-copper-light);
+  font-size: 0.9rem;
+}
+
+.dashboard-panel__heading a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.dashboard-recent .battle-history__entry {
+  gap: 0.55rem;
+}
+
+.dashboard-recent .battle-history__details {
+  line-height: 1.5;
 }
 
 .arena-card {
@@ -841,6 +916,16 @@
 
 .auth-footer {
   padding-top: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .fighter-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .fighter-dashboard__actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {

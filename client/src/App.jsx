@@ -480,7 +480,13 @@ function CreateFighterPage() {
   )
 }
 
-function FighterSummary({ fighter, eyebrow, showPublicLink = false }) {
+function FighterSummary({
+  fighter,
+  eyebrow,
+  showPublicLink = false,
+  stats = fighter.baseStats,
+  statsTitle = 'Estadísticas base',
+}) {
   return (
     <section className="session-card fighter-profile" aria-labelledby="fighter-profile-title">
       <p className="eyebrow">{eyebrow}</p>
@@ -506,13 +512,13 @@ function FighterSummary({ fighter, eyebrow, showPublicLink = false }) {
         </div>
       </dl>
 
-      <div className="fighter-profile__stats" aria-label="Estadísticas base">
-        <h2>Estadísticas base</h2>
+      <div className="fighter-profile__stats" aria-label={statsTitle}>
+        <h2>{statsTitle}</h2>
         <dl>
-          <div><dt>Vida</dt><dd>{fighter.baseStats.health}</dd></div>
-          <div><dt>Ataque</dt><dd>{fighter.baseStats.attack}</dd></div>
-          <div><dt>Defensa</dt><dd>{fighter.baseStats.defense}</dd></div>
-          <div><dt>Velocidad</dt><dd>{fighter.baseStats.speed}</dd></div>
+          <div><dt>Vida</dt><dd>{stats.health}</dd></div>
+          <div><dt>Ataque</dt><dd>{stats.attack}</dd></div>
+          <div><dt>Defensa</dt><dd>{stats.defense}</dd></div>
+          <div><dt>Velocidad</dt><dd>{stats.speed}</dd></div>
         </dl>
       </div>
 
@@ -531,33 +537,53 @@ function FighterSummary({ fighter, eyebrow, showPublicLink = false }) {
 function DashboardPage() {
   const navigate = useNavigate()
   const { logout } = useSession()
-  const [fighter, setFighter] = useState(null)
+  const [dashboard, setDashboard] = useState(null)
   const [status, setStatus] = useState('loading')
-  const [profileError, setProfileError] = useState('')
+  const [dashboardError, setDashboardError] = useState('')
   const [reloadVersion, setReloadVersion] = useState(0)
   const [logoutError, setLogoutError] = useState('')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   useEffect(() => {
     let isCurrent = true
+    setStatus('loading')
 
-    fetchMyFighter()
-      .then((result) => {
+    Promise.all([
+      fetchMyFighter(),
+      fetchArenaAttempts(),
+      fetchBattleHistory(1, 5),
+    ])
+      .then(([fighter, attempts, history]) => {
         if (isCurrent) {
-          if (!result) {
-            setProfileError('No se encontró el luchador de esta cuenta.')
+          if (!fighter) {
+            setDashboardError('No se encontró el luchador de esta cuenta.')
             setStatus('error')
             return
           }
 
-          setFighter(result)
-          setProfileError('')
+          const recentBattles = history.battles.map((battle) => {
+            const ownParticipant = battle.participants.find(
+              ({ fighter: participant }) => participant.id === fighter.id
+            )
+            const opponent = battle.participants.find(
+              ({ fighter: participant }) => participant.id !== fighter.id
+            )
+
+            if (!ownParticipant || !opponent) {
+              throw new Error('El servidor devolvió un historial inesperado. Inténtalo de nuevo.')
+            }
+
+            return { battle, ownResult: ownParticipant.result, opponent: opponent.fighter }
+          })
+
+          setDashboard({ fighter, attempts, recentBattles })
+          setDashboardError('')
           setStatus('ready')
         }
       })
       .catch((error) => {
         if (isCurrent) {
-          setProfileError(error.message)
+          setDashboardError(error.message)
           setStatus('error')
         }
       })
@@ -581,8 +607,10 @@ function DashboardPage() {
     }
   }
 
+  const fighter = dashboard?.fighter
+
   if (status === 'loading') {
-    return <main className="session-layout" role="status">Cargando el perfil de tu luchador…</main>
+    return <main className="session-layout" role="status">Cargando el panel de tu luchador…</main>
   }
 
   if (status === 'error') {
@@ -593,8 +621,8 @@ function DashboardPage() {
           <span>Fieras <span className="brand__muted">de la Arena</span></span>
         </Link>
         <section className="session-card" aria-labelledby="dashboard-error-title">
-          <h1 id="dashboard-error-title">No se pudo cargar el perfil</h1>
-          <p className="request-error" role="alert">{profileError}</p>
+          <h1 id="dashboard-error-title">No se pudo cargar el panel</h1>
+          <p className="request-error" role="alert">{dashboardError}</p>
           <button
             className="button button--primary"
             type="button"
@@ -615,7 +643,77 @@ function DashboardPage() {
         <span>Fieras <span className="brand__muted">de la Arena</span></span>
       </Link>
       <div className="fighter-dashboard">
-        <FighterSummary fighter={fighter} eyebrow="Tu luchador" showPublicLink />
+        <FighterSummary
+          fighter={fighter}
+          eyebrow="Tu luchador"
+          showPublicLink
+          stats={fighter.stats}
+          statsTitle="Estadísticas"
+        />
+        <section className="session-card dashboard-panel" aria-labelledby="dashboard-progress-title">
+          <h2 id="dashboard-progress-title">Progreso</h2>
+          <p>Nivel {fighter.level}</p>
+          <progress
+            className="dashboard-progress__bar"
+            value={fighter.xp}
+            max={fighter.xpToNextLevel}
+            aria-label="Experiencia para el siguiente nivel"
+          />
+          <p className="dashboard-progress__label">
+            {fighter.xp} / {fighter.xpToNextLevel} XP para el siguiente nivel
+          </p>
+        </section>
+        <section className="session-card dashboard-panel" aria-labelledby="dashboard-attempts-title">
+          <h2 id="dashboard-attempts-title">Intentos diarios</h2>
+          <p className="dashboard-attempts__count">
+            <strong>{dashboard.attempts.remaining}</strong> de {dashboard.attempts.limit} disponibles
+          </p>
+          <p className="dashboard-panel__muted">
+            {dashboard.attempts.used} {dashboard.attempts.used === 1 ? 'intento utilizado' : 'intentos utilizados'} hoy
+          </p>
+          <Link className="button button--secondary" to="/arena">Ir a la Arena</Link>
+        </section>
+        <section className="session-card dashboard-panel dashboard-recent" aria-labelledby="dashboard-recent-title">
+          <div className="dashboard-panel__heading">
+            <h2 id="dashboard-recent-title">Últimos combates</h2>
+            <Link to="/history">Ver historial</Link>
+          </div>
+          {dashboard.recentBattles.length === 0 ? (
+            <p className="dashboard-panel__muted">Todavía no hay combates registrados.</p>
+          ) : (
+            <ul className="battle-history__list">
+              {dashboard.recentBattles.map(({ battle, ownResult, opponent }) => {
+                const outcome = battle.winnerFighterId === null
+                  ? 'Empate'
+                  : battle.winnerFighterId === fighter.id
+                    ? 'Victoria'
+                    : 'Derrota'
+
+                return (
+                  <li key={battle.id}>
+                    <Link className="battle-history__entry" to={`/battles/${encodeURIComponent(battle.id)}`}>
+                      <span className="battle-history__entry-heading">
+                        <span className={`battle-result__outcome battle-result__outcome--${outcome === 'Victoria' ? 'win' : outcome === 'Derrota' ? 'loss' : 'draw'}`}>
+                          {outcome}
+                        </span>
+                        <time className="battle-history__date" dateTime={battle.createdAt}>
+                          {new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })
+                            .format(new Date(battle.createdAt))}
+                        </time>
+                      </span>
+                      <strong className="battle-history__opponent">vs. {opponent.name}</strong>
+                      <span className="battle-history__details">
+                        {battle.battleType === 'training' ? 'Entrenamiento' : 'PvP'}
+                        {' · '}{ownResult.xpGained} XP
+                        {' · ELO '}{ownResult.eloChange > 0 ? '+' : ''}{ownResult.eloChange}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
         <section className="session-card fighter-dashboard__actions" aria-label="Acciones de cuenta">
           {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
           <Link className="button button--primary" to="/arena">Entrar a la Arena</Link>

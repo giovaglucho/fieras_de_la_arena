@@ -1,16 +1,16 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `6.3`
+**Paso activo:** `7.1`
 **Estado:** pendiente
-**Título:** Completar dashboard del jugador
+**Título:** Crear generación y consulta de código de invitación
 
 ## Objetivo
 
-Completar dashboard del jugador.
+Crear generación y consulta de código de invitación.
 
 ## Permitido en este paso
 
-- Nivel, XP siguiente, estadísticas, ELO, últimos combates e intentos diarios.
+- Un código único por luchador y endpoint autenticado.
 
 ## Fuera de alcance
 
@@ -18,7 +18,7 @@ Completar dashboard del jugador.
 
 ## Criterios de aceptación
 
-- todos los valores vienen de API y hay estados de carga/error.
+- códigos no duplicados y no editables mediante entrada de usuario.
 
 ## Al terminar
 

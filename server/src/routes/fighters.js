@@ -5,6 +5,8 @@ import Fighter from "../models/Fighter.js";
 import User from "../models/User.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { calculateFighterStats } from "../game-engine/fighterStats.js";
+import { getXpRequiredForNextLevel } from "../game-engine/progression.js";
 import { toPublicFighter } from "../serializers/publicFighter.js";
 import { validateFighterCreation } from "../validators/fighterCreation.js";
 
@@ -19,7 +21,9 @@ router.get("/me", requireAuth, async (request, response, next) => {
       fighter: fighter
         ? {
             ...toPublicFighter(fighter),
-            username: request.user.username
+            username: request.user.username,
+            stats: calculateFighterStats(fighter.level, fighter.baseStats),
+            xpToNextLevel: getXpRequiredForNextLevel(fighter.level)
           }
         : null
     });

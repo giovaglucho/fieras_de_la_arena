@@ -3,7 +3,8 @@ import { test } from "node:test";
 import {
   applyExperience,
   calculateEloChanges,
-  calculateXpReward
+  calculateXpReward,
+  getXpRequiredForNextLevel
 } from "../src/game-engine/progression.js";
 
 test("otorga la recompensa de XP correspondiente al resultado PvP", () => {
@@ -32,6 +33,12 @@ test("procesa los umbrales de varios niveles usando el coste de cada nivel", () 
     xp: 50,
     levelsGained: 4
   });
+});
+
+test("calcula la XP necesaria para el siguiente nivel", () => {
+  assert.equal(getXpRequiredForNextLevel(1), 100);
+  assert.equal(getXpRequiredForNextLevel(3), 150);
+  assert.throws(() => getXpRequiredForNextLevel(0), RangeError);
 });
 
 test("calcula cambios ELO para victoria, derrota y empate", () => {

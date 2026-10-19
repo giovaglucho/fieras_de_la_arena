@@ -204,7 +204,14 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   assert.deepEqual(await ownFighterResponse.json(), {
     fighter: {
       ...body.fighter,
-      username: `fighter_${runId.slice(0, 12)}`
+      username: `fighter_${runId.slice(0, 12)}`,
+      stats: {
+        health: 100,
+        attack: 10,
+        defense: 4,
+        speed: 5
+      },
+      xpToNextLevel: 100
     }
   });
 
@@ -223,6 +230,25 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   });
   assert.equal(duplicateName.status, 409);
   assert.equal((await duplicateName.json()).error.code, "FIGHTER_NAME_TAKEN");
+});
+
+test("GET /fighters/me devuelve estadísticas efectivas y XP del nivel actual", async () => {
+  const cookie = await login(0);
+  const fighter = await Fighter.findOne({ userId: userIds[0] });
+  await Fighter.updateOne({ _id: fighter._id }, { level: 3, xp: 25 });
+
+  const response = await getMyFighter(cookie);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body.fighter.stats, {
+    health: 110,
+    attack: 11,
+    defense: 4,
+    speed: 5
+  });
+  assert.equal(body.fighter.xpToNextLevel, 150);
+  assert.equal(body.fighter.xp, 25);
 });
 
 test("los perfiles públicos exponen solo los campos de juego permitidos", async () => {

@@ -84,7 +84,16 @@ export async function fetchMyFighter() {
     return null
   }
 
-  return readFighterProfile(result)
+  const fighter = readFighterProfile(result)
+  const stats = fighter.stats
+  const hasValidStats = stats &&
+    ['health', 'attack', 'defense', 'speed'].every((key) => Number.isFinite(stats[key]))
+
+  if (!hasValidStats || !Number.isSafeInteger(fighter.xpToNextLevel) || fighter.xpToNextLevel < 1) {
+    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
+  }
+
+  return fighter
 }
 
 export async function fetchPublicProfile(username) {
