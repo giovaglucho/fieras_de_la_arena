@@ -56,12 +56,76 @@ test("responde rutas inexistentes con el formato común", async () => {
   const response = await fetch(`${apiBaseUrl}/missing`);
 
   assert.equal(response.status, 404);
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("x-powered-by"), null);
+  if (process.env.NODE_ENV === "production") {
+    assert.match(response.headers.get("strict-transport-security"), /max-age=/);
+  } else {
+    assert.equal(response.headers.get("strict-transport-security"), null);
+  }
   assert.deepEqual(await response.json(), {
     error: {
       code: "NOT_FOUND",
       message: "Ruta no encontrada."
     }
   });
+});
+
+test("permite CORS con credenciales solo desde el origen del cliente configurado", async () => {
+  const allowedOrigin = process.env.CLIENT_URL;
+  const allowedResponse = await fetch(`${apiBaseUrl}/api/v1/health`, {
+    headers: { Origin: allowedOrigin }
+  });
+  const deniedResponse = await fetch(`${apiBaseUrl}/api/v1/health`, {
+    headers: { Origin: "https://untrusted.example" }
+  });
+
+  assert.equal(allowedResponse.headers.get("access-control-allow-origin"), allowedOrigin);
+  assert.equal(allowedResponse.headers.get("access-control-allow-credentials"), "true");
+  assert.match(allowedResponse.headers.get("vary"), /Origin/i);
+  assert.equal(deniedResponse.headers.get("access-control-allow-origin"), null);
+  assert.match(deniedResponse.headers.get("vary"), /Origin/i);
+});
+
+test("acepta preflight solo para métodos y cabeceras permitidos", async () => {
+  const allowedPreflight = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: process.env.CLIENT_URL,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "content-type"
+    }
+  });
+  const deniedPreflight = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: process.env.CLIENT_URL,
+      "Access-Control-Request-Method": "DELETE"
+    }
+  });
+  const deniedHeaderPreflight = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: process.env.CLIENT_URL,
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "authorization"
+    }
+  });
+  const untrustedPreflight = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://untrusted.example",
+      "Access-Control-Request-Method": "POST"
+    }
+  });
+
+  assert.equal(allowedPreflight.status, 204);
+  assert.equal(allowedPreflight.headers.get("access-control-allow-methods"), "GET, HEAD, POST");
+  assert.equal(allowedPreflight.headers.get("access-control-allow-headers"), "Content-Type");
+  assert.equal(deniedPreflight.status, 403);
+  assert.equal(deniedPreflight.headers.get("access-control-allow-origin"), process.env.CLIENT_URL);
+  assert.equal(deniedHeaderPreflight.status, 403);
+  assert.equal(untrustedPreflight.headers.get("access-control-allow-origin"), null);
 });
 
 test("rechaza JSON mal formado con un error público de solicitud", async () => {

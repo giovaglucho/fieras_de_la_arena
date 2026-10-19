@@ -1,5 +1,7 @@
 import express from "express";
+import helmet from "helmet";
 import { isDatabaseConnected } from "./database.js";
+import corsMiddleware from "./middleware/cors.js";
 import { ApiError, errorHandler } from "./middleware/errorHandler.js";
 import sessionMiddleware from "./middleware/session.js";
 import arenaRouter from "./routes/arena.js";
@@ -11,7 +13,17 @@ import profilesRouter from "./routes/profiles.js";
 import referralsRouter from "./routes/referrals.js";
 
 const app = express();
+const trustProxyHops = process.env.TRUST_PROXY ?? "0";
 
+if (!/^(0|[1-9]\d*)$/.test(trustProxyHops)) {
+  throw new Error("TRUST_PROXY debe ser un número entero no negativo de saltos de proxy.");
+}
+
+app.set("trust proxy", Number(trustProxyHops));
+app.use(helmet({
+  strictTransportSecurity: process.env.NODE_ENV === "production" ? undefined : false
+}));
+app.use(corsMiddleware);
 app.use(express.json());
 app.use(sessionMiddleware);
 app.use("/api/v1/auth", authRouter);

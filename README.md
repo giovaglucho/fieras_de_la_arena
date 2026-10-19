@@ -17,7 +17,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Paso activo: 8.2 — Revisar cabeceras, CORS y configuración de sesión**. Los pasos anteriores hasta el 8.1 están completados.
+**Paso activo: 8.3 — Revisar validación, filtrado y autorización**. Los pasos anteriores hasta el 8.2 están completados.
 
 ## Requisitos
 
@@ -33,7 +33,7 @@ Abre una terminal en la raíz del repositorio y crea la configuración local a p
 Copy-Item .env.example .env
 ```
 
-El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales: reemplaza `SESSION_SECRET` por un valor aleatorio de al menos 32 bytes y no uses el valor de ejemplo. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. Las sesiones se guardan en MongoDB, usan una cookie `httpOnly` con `sameSite=lax` y activan `secure` en producción. `CLIENT_URL` queda documentada para pasos posteriores.
+El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales: reemplaza `SESSION_SECRET` por un valor aleatorio de al menos 32 bytes y no uses el valor de ejemplo. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. Helmet configura cabeceras de seguridad; CORS permite únicamente el origen exacto de `CLIENT_URL` y credenciales. En local, Vite usa un proxy para `/api`; en producción configura `CLIENT_URL` con el origen real del cliente. Las sesiones se guardan en MongoDB y usan una cookie `httpOnly`, `sameSite=lax` y `secure` en producción. `TRUST_PROXY` vale `0` por defecto; configúralo con el número exacto de proxies inversos de confianza (por ejemplo, `1` detrás de un único proxy TLS) para que Express reconozca HTTPS. No lo aumentes si el servidor no está detrás de esos proxies.
 
 `POST /api/v1/auth/register` recibe `username`, `email` y `password`, con `referralCode` opcional. Un código válido vincula la cuenta nueva con su referente y uno inválido se rechaza con HTTP 400; el registro no inicia sesión automáticamente.
 El endpoint `POST /api/v1/auth/login` recibe `identifier` (nombre de usuario o correo) y `password`. `POST /api/v1/auth/logout` destruye una sesión iniciada.

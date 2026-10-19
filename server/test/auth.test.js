@@ -57,6 +57,7 @@ async function requestLogin(identifier, password = "arena password 123", ip) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(process.env.NODE_ENV === "production" ? { "X-Forwarded-Proto": "https" } : {}),
       ...(ip ? { "X-Forwarded-For": ip } : {})
     },
     body: JSON.stringify({ identifier, password })

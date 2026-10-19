@@ -1,24 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `8.2`
+**Paso activo:** `8.3`
 **Estado:** pendiente
-**Título:** Revisar cabeceras, CORS y configuración de sesión
+**Título:** Revisar validación, filtrado y autorización
 
 ## Objetivo
 
-Revisar cabeceras, CORS y configuración de sesión.
+Revisar validación, filtrado y autorización.
 
 ## Permitido en este paso
 
-- Configurar Helmet y orígenes/cookies según modo local o producción.
+- Probar payloads manipulados, IDs inválidos y campos no permitidos.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.3 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.4 y posteriores.
 
 ## Criterios de aceptación
 
-- cliente autorizado funciona; orígenes ajenos no se habilitan sin motivo.
+- operaciones sensibles solo aceptan las propiedades esperadas.
 
 ## Al terminar
 
