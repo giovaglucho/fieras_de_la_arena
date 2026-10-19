@@ -180,4 +180,12 @@ test("define índices de fecha y participante para consultas de historial", asyn
         index.key["participants.snapshot.fighterId"] === 1 && index.key.createdAt === -1
     )
   );
+  const idempotencyIndex = indexes.find(
+    (index) =>
+      index.key.requesterFighterId === 1 && index.key.requestId === 1
+  );
+  assert.equal(idempotencyIndex?.unique, true);
+  assert.deepEqual(idempotencyIndex?.partialFilterExpression, {
+    requestId: { $type: "string" }
+  });
 });

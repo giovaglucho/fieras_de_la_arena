@@ -75,6 +75,15 @@ const battleSchema = new mongoose.Schema(
       ref: "Fighter",
       default: null
     },
+    requesterFighterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Fighter"
+    },
+    requestId: {
+      type: String,
+      minlength: 1,
+      maxlength: 128
+    },
     actionCount: { type: Number, required: true, min: 1 },
     seed: { type: String, required: true, minlength: 1 },
     engineVersion: { type: String, required: true, minlength: 1 },
@@ -103,10 +112,37 @@ battleSchema.pre("validate", function validateWinner() {
   ) {
     this.invalidate("winnerFighterId", "The winner must be a battle participant.");
   }
+
+  if (Boolean(this.requesterFighterId) !== Boolean(this.requestId)) {
+    this.invalidate(
+      "requestId",
+      "requesterFighterId and requestId must be provided together."
+    );
+  }
+
+  if (
+    this.requesterFighterId &&
+    !this.participants.some(
+      (participant) =>
+        participant.snapshot.fighterId.toString() === this.requesterFighterId.toString()
+    )
+  ) {
+    this.invalidate(
+      "requesterFighterId",
+      "The requester must be a battle participant."
+    );
+  }
 });
 
 battleSchema.index({ createdAt: -1 });
 battleSchema.index({ "participants.snapshot.fighterId": 1, createdAt: -1 });
+battleSchema.index(
+  { requesterFighterId: 1, requestId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { requestId: { $type: "string" } }
+  }
+);
 
 const Battle = mongoose.model("Battle", battleSchema);
 

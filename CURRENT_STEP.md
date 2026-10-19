@@ -1,26 +1,28 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `4.6`
+**Paso activo:** `5.1`
 **Estado:** pendiente
-**Título:** Implementar caso de uso de combate
+**Título:** Implementar DailyActivity y reserva atómica
 
 ## Objetivo
 
-Implementar el caso de uso de combate.
+Implementar DailyActivity y la reserva atómica del intento diario de combate.
 
 ## Permitido en este paso
 
-- Servicio coordina validaciones, motor, persistencia y recompensas.
-- Añadir mecanismo de idempotencia.
+- Límite inicial de tres intentos en UTC.
+- Índice único usuario+fecha y actualización segura ante peticiones concurrentes.
 
 ## Fuera de alcance
 
-- Implementar el límite diario, selección de oponente o arena; corresponden a pasos posteriores de la hoja de ruta.
-- Implementar endpoints o interfaz de combate e historial; corresponden a pasos posteriores de la hoja de ruta.
+- Implementar selección de rival; corresponde al paso 5.2.
+- Añadir rival de entrenamiento de respaldo; corresponde al paso 5.3.
+- Exponer endpoints de arena e historial; corresponde al paso 5.4.
+- Crear pantallas de arena, resultado e historial; corresponden a los pasos 5.5, 5.6 y 5.7.
 
 ## Criterios de aceptación
 
-- Un mismo request no duplica pelea ni recompensa; fallos no aparentan una victoria.
+- Dos solicitudes simultáneas no exceden el límite.
 
 ## Al terminar
 

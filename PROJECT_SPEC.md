@@ -383,7 +383,9 @@ Registro inmutable del resultado.
 - `events` ordenados
 - resultado de XP y ELO de ambos
 - `createdAt`
-- `requestId` o clave de idempotencia para evitar repetir la misma operación
+- `requesterFighterId` y `requestId` para identificar de forma idempotente la petición de un participante
+
+La combinación `requesterFighterId + requestId` debe ser única. La creación de la pelea y la actualización de ambos luchadores se confirman en una única transacción; si falla cualquiera de las escrituras, no se conserva la pelea ni se aplican recompensas.
 
 El historial no debe depender de consultar el estado actual de un luchador para explicar una pelea anterior.
 
