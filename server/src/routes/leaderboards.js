@@ -24,16 +24,73 @@ router.get("/", async (request, response, next) => {
     : { level: -1, _id: 1 };
 
   try {
-    const [fighters, totalItems] = await Promise.all([
-      Fighter.find({})
-        .select("_id userId name level xp elo baseStats wins losses draws")
-        .sort(sort)
-        .skip(query.skip)
-        .limit(query.limit),
-      Fighter.countDocuments({})
-    ]);
+    let fighters;
+    let totalItems;
+
+    if (query.category === "students") {
+      const [leaderboard] = await Fighter.aggregate([
+        {
+          $lookup: {
+            from: User.collection.name,
+            let: { fighterUserId: "$userId" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ["$referredByUserId", "$$fighterUserId"] }
+                }
+              },
+              { $count: "total" }
+            ],
+            as: "studentCounts"
+          }
+        },
+        {
+          $addFields: {
+            studentsCount: {
+              $ifNull: [{ $arrayElemAt: ["$studentCounts.total", 0] }, 0]
+            }
+          }
+        },
+        { $sort: { studentsCount: -1, _id: 1 } },
+        {
+          $facet: {
+            fighters: [
+              { $skip: query.skip },
+              { $limit: query.limit },
+              { $project: { _id: 1, userId: 1, studentsCount: 1 } }
+            ],
+            totalItems: [{ $count: "count" }]
+          }
+        }
+      ]);
+      const rankedFighters = leaderboard?.fighters ?? [];
+      const fighterIds = rankedFighters.map(({ _id }) => _id);
+
+      fighters = await Fighter.find({ _id: { $in: fighterIds } })
+        .select("_id userId name level xp elo baseStats wins losses draws");
+      totalItems = leaderboard?.totalItems[0]?.count ?? 0;
+
+      const fightersById = new Map(
+        fighters.map((fighter) => [fighter._id.toString(), fighter])
+      );
+      fighters = rankedFighters.map((rankedFighter) => ({
+        fighter: fightersById.get(rankedFighter._id.toString()),
+        studentsCount: rankedFighter.studentsCount
+      }));
+    } else {
+      [fighters, totalItems] = await Promise.all([
+        Fighter.find({})
+          .select("_id userId name level xp elo baseStats wins losses draws")
+          .sort(sort)
+          .skip(query.skip)
+          .limit(query.limit),
+        Fighter.countDocuments({})
+      ]);
+      fighters = fighters.map((fighter) => ({ fighter, studentsCount: null }));
+    }
+
     const users = await User.find({
-      _id: { $in: fighters.map((fighter) => fighter.userId) }
+      _id: { $in: fighters.map(({ fighter }) => fighter.userId) }
     })
       .select("_id username")
       .lean();
@@ -42,9 +99,10 @@ router.get("/", async (request, response, next) => {
     );
 
     return response.status(200).json({
-      fighters: fighters.map((fighter) => ({
+      fighters: fighters.map(({ fighter, studentsCount }) => ({
         ...toPublicFighter(fighter),
-        username: usernamesById.get(fighter.userId.toString())
+        username: usernamesById.get(fighter.userId.toString()),
+        ...(studentsCount === null ? {} : { studentsCount })
       })),
       pagination: {
         page: query.page,

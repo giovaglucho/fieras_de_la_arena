@@ -1412,7 +1412,11 @@ function LeaderboardPage() {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [reloadVersion, setReloadVersion] = useState(0)
-  const categoryLabel = category === 'elo' ? 'ELO' : 'nivel'
+  const categoryLabel = category === 'students'
+    ? 'alumnos'
+    : category === 'elo'
+      ? 'ELO'
+      : 'nivel'
 
   useEffect(() => {
     let isCurrent = true
@@ -1451,7 +1455,9 @@ function LeaderboardPage() {
         <Link className="back-link" to="/">← Volver al inicio</Link>
         <p className="eyebrow">Los nombres que hacen historia</p>
         <h1 id="leaderboard-title">Clasificación</h1>
-        <p className="auth-intro">Consulta las posiciones actuales de las fieras de la arena.</p>
+        <p className="auth-intro">
+          Consulta las posiciones por ELO, nivel o cantidad de alumnos confirmados.
+        </p>
 
         <div className="leaderboard__controls">
           <label htmlFor="leaderboard-category">Clasificar por</label>
@@ -1465,6 +1471,7 @@ function LeaderboardPage() {
           >
             <option value="elo">ELO</option>
             <option value="level">Nivel</option>
+            <option value="students">Alumnos</option>
           </select>
         </div>
 
@@ -1482,7 +1489,11 @@ function LeaderboardPage() {
             </button>
           </div>
         ) : leaderboard.pagination.totalItems === 0 ? (
-          <p className="leaderboard__message">Aún no hay luchadores en la clasificación.</p>
+          <p className="leaderboard__message">
+            {category === 'students'
+              ? 'Aún no hay luchadores en la clasificación de alumnos.'
+              : 'Aún no hay luchadores en la clasificación.'}
+          </p>
         ) : (
           <>
             <div className="leaderboard__table-scroll">
@@ -1491,9 +1502,15 @@ function LeaderboardPage() {
                   <tr>
                     <th scope="col">Puesto</th>
                     <th scope="col">Luchador</th>
-                    <th scope="col">Nivel</th>
-                    <th scope="col">ELO</th>
-                    <th scope="col">Récord</th>
+                    {category === 'students' ? (
+                      <th scope="col">Alumnos confirmados</th>
+                    ) : (
+                      <>
+                        <th scope="col">Nivel</th>
+                        <th scope="col">ELO</th>
+                        <th scope="col">Récord</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -1509,9 +1526,15 @@ function LeaderboardPage() {
                           <span>@{fighter.username}</span>
                         </Link>
                       </td>
-                      <td>{fighter.level}</td>
-                      <td>{fighter.elo}</td>
-                      <td>{fighter.wins} V · {fighter.losses} D · {fighter.draws} E</td>
+                      {category === 'students' ? (
+                        <td>{fighter.studentsCount}</td>
+                      ) : (
+                        <>
+                          <td>{fighter.level}</td>
+                          <td>{fighter.elo}</td>
+                          <td>{fighter.wins} V · {fighter.losses} D · {fighter.draws} E</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>

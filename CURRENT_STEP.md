@@ -1,24 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `7.4`
+**Paso activo:** `8.1`
 **Estado:** pendiente
-**Título:** Añadir clasificación de alumnos
+**Título:** Añadir límites de peticiones
 
 ## Objetivo
 
-Añadir clasificación de alumnos.
+Añadir límites de peticiones.
 
 ## Permitido en este paso
 
-- Exponer la clasificación por conteo confirmado de alumnos.
+- Registro, login, creación de peleas y consultas sensibles.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.1 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 8.2 y posteriores.
 
 ## Criterios de aceptación
 
-- La fuente del conteo es consistente y no depende de valores manipulables del cliente.
+- exceso devuelve 429 y no deja el estado parcial inconsistente.
 
 ## Al terminar
 

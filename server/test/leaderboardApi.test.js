@@ -34,6 +34,16 @@ before(async () => {
   );
   userIds.push(...users.map((user) => user._id));
 
+  const students = await User.create(
+    [0, 1, 2, 3].map((index) => ({
+      username: `student_${runId.slice(0, 10)}_${index}`,
+      email: `student-${runId}-${index}@example.test`,
+      passwordHash: "not-a-real-password-hash",
+      referredByUserId: users[index < 2 ? 0 : 2]._id
+    }))
+  );
+  userIds.push(...students.map((student) => student._id));
+
   const fighters = await Fighter.create(
     users.map((user, index) => ({
       userId: user._id,
@@ -114,13 +124,38 @@ test("la clasificación pagina desde el servidor y limita parámetros", async ()
   assert.notEqual(firstPage.fighters[0].id, secondPage.fighters[0].id);
 
   for (const query of [
-    "?category=students",
     "?limit=51",
     "?page=0",
-    "?unexpected=value"
+    "?unexpected=value",
+    "?category=students&studentsCount=100"
   ]) {
     const response = await fetch(`${baseUrl}/api/v1/leaderboards${query}`);
     assert.equal(response.status, 400);
     assert.equal((await response.json()).error.code, "INVALID_LEADERBOARD_QUERY");
   }
+});
+
+test("la clasificación de alumnos cuenta las cuentas vinculadas y desempata por ID", async () => {
+  const response = await fetch(
+    `${baseUrl}/api/v1/leaderboards?category=students&limit=50`
+  );
+  const body = await response.json();
+  const ownFighters = body.fighters.filter(({ id }) =>
+    fighterIds.some((fighterId) => fighterId.toString() === id)
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    ownFighters.map(({ id, studentsCount }) => ({
+      id,
+      studentsCount
+    })),
+    [
+      { id: testFighters[0]._id.toString(), studentsCount: 2 },
+      { id: testFighters[2]._id.toString(), studentsCount: 2 },
+      { id: testFighters[1]._id.toString(), studentsCount: 0 }
+    ]
+  );
+  assert.ok(body.pagination.totalItems >= 3);
+  assert.doesNotMatch(JSON.stringify(body), /email|password|referralCode|userId/i);
 });

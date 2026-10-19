@@ -25,7 +25,7 @@ async function apiRequest(url) {
   return result
 }
 
-function readLeaderboard(result) {
+function readLeaderboard(result, category) {
   const { fighters, pagination } = result ?? {}
   const { page, limit, totalItems, totalPages } = pagination ?? {}
 
@@ -49,7 +49,11 @@ function readLeaderboard(result) {
       Number.isFinite(fighter.elo) &&
       Number.isFinite(fighter.wins) &&
       Number.isFinite(fighter.losses) &&
-      Number.isFinite(fighter.draws)
+      Number.isFinite(fighter.draws) &&
+      (
+        category !== 'students' ||
+        (Number.isSafeInteger(fighter.studentsCount) && fighter.studentsCount >= 0)
+      )
     )
   ) {
     throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
@@ -68,5 +72,5 @@ export async function fetchLeaderboard(category = 'elo', page = 1) {
     limit: String(PAGE_SIZE),
   })
 
-  return readLeaderboard(await apiRequest(`${LEADERBOARDS_URL}?${query}`))
+  return readLeaderboard(await apiRequest(`${LEADERBOARDS_URL}?${query}`), category)
 }

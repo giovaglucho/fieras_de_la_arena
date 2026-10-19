@@ -1,6 +1,6 @@
 import { validatePagination } from "./pagination.js";
 
-const ALLOWED_CATEGORIES = new Set(["elo", "level"]);
+const ALLOWED_CATEGORIES = new Set(["elo", "level", "students"]);
 const ALLOWED_FIELDS = new Set(["category", "page", "limit"]);
 
 export function validateLeaderboardQuery(query) {
