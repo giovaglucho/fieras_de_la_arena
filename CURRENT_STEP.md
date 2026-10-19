@@ -1,25 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `7.1`
+**Paso activo:** `7.2`
 **Estado:** pendiente
-**Título:** Crear generación y consulta de código de invitación
+**Título:** Aceptar invitación durante el registro
 
 ## Objetivo
 
-Crear generación y consulta de código de invitación.
+Aceptar invitación durante el registro.
 
 ## Permitido en este paso
 
-- Un código único por luchador y endpoint autenticado.
+- Validar código; registrar referente una única vez.
+- Prevenir referencias propias y ciclos triviales.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 7.3 y posteriores.
 
 ## Criterios de aceptación
 
-- códigos no duplicados y no editables mediante entrada de usuario.
+- Cuenta nueva se vincula correctamente y no puede cambiar de referente.
 
 ## Al terminar
 
-Informar los resultados y detenerse. No seleccionar ni implementar el paso siguiente automáticamente. El usuario actualizará este archivo cuando decida continuar.
+Informar los resultados y detenerse. No seleccionar ni implementar el paso siguiente automáticamente. El usuario decidirá cuándo continuar.

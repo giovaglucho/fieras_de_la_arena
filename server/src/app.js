@@ -8,6 +8,7 @@ import battlesRouter from "./routes/battles.js";
 import fightersRouter from "./routes/fighters.js";
 import leaderboardsRouter from "./routes/leaderboards.js";
 import profilesRouter from "./routes/profiles.js";
+import referralsRouter from "./routes/referrals.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use("/api/v1/fighters", fightersRouter);
 app.use("/api/v1/arena", arenaRouter);
 app.use("/api/v1/leaderboards", leaderboardsRouter);
 app.use("/api/v1/profiles", profilesRouter);
+app.use("/api/v1/referrals", referralsRouter);
 
 app.get("/api/v1/health", (request, response) => {
   const databaseConnected = isDatabaseConnected();

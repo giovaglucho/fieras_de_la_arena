@@ -103,6 +103,12 @@ async function getMyFighter(cookie) {
   });
 }
 
+async function getMyReferralCode(cookie) {
+  return fetch(`${baseUrl}/api/v1/referrals/me`, {
+    headers: { Cookie: cookie }
+  });
+}
+
 test("GET /fighters/me requiere una sesión", async () => {
   const response = await fetch(`${baseUrl}/api/v1/fighters/me`);
 
@@ -111,6 +117,25 @@ test("GET /fighters/me requiere una sesión", async () => {
     error: {
       code: "AUTHENTICATION_REQUIRED",
       message: "Debes iniciar sesión para acceder a este recurso."
+    }
+  });
+});
+
+test("GET /referrals/me requiere sesión y un luchador", async () => {
+  const unauthenticatedResponse = await fetch(`${baseUrl}/api/v1/referrals/me`);
+  assert.equal(unauthenticatedResponse.status, 401);
+  assert.equal(
+    (await unauthenticatedResponse.json()).error.code,
+    "AUTHENTICATION_REQUIRED"
+  );
+
+  const cookie = await login(1);
+  const response = await getMyReferralCode(cookie);
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: "FIGHTER_NOT_FOUND",
+      message: "Esta cuenta todavía no tiene un luchador."
     }
   });
 });
@@ -150,7 +175,8 @@ test("rechaza nombres inválidos y atributos enviados por el cliente", async () 
     { name: "Tramposo", level: 99 },
     { name: "Tramposo", elo: 999999 },
     { name: "Tramposo", baseStats: { health: 999999 } },
-    { name: "Tramposo", userId: userIds[1].toString() }
+    { name: "Tramposo", userId: userIds[1].toString() },
+    { name: "Tramposo", referralCode: "codigo-elegido-por-cliente" }
   ]) {
     const response = await createFighter(cookie, body);
 
@@ -218,6 +244,13 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   const storedFighter = await Fighter.findById(body.fighter.id);
   assert.equal(storedFighter.userId.toString(), userIds[0].toString());
   assert.equal(storedFighter.referralCode.length, 32);
+  assert.match(storedFighter.referralCode, /^[a-f0-9]{32}$/);
+
+  const referralCodeResponse = await getMyReferralCode(cookie);
+  assert.equal(referralCodeResponse.status, 200);
+  assert.deepEqual(await referralCodeResponse.json(), {
+    referralCode: storedFighter.referralCode
+  });
 
   const secondFighter = await createFighter(cookie, { name: "OtroNombre" });
   assert.equal(secondFighter.status, 409);
