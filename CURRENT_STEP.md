@@ -1,26 +1,30 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `3.5`
+**Paso activo:** `4.2`
 **Estado:** pendiente
-**Título:** Calcular estadísticas derivadas por nivel
+**Título:** Implementar simulación determinista
 
 ## Objetivo
 
-Centralizar en el servidor la fórmula de estadísticas derivadas por nivel para vida, ataque, defensa y velocidad.
+Semilla proporcionada, orden de actuación, daño y condición de finalización.
 
 ## Permitido en este paso
 
-- Centralizar la fórmula inicial de vida, ataque, defensa y velocidad en el servidor.
-- Añadir pruebas unitarias de valores representativos.
+- Semilla proporcionada.
+- Orden de actuación.
+- Daño.
+- Condición de finalización.
 
 ## Fuera de alcance
 
-- Implementar la subida de nivel y el cálculo de XP o ELO; corresponden a pasos posteriores de la hoja de ruta.
-- Implementar cualquier otra tarea posterior de la hoja de ruta.
+- Añadir pruebas de límites del motor para daño mínimo, orden de turno, fin por KO, máximo de acciones y empates; corresponde al paso 4.3 de la hoja de ruta.
+- Implementar cálculo de XP, nivel o ELO; corresponde al paso 4.4 de la hoja de ruta.
+- Implementar persistencia de combates o el caso de uso de combate; corresponden a los pasos 4.5 y 4.6 de la hoja de ruta.
+- Implementar arena, límite diario, matchmaking, interfaz u otras tareas posteriores de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- La misma entrada produce siempre las mismas estadísticas.
+- Misma entrada + misma semilla da mismo resultado y eventos.
 
 ## Al terminar
 
