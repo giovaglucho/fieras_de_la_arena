@@ -397,6 +397,7 @@ Control del límite diario.
 - `userId`
 - `dateKey` como fecha UTC en formato estable `YYYY-MM-DD`
 - `battlesUsed`
+- `requestIds` reservados ese día para no consumir más de un intento al repetir la misma solicitud
 - identificadores de las peleas aceptadas, cuando sea útil para idempotencia
 - `createdAt`, `updatedAt`
 
@@ -432,6 +433,7 @@ Estas rutas son el contrato objetivo, no una orden de implementarlas todas de in
 | `GET` | `/api/v1/fighters/me` | Sí | Obtener el luchador propio |
 | `GET` | `/api/v1/fighters/:id` | No | Ver perfil público por ID |
 | `GET` | `/api/v1/profiles/:username` | No | Ver perfil público por nombre de usuario |
+| `GET` | `/api/v1/arena/attempts` | Sí | Consultar intentos diarios restantes |
 | `POST` | `/api/v1/arena/fight` | Sí | Reservar intento y resolver un combate |
 | `GET` | `/api/v1/arena/history` | Sí | Listar combates propios con paginación |
 | `GET` | `/api/v1/battles/:id` | Condicional | Ver un combate si el solicitante es participante o el contenido es público |
@@ -446,6 +448,8 @@ Requisitos de API:
 - No aceptar `userId`, ELO, XP, nivel, ganador ni estadísticas finales desde el cliente como datos autoritativos.
 - Evitar respuestas que permitan enumerar correos o averiguar si una contraseña es correcta.
 - Comprobar permisos en servidor, no solo ocultar botones en React.
+
+`GET /api/v1/arena/attempts` devuelve `{ dateKey, limit, used, remaining }`, con el día calculado en UTC. `POST /api/v1/arena/fight` recibe únicamente `{ requestId }`; el rival y el resultado son decididos por el servidor. Repetir la misma clave para el mismo luchador devuelve el combate persistido sin consumir otro intento ni aplicar recompensas nuevamente. `GET /api/v1/arena/history` acepta `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`), y devuelve `{ battles, pagination: { page, limit, totalItems, totalPages } }` ordenado por fecha descendente.
 
 El registro acepta únicamente `username`, `email` y `password`. Un registro correcto devuelve HTTP 201 con `id`, `username` y `email` públicos, sin iniciar sesión. Los conflictos de nombre o correo devuelven el mismo error HTTP 409 para no distinguir cuál valor está ocupado.
 

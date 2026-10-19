@@ -2,6 +2,7 @@ import express from "express";
 import { isDatabaseConnected } from "./database.js";
 import { ApiError, errorHandler } from "./middleware/errorHandler.js";
 import sessionMiddleware from "./middleware/session.js";
+import arenaRouter from "./routes/arena.js";
 import authRouter from "./routes/auth.js";
 import fightersRouter from "./routes/fighters.js";
 import profilesRouter from "./routes/profiles.js";
@@ -12,6 +13,7 @@ app.use(express.json());
 app.use(sessionMiddleware);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/fighters", fightersRouter);
+app.use("/api/v1/arena", arenaRouter);
 app.use("/api/v1/profiles", profilesRouter);
 
 app.get("/api/v1/health", (request, response) => {

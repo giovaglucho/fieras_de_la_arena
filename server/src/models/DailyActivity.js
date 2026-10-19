@@ -18,6 +18,10 @@ const dailyActivitySchema = new mongoose.Schema(
       default: 0,
       min: 0,
       validate: Number.isInteger
+    },
+    requestIds: {
+      type: [{ type: String, minlength: 1, maxlength: 128 }],
+      default: []
     }
   },
   { timestamps: true }

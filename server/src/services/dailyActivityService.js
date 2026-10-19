@@ -11,34 +11,85 @@ function isDailyActivityDuplicateKeyError(error) {
   );
 }
 
-function createReservationResult(activity, dateKey) {
-  const battlesUsed = activity?.battlesUsed ?? DAILY_BATTLE_LIMIT;
+function getDateKey(now) {
+  return now.toISOString().slice(0, 10);
+}
+
+function validateDate(now) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
+    throw new TypeError("now must be a valid Date.");
+  }
+}
+
+function validateUserId(userId) {
+  if (!mongoose.isObjectIdOrHexString(userId)) {
+    throw new TypeError("userId must be a valid MongoDB ObjectId.");
+  }
+}
+
+function createReservationResult(
+  activity,
+  dateKey,
+  { reserved = false, alreadyReserved = false } = {}
+) {
+  const battlesUsed = activity?.battlesUsed ?? 0;
   return {
-    reserved: Boolean(activity),
+    reserved,
+    alreadyReserved,
     dateKey,
     battlesUsed,
     remaining: DAILY_BATTLE_LIMIT - battlesUsed
   };
 }
 
-export async function reserveDailyAttempt(userId, now = new Date()) {
-  if (!mongoose.isObjectIdOrHexString(userId)) {
-    throw new TypeError("userId must be a valid MongoDB ObjectId.");
-  }
-  if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
-    throw new TypeError("now must be a valid Date.");
+export async function getDailyAttempts(userId, now = new Date()) {
+  validateUserId(userId);
+  validateDate(now);
+
+  const dateKey = getDateKey(now);
+  const activity = await DailyActivity.findOne({ userId, dateKey })
+    .select("battlesUsed")
+    .lean();
+  const battlesUsed = activity?.battlesUsed ?? 0;
+
+  return {
+    dateKey,
+    limit: DAILY_BATTLE_LIMIT,
+    used: battlesUsed,
+    remaining: DAILY_BATTLE_LIMIT - battlesUsed
+  };
+}
+
+export async function reserveDailyAttempt(userId, now = new Date(), requestId) {
+  validateUserId(userId);
+  validateDate(now);
+  if (
+    requestId !== undefined &&
+    (typeof requestId !== "string" ||
+      requestId.length === 0 ||
+      requestId.length > 128 ||
+      requestId.trim() !== requestId ||
+      /[\u0000-\u001f\u007f]/.test(requestId))
+  ) {
+    throw new TypeError("requestId must be a valid idempotency key.");
   }
 
-  const dateKey = now.toISOString().slice(0, 10);
+  const dateKey = getDateKey(now);
   const filter = {
     userId,
     dateKey,
     battlesUsed: { $lt: DAILY_BATTLE_LIMIT }
   };
+  if (requestId !== undefined) {
+    filter.requestIds = { $ne: requestId };
+  }
   const update = {
     $inc: { battlesUsed: 1 },
     $setOnInsert: { userId, dateKey }
   };
+  if (requestId !== undefined) {
+    update.$addToSet = { requestIds: requestId };
+  }
   const options = {
     returnDocument: "after",
     runValidators: true,
@@ -47,7 +98,9 @@ export async function reserveDailyAttempt(userId, now = new Date()) {
 
   try {
     const activity = await DailyActivity.findOneAndUpdate(filter, update, options);
-    return createReservationResult(activity, dateKey);
+    if (activity) {
+      return createReservationResult(activity, dateKey, { reserved: true });
+    }
   } catch (error) {
     if (!isDailyActivityDuplicateKeyError(error)) {
       throw error;
@@ -58,6 +111,18 @@ export async function reserveDailyAttempt(userId, now = new Date()) {
       update,
       { ...options, upsert: false }
     );
-    return createReservationResult(activity, dateKey);
+    if (activity) {
+      return createReservationResult(activity, dateKey, { reserved: true });
+    }
   }
+
+  const activity = await DailyActivity.findOne({ userId, dateKey }).lean();
+  if (requestId !== undefined && activity?.requestIds?.includes(requestId)) {
+    return createReservationResult(activity, dateKey, {
+      reserved: true,
+      alreadyReserved: true
+    });
+  }
+
+  return createReservationResult(activity, dateKey);
 }

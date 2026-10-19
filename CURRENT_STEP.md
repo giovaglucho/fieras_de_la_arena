@@ -1,26 +1,26 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `5.4`
+**Paso activo:** `5.5`
 **Estado:** pendiente
-**Título:** Exponer endpoints de arena e historial
+**Título:** Crear pantalla Arena
 
 ## Objetivo
 
-Exponer endpoints de arena e historial.
+Crear pantalla Arena.
 
 ## Permitido en este paso
 
-- Consultar intentos restantes, iniciar combate y listar historial con paginación.
+- Mostrar intentos restantes y un botón que inicie la pelea.
+- Controlar doble clic, espera, error y confirmación.
 
 ## Fuera de alcance
 
-- Crear la pantalla Arena; corresponde al paso 5.5.
 - Crear la pantalla de resultado y eventos; corresponde al paso 5.6.
 - Crear el historial de combates; corresponde al paso 5.7.
 
 ## Criterios de aceptación
 
-- Validación, autorización, límite diario e idempotencia comprobados con pruebas API.
+- El estado visual coincide con la respuesta del servidor y no se inventan resultados.
 
 ## Al terminar
 

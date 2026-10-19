@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import DailyActivity from "../src/models/DailyActivity.js";
 import {
   DAILY_BATTLE_LIMIT,
+  getDailyAttempts,
   reserveDailyAttempt
 } from "../src/services/dailyActivityService.js";
 
@@ -49,6 +50,34 @@ test("reserva como máximo tres intentos ante solicitudes simultáneas", async (
   );
   assert.equal(activity.battlesUsed, DAILY_BATTLE_LIMIT);
   assert.ok(results.every(({ remaining }) => remaining >= 0));
+});
+
+test("repetir una clave idempotente reserva un solo intento", async () => {
+  const requestId = `daily-${userIds[0]}`;
+
+  const results = await Promise.all(
+    Array.from({ length: 5 }, () =>
+      reserveDailyAttempt(userIds[0], new Date(), requestId)
+    )
+  );
+  const activity = await DailyActivity.findOne({ userId: userIds[0] });
+
+  assert.ok(results.every(({ reserved }) => reserved));
+  assert.equal(results.filter(({ alreadyReserved }) => !alreadyReserved).length, 1);
+  assert.equal(activity.battlesUsed, 1);
+  assert.deepEqual(activity.requestIds, [requestId]);
+});
+
+test("consulta intentos disponibles sin crear actividad para una fecha nueva", async () => {
+  const now = new Date("2026-10-19T12:00:00.000Z");
+
+  assert.deepEqual(await getDailyAttempts(userIds[0], now), {
+    dateKey: "2026-10-19",
+    limit: DAILY_BATTLE_LIMIT,
+    used: 0,
+    remaining: DAILY_BATTLE_LIMIT
+  });
+  assert.equal(await DailyActivity.countDocuments({ userId: userIds[0] }), 0);
 });
 
 test("calcula la fecha UTC y reinicia el límite al cambiar el día UTC", async () => {
