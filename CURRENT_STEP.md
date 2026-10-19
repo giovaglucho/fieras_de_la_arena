@@ -1,7 +1,7 @@
 # Paso activo de desarrollo
 
 **Paso activo:** `5.7`
-**Estado:** pendiente
+**Estado:** completado
 **Título:** Crear historial de combates
 
 ## Objetivo

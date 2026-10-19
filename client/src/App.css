@@ -374,6 +374,93 @@
   line-height: 1.5;
 }
 
+.battle-history-card {
+  width: min(100%, 44rem);
+}
+
+.battle-history-card h1 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 7vw, 2.5rem);
+  letter-spacing: -0.035em;
+}
+
+.battle-history__navigation,
+.battle-history__message,
+.battle-history__list,
+.battle-history__entry {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.battle-history__navigation .button,
+.battle-history__message .button {
+  width: 100%;
+}
+
+.battle-history__message > * {
+  margin: 0;
+}
+
+.battle-history__message > p:not(.request-error) {
+  color: var(--color-muted);
+}
+
+.battle-history__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.battle-history__entry {
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 11%);
+  border-radius: 0.45rem;
+  background: rgb(33 25 21 / 65%);
+  color: inherit;
+  text-decoration: none;
+}
+
+.battle-history__entry:hover {
+  border-color: rgb(225 154 114 / 60%);
+  background: rgb(42 31 25 / 92%);
+}
+
+.battle-history__entry:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.battle-history__entry-heading,
+.battle-history__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.battle-history__entry .battle-result__outcome {
+  font-size: 1rem;
+}
+
+.battle-history__type,
+.battle-history__details,
+.battle-history__date,
+.battle-history__pagination > span {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+.battle-history__opponent {
+  color: var(--color-paper);
+  overflow-wrap: anywhere;
+}
+
+.battle-history__pagination .button {
+  width: auto;
+}
+
 .battle-result-card {
   display: grid;
   width: min(100%, 44rem);
@@ -651,6 +738,15 @@
 
   .battle-result__metrics {
     grid-template-columns: 1fr;
+  }
+
+  .battle-history__pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .battle-history__pagination .button {
+    width: 100%;
   }
 
   .back-link {

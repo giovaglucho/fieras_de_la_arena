@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { fetchArenaAttempts, fetchBattle, startArenaFight } from './api/arena.js'
+import { fetchArenaAttempts, fetchBattle, fetchBattleHistory, startArenaFight } from './api/arena.js'
 import { registerUser } from './api/auth.js'
 import { createFighter, fetchMyFighter, fetchPublicProfile } from './api/fighters.js'
 import { useSession } from './context/SessionContext.jsx'
@@ -617,6 +617,7 @@ function DashboardPage() {
         <section className="session-card fighter-dashboard__actions" aria-label="Acciones de cuenta">
           {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
           <Link className="button button--primary" to="/arena">Entrar a la Arena</Link>
+          <Link className="button button--secondary" to="/history">Ver historial de combates</Link>
           <button
             className="button button--secondary"
             type="button"
@@ -770,6 +771,167 @@ function ArenaPage() {
   )
 }
 
+function BattleHistoryPage() {
+  const [fighter, setFighter] = useState(null)
+  const [history, setHistory] = useState(null)
+  const [page, setPage] = useState(1)
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [reloadVersion, setReloadVersion] = useState(0)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    setStatus('loading')
+    setError('')
+    setHistory(null)
+
+    Promise.all([fetchBattleHistory(page), fetchMyFighter()])
+      .then(([loadedHistory, loadedFighter]) => {
+        if (!isCurrent) {
+          return
+        }
+
+        if (!loadedFighter) {
+          throw new Error('No se encontró el luchador de esta cuenta.')
+        }
+
+        if (
+          loadedHistory.battles.some(
+            (battle) => !battle.participants.some(({ fighter: participant }) => participant.id === loadedFighter.id),
+          )
+        ) {
+          throw new Error('El historial contiene un combate que no pertenece a tu luchador.')
+        }
+
+        setHistory(loadedHistory)
+        setFighter(loadedFighter)
+        setStatus('ready')
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setError(requestError.message)
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [page, reloadVersion])
+
+  return (
+    <main className="session-layout">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+        <span className="brand__mark" aria-hidden="true">FA</span>
+        <span>Fieras <span className="brand__muted">de la Arena</span></span>
+      </Link>
+
+      <section className="session-card battle-history-card" aria-labelledby="battle-history-title">
+        <div className="battle-history__navigation">
+          <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
+          <Link className="button button--secondary" to="/arena">Ir a la Arena</Link>
+        </div>
+        <p className="eyebrow">Tus combates guardados</p>
+        <h1 id="battle-history-title">Historial de combates</h1>
+
+        {status === 'loading' ? (
+          <p className="battle-history__message" role="status">Cargando tu historial…</p>
+        ) : status === 'error' ? (
+          <div className="battle-history__message">
+            <p className="request-error" role="alert">{error}</p>
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={() => setReloadVersion((version) => version + 1)}
+            >
+              Intentar de nuevo
+            </button>
+          </div>
+        ) : history.pagination.totalItems === 0 ? (
+          <div className="battle-history__message">
+            <p>Aún no tienes combates registrados.</p>
+            <Link className="button button--primary" to="/arena">Iniciar un combate</Link>
+          </div>
+        ) : history.battles.length === 0 ? (
+          <div className="battle-history__message">
+            <p>No hay combates en esta página.</p>
+          </div>
+        ) : (
+          <>
+            <ol className="battle-history__list">
+              {history.battles.map((battle) => {
+                const ownParticipant = battle.participants.find(
+                  ({ fighter: participant }) => participant.id === fighter.id,
+                )
+                const opponentParticipant = battle.participants.find(
+                  ({ fighter: participant }) => participant.id !== fighter.id,
+                )
+                const isDraw = battle.winnerFighterId === null
+                const isVictory = battle.winnerFighterId === fighter.id
+                const outcome = isDraw ? 'Empate' : isVictory ? 'Victoria' : 'Derrota'
+                const outcomeStyle = isDraw ? 'draw' : isVictory ? 'win' : 'loss'
+
+                return (
+                  <li className="battle-history__item" key={battle.id}>
+                    <Link className="battle-history__entry" to={`/battles/${battle.id}`}>
+                      <div className="battle-history__entry-heading">
+                        <span className={`battle-result__outcome battle-result__outcome--${outcomeStyle}`}>
+                          {outcome}
+                        </span>
+                        <span className="battle-history__type">
+                          {battle.battleType === 'training' ? 'Entrenamiento' : 'PvP'}
+                        </span>
+                      </div>
+                      <strong className="battle-history__opponent">
+                        Rival: {opponentParticipant.fighter.name}
+                      </strong>
+                      <span className="battle-history__details">
+                        Nivel {opponentParticipant.fighter.level} · ELO {opponentParticipant.fighter.elo}
+                      </span>
+                      <span className="battle-history__details">
+                        +{ownParticipant.result.xpGained} XP · ELO {ownParticipant.result.eloChange > 0 ? '+' : ''}
+                        {ownParticipant.result.eloChange}
+                      </span>
+                      <time className="battle-history__date" dateTime={battle.createdAt}>
+                        {new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })
+                          .format(new Date(battle.createdAt))}
+                      </time>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ol>
+
+            <nav className="battle-history__pagination" aria-label="Páginas del historial">
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+                disabled={history.pagination.page <= 1}
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">
+                Página {history.pagination.page} de {history.pagination.totalPages}
+              </span>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+                disabled={history.pagination.page >= history.pagination.totalPages}
+              >
+                Siguiente
+              </button>
+            </nav>
+          </>
+        )}
+      </section>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+    </main>
+  )
+}
+
 function formatBattleEvent(event, fighterNames) {
   const fighterName = (fighterId) => fighterNames.get(fighterId) ?? 'luchador desconocido'
 
@@ -875,6 +1037,7 @@ function BattleResultPage() {
       ) : (
         <article className="session-card battle-result-card" aria-labelledby="battle-result-title">
           <Link className="button button--secondary" to="/arena">Volver a la Arena</Link>
+          <Link className="button button--secondary" to="/history">Ver historial de combates</Link>
           <p className="eyebrow">
             {battle.battleType === 'training' ? 'Combate de entrenamiento' : 'Combate PvP'}
           </p>
@@ -998,6 +1161,7 @@ function App() {
         <Route element={<FighterStatusRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/arena" element={<ArenaPage />} />
+          <Route path="/history" element={<BattleHistoryPage />} />
           <Route path="/battles/:id" element={<BattleResultPage />} />
         </Route>
         <Route element={<FighterStatusRoute needsCreation />}>

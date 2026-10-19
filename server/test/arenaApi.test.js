@@ -236,6 +236,26 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
   assert.equal(secondResponse.status, 201);
   assert.equal(thirdResponse.status, 201);
 
+  const outsiderSuffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const outsider = await User.create({
+    username: `outsider_${outsiderSuffix}`,
+    email: `outsider-${outsiderSuffix}@example.test`,
+    passwordHash
+  });
+  userIds.add(outsider._id);
+  const outsiderFighter = await Fighter.create({
+    userId: outsider._id,
+    name: `b${outsiderSuffix}`,
+    referralCode: `outsider-${outsiderSuffix}`
+  });
+  fighterIds.add(outsiderFighter._id);
+  const outsiderCookie = await login(outsider);
+  const outsiderFightResponse = await postFight(outsiderCookie, {
+    requestId: `outsider-${runId}`
+  });
+  const outsiderBattle = (await outsiderFightResponse.json()).battle;
+  assert.equal(outsiderFightResponse.status, 201);
+
   const exhaustedResponse = await postFight(cookie, { requestId: `arena-${runId}-4` });
   assert.equal(exhaustedResponse.status, 429);
   assert.equal(
@@ -273,6 +293,27 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
     ]).size,
     3
   );
+  const listedBattles = [...firstPage.battles, ...secondPage.battles];
+  const sortedBattles = [...listedBattles].sort((left, right) => {
+    const dateDifference = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+    if (dateDifference !== 0) {
+      return dateDifference;
+    }
+    return right.id > left.id ? 1 : right.id < left.id ? -1 : 0;
+  });
+  assert.deepEqual(
+    listedBattles.map(({ id }) => id),
+    sortedBattles.map(({ id }) => id)
+  );
+  assert.equal(listedBattles.some(({ id }) => id === outsiderBattle.id), false);
+
+  const outsiderHistoryResponse = await fetch(
+    `${baseUrl}/api/v1/arena/history`,
+    { headers: { Cookie: outsiderCookie } }
+  );
+  const outsiderHistory = await outsiderHistoryResponse.json();
+  assert.equal(outsiderHistoryResponse.status, 200);
+  assert.deepEqual(outsiderHistory.battles.map(({ id }) => id), [outsiderBattle.id]);
 });
 
 test("el detalle de combate requiere sesión y solo está disponible para participantes", async () => {
