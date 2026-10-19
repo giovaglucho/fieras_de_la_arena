@@ -1,24 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `5.6`
+**Paso activo:** `5.7`
 **Estado:** pendiente
-**Título:** Crear pantalla de resultado y eventos
+**Título:** Crear historial de combates
 
 ## Objetivo
 
-Crear pantalla de resultado y eventos.
+Crear historial de combates.
 
 ## Permitido en este paso
 
-- Mostrar rival, resultado, XP, cambio ELO y secuencia de acciones.
+- Lista paginada y acceso al detalle.
 
 ## Fuera de alcance
 
-- Crear el historial de combates; corresponde al paso 5.7.
+- Crear el endpoint de clasificación; corresponde al paso 6.1.
 
 ## Criterios de aceptación
 
-- Refleja el registro persistido; recargar la página no cambia el resultado.
+- Registros del jugador correcto, orden consistente y estados vacío/carga/error.
 
 ## Al terminar
 

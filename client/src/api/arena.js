@@ -1,10 +1,10 @@
 const ARENA_URL = '/api/v1/arena'
 
-async function arenaRequest(path, options = {}) {
+async function apiRequest(url, options = {}) {
   let response
 
   try {
-    response = await fetch(`${ARENA_URL}${path}`, {
+    response = await fetch(url, {
       credentials: 'include',
       ...options,
     })
@@ -29,6 +29,10 @@ async function arenaRequest(path, options = {}) {
   return result
 }
 
+function arenaRequest(path, options = {}) {
+  return apiRequest(`${ARENA_URL}${path}`, options)
+}
+
 function readAttempts(result) {
   const { dateKey, limit, used, remaining } = result ?? {}
 
@@ -49,6 +53,40 @@ function readAttempts(result) {
   return { dateKey, limit, used, remaining }
 }
 
+function readBattle(result) {
+  const battle = result?.battle
+  const hasValidParticipants =
+    Array.isArray(battle?.participants) &&
+    battle.participants.length === 2 &&
+    battle.participants.every(({ fighter, result: participantResult }) =>
+      typeof fighter?.id === 'string' &&
+      typeof fighter.name === 'string' &&
+      Number.isFinite(fighter.level) &&
+      Number.isFinite(fighter.elo) &&
+      Number.isFinite(participantResult?.xpGained) &&
+      Number.isFinite(participantResult?.eloChange) &&
+      Number.isFinite(participantResult?.eloAfter)
+    )
+
+  if (
+    !battle ||
+    typeof battle.id !== 'string' ||
+    !battle.id ||
+    !['pvp', 'training'].includes(battle.battleType) ||
+    typeof battle.createdAt !== 'string' ||
+    !Number.isSafeInteger(battle.actionCount) ||
+    (battle.winnerFighterId !== null && typeof battle.winnerFighterId !== 'string') ||
+    !hasValidParticipants ||
+    !Array.isArray(battle.events) ||
+    battle.events.length === 0 ||
+    !battle.events.every((event) => event && typeof event.type === 'string')
+  ) {
+    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
+  }
+
+  return battle
+}
+
 export async function fetchArenaAttempts() {
   return readAttempts(await arenaRequest('/attempts'))
 }
@@ -59,11 +97,10 @@ export async function startArenaFight(requestId) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestId }),
   })
-  const battle = result?.battle
 
-  if (!battle || typeof battle.id !== 'string' || !battle.id) {
-    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
-  }
+  return readBattle(result)
+}
 
-  return battle
+export async function fetchBattle(battleId) {
+  return readBattle(await apiRequest(`/api/v1/battles/${encodeURIComponent(battleId)}`))
 }

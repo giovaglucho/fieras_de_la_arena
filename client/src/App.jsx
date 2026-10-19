@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { fetchArenaAttempts, startArenaFight } from './api/arena.js'
+import { fetchArenaAttempts, fetchBattle, startArenaFight } from './api/arena.js'
 import { registerUser } from './api/auth.js'
 import { createFighter, fetchMyFighter, fetchPublicProfile } from './api/fighters.js'
 import { useSession } from './context/SessionContext.jsx'
@@ -633,6 +633,7 @@ function DashboardPage() {
 }
 
 function ArenaPage() {
+  const navigate = useNavigate()
   const [attempts, setAttempts] = useState(null)
   const [attemptStatus, setAttemptStatus] = useState('loading')
   const [attemptError, setAttemptError] = useState('')
@@ -689,15 +690,15 @@ function ArenaPage() {
         requestId.current = crypto.randomUUID()
       }
 
-      await startArenaFight(requestId.current)
+      const battle = await startArenaFight(requestId.current)
       requestId.current = null
-      setFightStatus('success')
+      navigate(`/battles/${battle.id}`)
     } catch (error) {
       setFightError(error.message)
       setFightStatus('error')
+      setReloadAttemptsVersion((version) => version + 1)
     } finally {
       fightInProgress.current = false
-      setReloadAttemptsVersion((version) => version + 1)
     }
   }
 
@@ -747,11 +748,6 @@ function ArenaPage() {
           )}
         </div>
 
-        {fightStatus === 'success' && (
-          <p className="arena-message arena-message--success" role="status" aria-live="polite">
-            El servidor confirmó y registró tu combate.
-          </p>
-        )}
         {fightStatus === 'error' && (
           <p className="request-error" role="alert">{fightError}</p>
         )}
@@ -769,6 +765,166 @@ function ArenaPage() {
               : 'Iniciar combate'}
         </button>
       </section>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+    </main>
+  )
+}
+
+function formatBattleEvent(event, fighterNames) {
+  const fighterName = (fighterId) => fighterNames.get(fighterId) ?? 'luchador desconocido'
+
+  switch (event.type) {
+    case 'combat_started':
+      return '¡Comienza el combate!'
+    case 'attack':
+      return `Acción ${event.actionNumber}: ${fighterName(event.attackerFighterId)} ataca a ${fighterName(event.targetFighterId)}.`
+    case 'damage':
+      return `${fighterName(event.targetFighterId)} recibe ${event.amount} de daño y conserva ${event.remainingHealth} de vida.`
+    case 'fighter_defeated':
+      return `${fighterName(event.fighterId)} queda fuera de combate.`
+    case 'combat_finished':
+      return event.winnerFighterId
+        ? `${fighterName(event.winnerFighterId)} gana el combate.`
+        : 'El combate termina en empate.'
+    default:
+      return `Evento no compatible con esta versión del motor: ${event.type}.`
+  }
+}
+
+function BattleResultPage() {
+  const { id } = useParams()
+  const [battle, setBattle] = useState(null)
+  const [fighter, setFighter] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [reloadVersion, setReloadVersion] = useState(0)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    setStatus('loading')
+    setError('')
+
+    Promise.all([fetchBattle(id), fetchMyFighter()])
+      .then(([loadedBattle, loadedFighter]) => {
+        if (!isCurrent) {
+          return
+        }
+
+        if (
+          !loadedFighter ||
+          !loadedBattle.participants.some(({ fighter: participant }) => participant.id === loadedFighter.id)
+        ) {
+          throw new Error('El registro del combate no incluye a tu luchador.')
+        }
+
+        setBattle(loadedBattle)
+        setFighter(loadedFighter)
+        setStatus('ready')
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setError(requestError.message)
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [id, reloadVersion])
+
+  const ownParticipant = battle?.participants.find(
+    ({ fighter: participant }) => participant.id === fighter?.id,
+  )
+  const opponentParticipant = battle?.participants.find(
+    ({ fighter: participant }) => participant.id !== fighter?.id,
+  )
+  const isDraw = battle?.winnerFighterId === null
+  const isVictory = battle?.winnerFighterId === fighter?.id
+  const fighterNames = new Map(
+    battle?.participants.map(({ fighter: participant }) => [participant.id, participant.name]) ?? [],
+  )
+  const outcome = isDraw ? 'Empate' : isVictory ? '¡Victoria!' : 'Derrota'
+  const outcomeStyle = isDraw ? 'draw' : isVictory ? 'win' : 'loss'
+
+  return (
+    <main className="session-layout">
+      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+        <span className="brand__mark" aria-hidden="true">FA</span>
+        <span>Fieras <span className="brand__muted">de la Arena</span></span>
+      </Link>
+
+      {status === 'loading' ? (
+        <section className="session-card battle-result-card" role="status">
+          Cargando el resultado guardado…
+        </section>
+      ) : status === 'error' ? (
+        <section className="session-card battle-result-card" aria-labelledby="battle-error-title">
+          <h1 id="battle-error-title">No se pudo cargar el combate</h1>
+          <p className="request-error" role="alert">{error}</p>
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => setReloadVersion((version) => version + 1)}
+          >
+            Intentar de nuevo
+          </button>
+          <Link className="button button--secondary" to="/arena">Volver a la Arena</Link>
+        </section>
+      ) : (
+        <article className="session-card battle-result-card" aria-labelledby="battle-result-title">
+          <Link className="button button--secondary" to="/arena">Volver a la Arena</Link>
+          <p className="eyebrow">
+            {battle.battleType === 'training' ? 'Combate de entrenamiento' : 'Combate PvP'}
+          </p>
+          <p className={`battle-result__outcome battle-result__outcome--${outcomeStyle}`}>
+            {outcome}
+          </p>
+          <h1 id="battle-result-title">{opponentParticipant.fighter.name}</h1>
+          <p className="auth-intro">
+            Rival · Nivel {opponentParticipant.fighter.level} · ELO {opponentParticipant.fighter.elo}
+          </p>
+          <p className="battle-result__date">
+            <time dateTime={battle.createdAt}>
+              {new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })
+                .format(new Date(battle.createdAt))}
+            </time>
+          </p>
+
+          <dl className="battle-result__metrics">
+            <div>
+              <dt>Experiencia obtenida</dt>
+              <dd>+{ownParticipant.result.xpGained} XP</dd>
+            </div>
+            <div>
+              <dt>Cambio de ELO</dt>
+              <dd>{ownParticipant.result.eloChange > 0 ? '+' : ''}{ownParticipant.result.eloChange}</dd>
+            </div>
+            <div>
+              <dt>ELO actual</dt>
+              <dd>{ownParticipant.result.eloAfter}</dd>
+            </div>
+            <div>
+              <dt>Acciones</dt>
+              <dd>{battle.actionCount}</dd>
+            </div>
+          </dl>
+
+          <section className="battle-events" aria-labelledby="battle-events-title">
+            <h2 id="battle-events-title">Secuencia del combate</h2>
+            <ol>
+              {battle.events.map((event, index) => (
+                <li key={`${event.type}-${index}`}>
+                  {formatBattleEvent(event, fighterNames)}
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <p className="battle-result__version">Motor de combate {battle.engineVersion}</p>
+        </article>
+      )}
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
   )
@@ -842,6 +998,7 @@ function App() {
         <Route element={<FighterStatusRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/arena" element={<ArenaPage />} />
+          <Route path="/battles/:id" element={<BattleResultPage />} />
         </Route>
         <Route element={<FighterStatusRoute needsCreation />}>
           <Route path="/create-fighter" element={<CreateFighterPage />} />

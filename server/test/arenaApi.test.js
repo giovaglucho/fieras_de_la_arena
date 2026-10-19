@@ -208,6 +208,13 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
   assert.equal(firstBody.battle.participants.length, 2);
   assert.ok(firstBody.battle.events.length > 0);
 
+  const detailResponse = await fetch(
+    `${baseUrl}/api/v1/battles/${firstBody.battle.id}`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(detailResponse.status, 200);
+  assert.deepEqual((await detailResponse.json()).battle, firstBody.battle);
+
   const repeatedResponse = await postFight(cookie, request);
   const repeatedBody = await repeatedResponse.json();
   assert.equal(repeatedResponse.status, 200);
@@ -266,4 +273,44 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
     ]).size,
     3
   );
+});
+
+test("el detalle de combate requiere sesión y solo está disponible para participantes", async () => {
+  const anonymousResponse = await fetch(
+    `${baseUrl}/api/v1/battles/${new mongoose.Types.ObjectId()}`
+  );
+  assert.equal(anonymousResponse.status, 401);
+
+  const fightResponse = await postFight(cookie, { requestId: `detail-${runId}` });
+  const { battle } = await fightResponse.json();
+  assert.equal(fightResponse.status, 201);
+
+  for (const battleId of ["invalid-id", new mongoose.Types.ObjectId().toString()]) {
+    const missingResponse = await fetch(`${baseUrl}/api/v1/battles/${battleId}`, {
+      headers: { Cookie: cookie }
+    });
+    assert.equal(missingResponse.status, 404);
+    assert.equal((await missingResponse.json()).error.code, "BATTLE_NOT_FOUND");
+  }
+
+  const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const outsider = await User.create({
+    username: `outsider_${suffix}`,
+    email: `outsider-${suffix}@example.test`,
+    passwordHash
+  });
+  userIds.add(outsider._id);
+  const outsiderFighter = await Fighter.create({
+    userId: outsider._id,
+    name: `b${suffix}`,
+    referralCode: `outsider-${suffix}`
+  });
+  fighterIds.add(outsiderFighter._id);
+  const outsiderCookie = await login(outsider);
+  const deniedResponse = await fetch(`${baseUrl}/api/v1/battles/${battle.id}`, {
+    headers: { Cookie: outsiderCookie }
+  });
+
+  assert.equal(deniedResponse.status, 404);
+  assert.equal((await deniedResponse.json()).error.code, "BATTLE_NOT_FOUND");
 });
