@@ -54,12 +54,18 @@ El MVP se considera terminado cuando una persona puede:
 - Compartir un enlace de invitación para incorporar alumnos.
 - Usar el juego desde escritorio y móvil sin romper la interfaz.
 
+El MVP vigente comenzó con un luchador por cuenta y selección automática de rival. Esas dos restricciones describen la versión ya construida, no el contrato de la expansión: la etapa 10 las sustituye por varios luchadores por cuenta y desafíos dirigidos por el jugador, según las reglas de la sección 4.8. No se borran ni reinician los datos existentes.
+
 ### 2.2 Después del MVP
 
 Estas funciones se diseñan desde el inicio para poder incorporarlas, pero no se implementan antes de que el MVP esté validado:
 
 - Armas, armaduras, mascotas y habilidades desbloqueables.
 - Elecciones de evolución al subir de nivel.
+- Varios luchadores por cuenta, selección del luchador propio activo y perfiles privados opcionales.
+- Desafíos dirigidos a luchadores públicos elegidos por el jugador.
+- Atributos iniciales aleatorios y progresión aleatoria reproducible.
+- Dojos con relaciones de maestro y aprendiz.
 - Logros, misiones y recompensas por temporada.
 - Eventos temporales y temporadas competitivas.
 - Herramientas administrativas y moderación ampliada.
@@ -92,13 +98,13 @@ No se debe implementar nada de esta sección durante el MVP, aunque parezca fác
 
 ### 3.2 Ciclo habitual de juego
 
-1. Abrir el panel del luchador.
-2. Consultar nivel, experiencia, ELO, peleas disponibles y últimos resultados.
-3. Entrar a la arena e iniciar un combate.
-4. El servidor valida el límite diario, selecciona al oponente, ejecuta la simulación y guarda el resultado.
+1. Abrir el panel del luchador activo; cambiar a otro luchador propio cuando se desee.
+2. Consultar nivel, experiencia, ELO, peleas disponibles y últimos resultados del luchador activo.
+3. Entrar a la arena, elegir un luchador público disponible y desafiarlo.
+4. El servidor valida propiedad, privacidad, estado, rango, repetición y cupo diario; después ejecuta la simulación y guarda el resultado.
 5. El cliente muestra el combate y su resultado.
-6. Las recompensas válidas actualizan experiencia, nivel y ELO.
-7. La persona puede consultar su historial, otros perfiles y la clasificación.
+6. Las recompensas válidas actualizan experiencia, nivel, ELO y, cuando corresponda, los desbloqueos del luchador participante.
+7. La persona puede consultar su historial, otros perfiles públicos y la clasificación; los luchadores privados solo son visibles para su dueño.
 
 ### 3.3 Alumnos e invitaciones
 
@@ -121,13 +127,13 @@ La interfaz debe comunicar con claridad, sin mostrar errores técnicos internos:
 
 ---
 
-## 4. Reglas de juego del MVP
+## 4. Reglas de juego
 
-Los valores de balance de esta sección son **valores iniciales configurables**, no constantes repartidas por los componentes. Deben vivir en un módulo de configuración del servidor y modificarse mediante cambios explícitos y testeados.
+Las secciones 4.1–4.7 describen las reglas y valores iniciales del MVP. Cuando una regla se contradiga con la sección 4.8, se conserva como comportamiento del MVP y la regla de 4.8 es el contrato de la expansión de la etapa 10. Los valores de balance son configurables en el servidor y solo se modifican mediante cambios explícitos y probados.
 
-### 4.1 Luchador inicial
+### 4.1 Luchador inicial del MVP
 
-Cada cuenta puede crear un único luchador en el MVP.
+En el MVP vigente cada cuenta puede crear un único luchador. Esa restricción queda sustituida para la expansión por el ciclo de vida descrito en 4.8.
 
 Campos de diseño iniciales:
 
@@ -141,7 +147,7 @@ Campos de diseño iniciales:
 
 La validación del nombre se realiza tanto en cliente para dar respuesta rápida como en servidor para garantizar integridad. La validación del servidor es la autoridad.
 
-### 4.2 Límite diario
+### 4.2 Límite diario del MVP
 
 - Cada cuenta dispone inicialmente de **3 intentos de arena por día**.
 - El día se calcula usando UTC, no la zona horaria del navegador.
@@ -150,9 +156,9 @@ La validación del nombre se realiza tanto en cliente para dar respuesta rápida
 - El cliente muestra los intentos restantes, pero no los calcula como autoridad.
 - Cambiar la fecha o el reloj del navegador no debe permitir combates adicionales.
 
-El valor 3 se podrá cambiar por configuración sin modificar la lógica de la interfaz.
+El valor 3 se podrá cambiar por configuración sin modificar la lógica de la interfaz. Para la expansión, la cuota aprobada es por luchador y se define en 4.8; no se acumula ni comparte entre luchadores de una cuenta.
 
-### 4.3 Selección de oponente
+### 4.3 Selección de oponente del MVP
 
 - El servidor busca un luchador activo que no sea el propio jugador y que tenga un ELO parecido.
 - Rango inicial sugerido: ±200 ELO; si no se encuentra oponente, se amplía progresivamente hasta un límite definido.
@@ -160,6 +166,8 @@ El valor 3 se podrá cambiar por configuración sin modificar la lógica de la i
 - Si no hay contrincantes reales disponibles, se puede ofrecer un rival de entrenamiento controlado por el servidor.
 - Las peleas contra rivales de entrenamiento conceden una recompensa menor y **no cambian ELO ni clasificación competitiva**.
 - El oponente y sus estadísticas quedan congelados en una instantánea para esa pelea. Cambios posteriores del perfil no modifican el resultado ya guardado.
+
+La selección automática y el reemplazo por un rival de entrenamiento no se aplican a los desafíos dirigidos de la expansión: el servidor no sustituye silenciosamente al rival elegido. Se conservan las reglas de entrenamiento para el flujo MVP que ya las utiliza.
 
 ### 4.4 Motor de combate
 
@@ -200,6 +208,8 @@ En el MVP, cada nivel aumenta automáticamente las estadísticas según una regl
 
 Las estadísticas derivadas deben calcularse desde el nivel y los atributos base mediante una función única. No almacenar copias calculadas que puedan quedar desincronizadas sin una razón técnica documentada.
 
+En la expansión, la selección de la estadística que crece y el desbloqueo aleatorio siguen las reglas de 4.8; no se extrapola la regla fija del MVP.
+
 ### 4.6 ELO
 
 Usar una fórmula Elo estándar para partidas PvP válidas:
@@ -225,6 +235,48 @@ Cada pelea guardada debe permitir ver:
 - Secuencia de acciones.
 - XP obtenida y cambio de ELO de cada participante.
 - Versión del motor de combate.
+
+### 4.8 Contrato aprobado para la expansión de luchadores
+
+Esta sección resuelve las reglas de producto de la etapa 10. Los porcentajes, rangos numéricos de atributos y magnitudes exactas de recompensas que se marcan como pendientes no son valores autorizados para implementar: deben fijarse con pruebas de balance en los pasos correspondientes.
+
+#### Cuentas, creación y ciclo de vida
+
+- Una cuenta puede crear tantos luchadores como necesite; no existe un máximo de juego por cuenta. La creación sí se protege con límites técnicos configurables, medidos por cuenta y por IP, respuestas de limitación de frecuencia y revisión de patrones automatizados. Los umbrales se fijarán tras medir carga y abuso; no se rechaza una creación legítima solo por alcanzar un cupo permanente.
+- Cada luchador tiene un nombre visible único globalmente, validado en el servidor. El nombre del luchador no es el nombre de usuario ni la contraseña de la cuenta.
+- Al crear un luchador, este pasa a ser el luchador activo seleccionado de su dueño. La cuenta tiene como máximo un luchador seleccionado para su panel y para iniciar desafíos; esta selección es distinta del estado de elegibilidad `active`/`suspended`. Cambiar la selección no cambia la propiedad, la elegibilidad ni los registros de otros luchadores.
+- Un luchador nuevo es público y elegible para desafíos de forma predeterminada. Su dueño puede cambiarlo a privado. Un luchador privado no aparece en búsquedas, perfiles públicos, clasificaciones ni puede recibir desafíos; el dueño autenticado mantiene acceso a su ficha e historial.
+- La privacidad no exige ni admite una contraseña separada para el luchador. La sesión de la cuenta y la autorización del servidor son los únicos controles de acceso.
+- La falta de conexión del dueño no vuelve inactivo al luchador: los combates son asíncronos. Para el desafío, “inactivo” significa que el luchador o su cuenta tienen un estado no elegible (por ejemplo, suspendido por moderación); esos luchadores no se listan ni aceptan desafíos. Cambiar a privado los excluye por la misma vía. La especificación no introduce eliminación de luchadores ni caducidad automática.
+- Un perfil público solo muestra los campos públicos de juego definidos en esta especificación. Hacerlo privado deja de exponerlo en solicitudes posteriores, sin borrar snapshots ni registros históricos.
+
+#### Desafíos y cupos
+
+- Desafiar significa que el jugador elige uno de sus luchadores activos y un luchador rival público y elegible. El servidor comprueba dueño, estado, visibilidad, rango y cupo; fija ambos participantes y sus datos de combate antes de simular. No hay selección automática de otro rival en caso de rechazo o indisponibilidad.
+- Un desafío PvP competitivo solo se acepta cuando la diferencia de ELO entre ambos está dentro de **±200 puntos**, rango inicial ya sugerido por el MVP. Fuera del rango, el servidor rechaza la solicitud con un error visible, no consume cupo y no la convierte en entrenamiento. No se amplía el rango automáticamente.
+- Un luchador privado, suspendido o perteneciente a una cuenta suspendida no puede ser rival. Si el estado cambia entre la consulta y la aceptación, el servidor vuelve a validarlo y rechaza antes de consumir cupo.
+- Un mismo par de luchadores puede completar como máximo un desafío PvP recompensado por día UTC. Una petición repetida con el mismo `requestId` devuelve el resultado persistido sin cobrar cupo ni recompensas; una nueva petición contra el mismo par ese día se rechaza sin consumir cupo. Los pares inversos representan la misma pareja para este límite.
+- La cuota aprobada es de **5 combates por luchador y día UTC**. Cada luchador dispone de **6 combates en la fecha UTC de su creación**; desde la siguiente fecha UTC dispone de 5. Los cupos son independientes por luchador, no se comparten entre personajes de una cuenta y no se reinician al cambiar de luchador activo. Los rechazos previos a iniciar la simulación no consumen cupo; un combate iniciado sí lo consume aunque el jugador pierda o empate.
+- Las peleas contra rivales de entrenamiento siguen excluidas de ELO y clasificación. En la expansión no se ofrecen automáticamente como sustituto de un desafío PvP fallido; cualquier acceso voluntario a entrenamiento conservará sus propias reglas y no será competitivo.
+
+#### Atributos, aleatoriedad y progresión
+
+- Las cuatro estadísticas base del luchador son vida, ataque, defensa y velocidad. Se generan aleatoriamente en el servidor al crear el luchador, dentro de rangos y con una distribución que preserve un presupuesto de poder inicial comparable entre personajes. Los rangos, el presupuesto y la distribución concreta son valores de balance pendientes; ningún cliente puede elegirlos ni alterarlos.
+- El equipo inicial no incluye armadura: el único objeto inicial es el arma aleatoria indicada abajo. La armadura no forma parte de la primera tabla de desbloqueos de la expansión y queda pendiente para una tarea de diseño posterior.
+- Cada sorteo usa una semilla generada por el servidor a partir de una fuente criptográficamente segura y un algoritmo determinista identificado por versión. El luchador conserva la semilla, versión y resultado de creación necesarios para auditar o reproducir la tirada. Cada sorteo de progreso o desbloqueo registra su semilla, versión y resultado como un evento persistente; los combates conservan además sus snapshots y semilla de simulación. Una misma semilla, entrada y versión produce la misma salida. El algoritmo concreto debe quedar identificado y probado antes de implementarse.
+- Al subir de nivel, cualquiera de las cuatro estadísticas base puede aumentar mediante una elección aleatoria del servidor. Se realiza una tirada de progreso por cada nivel ganado, incluso cuando una sola pelea sube varios niveles. Qué estadística resulta elegible y cuánto aumenta cada una queda sujeto a límites de balance; las estadísticas efectivas se derivan siempre de nivel, atributos base y equipo mediante una función del servidor.
+- La creación concede exactamente un arma inicial aleatoria de la selección básica. No concede habilidades ni mascotas. En cada nivel ganado se realiza una tirada independiente de desbloqueo que puede no otorgar nada o conceder un arma, habilidad o mascota permitida para ese nivel. Las probabilidades, rarezas, catálogo y niveles mínimos son pendientes de balance y configuración, no se inventan en esta especificación.
+- El equipo inicial y cada desbloqueo se sortean una sola vez por evento de creación o subida de nivel y se registran con semilla y versión. Un reintento idempotente no repite tiradas ni recompensas. El catálogo no ofrece duplicados: si no queda una recompensa elegible que el luchador no posea, la tirada no concede objeto y no genera una compensación automática.
+- Las reglas de slot, compatibilidad, efectos, límites de equipo y disponibilidad por nivel deben ser explícitas y validadas por el servidor. Una habilidad o mascota no se activa solo por poseerla; sus reglas de uso y efectos se documentan y balancean antes de implementarlas.
+- Las recompensas existentes de XP y ELO del MVP se mantienen salvo que una tarea de balance posterior las cambie explícitamente. Ningún desbloqueo aleatorio se acepta como entrada del cliente ni depende del resultado visual del frontend.
+
+#### Dojos, invitaciones y límites de abuso
+
+- La relación de invitación actual sigue perteneciendo a la cuenta y permanece única e inmutable. No se transforma silenciosamente en una relación de dojo ni se multiplica por cada luchador de esa cuenta.
+- El dojo es una relación distinta entre luchadores: un luchador puede tener como máximo un maestro y un maestro puede tener varios aprendices. No se admiten autorreferencias, relaciones entre luchadores del mismo dueño, ciclos ni cambios de maestro para volver a cobrar recompensas. La relación y su fecha de alta deben poder auditarse.
+- Las recompensas del dojo no aumentan ELO, estadísticas de combate ni cupos. La recompensa aprobada para la primera versión del sistema es cosmética/social; catálogo, hitos y cantidades quedan pendientes de diseño en el paso específico del dojo. No hay recompensa retroactiva por crear varias cuentas o luchadores.
+- El servidor impone unicidad e idempotencia en creación, desafíos, progresión, desbloqueos y premios de dojo. Cada evento de recompensa tiene un origen único y no puede liquidarse dos veces, ni mediante peticiones concurrentes ni al repetir una solicitud.
+- Los controles contra automatización incluyen límites por cuenta e IP, validación y autorización en servidor, no aceptar propiedad/estadísticas/recompensas desde el cliente, restricciones a desafíos repetidos, exclusión de luchadores privados o suspendidos, registro de decisiones y moderación. La privacidad no oculta la aplicación de estas reglas al servidor.
 
 ---
 
@@ -342,6 +394,7 @@ Representa una cuenta y sus credenciales.
 - `passwordHash`
 - `role`: `user` o `admin`
 - `status`: `active` o `suspended`
+- `activeFighterId` conceptual: selección del luchador activo propio, cuando haya creado uno
 - `referredByUserId` opcional; referencia única asignada en el registro
 - `createdAt`, `updatedAt`, `lastLoginAt`
 
@@ -357,18 +410,22 @@ Reglas:
 
 ### 6.2 Fighter
 
-Representa al personaje jugable.
+Representa a un personaje jugable. A diferencia del esquema del MVP, una cuenta puede ser dueña de varios luchadores.
 
 - `_id`
-- `userId` único
+- `userId` del dueño; no es único
 - `name` normalizado y único
 - `level`, `xp`, `elo`
 - `baseStats`: vida, ataque, defensa y velocidad
+- `status`: `active` o `suspended`
+- `visibility`: `public` o `private`
+- semilla y versión de las reglas de creación aleatoria
+- inventario de armas, habilidades y mascotas obtenidas
 - contadores de victorias, derrotas y empates
 - `referralCode` único
 - `createdAt`, `updatedAt`
 
-Evitar guardar estadísticas derivadas duplicadas salvo que exista una necesidad de rendimiento demostrada. Si se almacenan, documentar cómo se recalculan y prueban.
+Cada cuenta selecciona un luchador activo; esa selección no concede propiedad adicional ni altera el estado de los demás. Evitar guardar estadísticas derivadas duplicadas salvo que exista una necesidad de rendimiento demostrada. Si se almacenan, documentar cómo se recalculan y prueban.
 
 ### 6.3 Battle
 
@@ -378,6 +435,7 @@ Registro inmutable del resultado.
 - `battleType`: `pvp` o `training`
 - `status`: `completed` (los errores anteriores a finalizar no deben quedar como victorias)
 - instantáneas de ambos luchadores: id, nombre, nivel, ELO y estadísticas usadas
+- semillas y versiones de reglas para los sorteos de progreso y desbloqueo que produzca la pelea
 - `winnerFighterId` opcional; empate si no hay ganador
 - `seed` del motor y `engineVersion`
 - `events` ordenados
@@ -391,17 +449,18 @@ El historial no debe depender de consultar el estado actual de un luchador para 
 
 ### 6.4 DailyActivity
 
-Control del límite diario.
+Control del límite diario por luchador, no por cuenta.
 
 - `_id`
-- `userId`
+- `fighterId`
 - `dateKey` como fecha UTC en formato estable `YYYY-MM-DD`
+- `limit` efectivo del día (6 en la fecha UTC de creación del luchador; 5 después)
 - `battlesUsed`
 - `requestIds` reservados ese día para no consumir más de un intento al repetir la misma solicitud
 - identificadores de las peleas aceptadas, cuando sea útil para idempotencia
 - `createdAt`, `updatedAt`
 
-Índice único compuesto por `userId + dateKey`. Las actualizaciones para reservar un intento deben ser atómicas y verificar que aún hay disponibilidad.
+Índice único compuesto por `fighterId + dateKey`. Las actualizaciones para reservar un intento deben ser atómicas y verificar que aún hay disponibilidad. Una cuenta con varios luchadores tiene cupos independientes; cambiar de luchador activo no crea ni renueva cupos.
 
 ### 6.5 Relaciones de invitación
 
@@ -410,9 +469,9 @@ En el MVP puede representarse con `User.referredByUserId` y los códigos de invi
 ### 6.6 Índices previstos
 
 - User: `username` único, `email` único.
-- Fighter: `userId` único, `name` único, `referralCode` único, índice por ELO descendente.
+- Fighter: índice no único por `userId`, `name` único, `referralCode` único, índice por ELO descendente.
 - Battle: fecha descendente, participantes + fecha, e idempotencia única cuando aplique.
-- DailyActivity: `userId + dateKey` único.
+- DailyActivity: `fighterId + dateKey` único.
 
 Crear cada índice en el paso de desarrollo de su modelo. No generar modelos, índices o colecciones no necesarios para el paso activo.
 
@@ -429,8 +488,8 @@ Estas rutas son el contrato objetivo, no una orden de implementarlas todas de in
 | `POST` | `/api/v1/auth/login` | No | Iniciar sesión |
 | `POST` | `/api/v1/auth/logout` | Sí | Destruir la sesión |
 | `GET` | `/api/v1/auth/me` | Sí | Consultar cuenta autenticada |
-| `POST` | `/api/v1/fighters` | Sí | Crear el luchador de la cuenta |
-| `GET` | `/api/v1/fighters/me` | Sí | Obtener el luchador propio |
+| `POST` | `/api/v1/fighters` | Sí | Crear un luchador para la cuenta |
+| `GET` | `/api/v1/fighters/me` | Sí | Obtener el luchador activo propio |
 | `GET` | `/api/v1/fighters/:id` | No | Ver perfil público por ID |
 | `GET` | `/api/v1/profiles/:username` | No | Ver perfil público por nombre de usuario |
 | `GET` | `/api/v1/arena/attempts` | Sí | Consultar intentos diarios restantes |
@@ -449,9 +508,13 @@ Requisitos de API:
 - Evitar respuestas que permitan enumerar correos o averiguar si una contraseña es correcta.
 - Comprobar permisos en servidor, no solo ocultar botones en React.
 
-`GET /api/v1/fighters/me` devuelve el perfil propio con `baseStats`, las estadísticas efectivas calculadas en el servidor como `stats` y `xpToNextLevel`, el coste en XP del nivel actual para alcanzar el siguiente nivel. Los perfiles públicos conservan únicamente sus campos públicos definidos.
+En la expansión, `GET /api/v1/fighters/me` representa al luchador activo propio. La creación no queda limitada a una por cuenta; los datos de otros luchadores propios solo se exponen a su dueño. Un perfil privado no se devuelve por las consultas públicas. El detalle de las rutas para listar, seleccionar y gestionar varios luchadores se fija en 10.1.2, no en este paso de diseño.
 
-`GET /api/v1/arena/attempts` devuelve `{ dateKey, limit, used, remaining }`, con el día calculado en UTC. `POST /api/v1/arena/fight` recibe únicamente `{ requestId }`; el rival y el resultado son decididos por el servidor. Repetir la misma clave para el mismo luchador devuelve el combate persistido sin consumir otro intento ni aplicar recompensas nuevamente. `GET /api/v1/arena/history` acepta `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`), y devuelve `{ battles, pagination: { page, limit, totalItems, totalPages } }` ordenado por fecha descendente.
+`GET /api/v1/fighters/:id` y `GET /api/v1/profiles/:username` solo revelan perfiles públicos; para un luchador privado responden como si no existiera. Un propietario autenticado conserva acceso a sus luchadores privados por las operaciones propias, nunca por un permiso inferido del identificador enviado por el cliente.
+
+En la expansión, `GET /api/v1/profiles/:username` identifica la cuenta y solo puede incluir sus luchadores públicos; no elige arbitrariamente uno cuando el dueño tiene varios. Las consultas de batalla públicas solo muestran combates cuyos dos luchadores continúan públicos. El historial propio y el de los participantes autorizados sigue disponible conforme a la regla de privacidad, incluso si luego un luchador se vuelve privado.
+
+El contrato MVP de `POST /api/v1/arena/fight` recibe solo `{ requestId }` y deja que el servidor seleccione rival. En la expansión, un desafío debe identificar el luchador propio activo y el luchador rival elegido; no se reutiliza la selección automática. La forma exacta de la petición y las rutas de selección se detallan en 10.1.2. La reserva diaria se consulta por luchador y devuelve `{ dateKey, limit, used, remaining }`, con el día UTC y límite 6 en la fecha de creación o 5 en fechas posteriores. Repetir la misma clave para el mismo luchador devuelve el combate persistido sin consumir otro intento ni aplicar recompensas nuevamente; una nueva solicitud contra el mismo par ese día se rechaza sin consumir cuota. `GET /api/v1/arena/history` acepta `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`), y devuelve `{ battles, pagination: { page, limit, totalItems, totalPages } }` ordenado por fecha descendente.
 
 `GET /api/v1/leaderboards` es público; acepta `category` (`elo` por defecto o `level`), `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`). Devuelve `{ fighters, pagination: { page, limit, totalItems, totalPages } }`. El servidor ordena la categoría elegida de mayor a menor y resuelve los empates por ID de luchador de menor a mayor. Cada luchador incluye únicamente los campos del perfil público y el nombre de usuario.
 
@@ -468,8 +531,8 @@ El inicio de sesión acepta únicamente `identifier` y `password`; `identifier` 
 - `/` — página inicial pública.
 - `/register` — registro.
 - `/login` — inicio de sesión.
-- `/create-fighter` — creación del personaje; solo si la cuenta todavía no tiene uno.
-- `/dashboard` — resumen del propio luchador y accesos principales.
+- `/create-fighter` — creación del primer personaje en el MVP; en la expansión, creación de otro luchador desde la cuenta autenticada.
+- `/dashboard` — resumen del luchador activo propio y accesos principales.
 - `/arena` — intentos restantes y acción para iniciar una pelea.
 - `/battles/:id` — resultado y secuencia de combate.
 - `/history` — historial propio.
@@ -521,6 +584,8 @@ Crear un componente reutilizable cuando exista una necesidad concreta, no solo p
 - Escapar o tratar como texto cualquier nombre visible del jugador.
 - Limitar longitud de cadenas, tamaño del cuerpo y paginación máxima.
 - Aplicar protección ante fuerza bruta y exceso de peticiones.
+- Limitar creación de luchadores y desafíos por cuenta e IP, con umbrales técnicos configurables; impedir que usar varias identidades de luchador de una cuenta evada límites que correspondan a la cuenta.
+- Verificar en cada desafío que el rival es público, elegible y está dentro del rango; aplicar el límite diario del par de luchadores antes de aceptar otra pelea recompensada.
 - No permitir que un usuario cambie sus propias recompensas, ELO, rol o relación de invitación mediante una petición manipulada.
 
 ### 9.3 Combates sin trampas
@@ -529,12 +594,16 @@ Crear un componente reutilizable cuando exista una necesidad concreta, no solo p
 - Semilla generada por el servidor y registro de `engineVersion`.
 - Instantáneas de participantes.
 - Idempotencia para evitar duplicar recompensas al repetir una petición.
+- Cada recompensa, subida de nivel y desbloqueo se identifica por su evento de origen; peticiones repetidas o concurrentes no vuelven a procesar el mismo evento.
 - Operaciones de actualización relacionadas ejecutadas de forma coherente. Si se necesita transacción MongoDB, comprobar primero los requisitos del entorno; no fingir atomicidad.
 - Los bots no alteran ELO.
 - Registrar errores operativos sin exponer secretos ni datos innecesarios.
 
 ### 9.4 Privacidad
 
+- Los luchadores son públicos por defecto; el dueño puede marcarlos privados. La privacidad excluye el perfil de búsquedas, páginas públicas, clasificaciones y desafíos posteriores.
+- Las operaciones de lectura privadas exigen una sesión autenticada y una comprobación de propiedad en el servidor. No existe una contraseña de personaje aparte de la contraseña de cuenta.
+- Un luchador que pasa a privado no se elimina. Se conservan los snapshots y el historial; las consultas públicas posteriores no exponen la ficha privada, mientras el dueño y los participantes autorizados mantienen acceso a su historial.
 - El perfil público solo muestra datos de juego definidos expresamente como públicos.
 - No mostrar correo, hash de contraseña, identificadores de sesión ni detalles privados.
 - Diseñar borrado o desactivación de cuentas en una fase posterior de privacidad y mantenimiento; documentar cualquier limitación antes de publicar.
@@ -589,7 +658,7 @@ Casos mínimos:
 - Nombre y correo duplicados.
 - Inicio y cierre de sesión.
 - Rutas privadas sin sesión devuelven `401`.
-- Un usuario no puede crear un segundo luchador durante el MVP.
+- En el MVP, un usuario no puede crear un segundo luchador; las pruebas de expansión deben verificar creación de varios sin perder la autorización por propietario.
 - Límite diario y peticiones simultáneas.
 - No se puede modificar la identidad del luchador objetivo ni enviar recompensas desde el cliente.
 - Perfiles inexistentes y paginación inválida.
@@ -600,7 +669,7 @@ Casos mínimos:
 - Sesión persistente al recargar y limpieza al cerrar sesión.
 - Estados de carga y error visibles.
 - Adaptación a ancho móvil.
-- Un usuario que no tiene luchador es enviado al flujo de creación; uno que ya lo tiene no puede repetirlo.
+- En el MVP, un usuario sin luchador es enviado al flujo de creación y uno que ya lo tiene no puede repetirlo; la expansión permite crear y seleccionar varios luchadores propios.
 
 ### 11.4 Definición general de “terminado”
 
@@ -638,14 +707,23 @@ No fijar proveedor ni desplegar hasta que el usuario lo decida en el paso corres
 ### Decisiones iniciales
 
 - El producto es una web de combates automáticos, no un juego de acción en tiempo real.
-- Un luchador por cuenta durante el MVP.
-- Tres intentos diarios según UTC.
+- El MVP vigente tiene un luchador por cuenta y tres intentos diarios por cuenta según UTC; la expansión permite tantos luchadores como necesite cada cuenta y asigna cinco desafíos diarios por luchador, o seis en su fecha UTC de creación.
+- En la expansión, los luchadores son públicos por defecto, se puede seleccionar uno propio como activo y los desafíos PvP se dirigen a un rival público elegido por el jugador dentro de ±200 ELO.
 - Experiencia, nivel y ELO calculados por el servidor.
 - Rival de entrenamiento de respaldo cuando no haya jugadores; no puntúa ELO.
 - Registro de usuarios y perfiles públicos.
 - Invitaciones/alumnos con relación persistente, sin bonus competitivo en el MVP.
-- Armas, mascotas y habilidades complejas se añaden después de validar el bucle básico.
+- La semilla y versión del generador permiten reproducir creación, progresión y combate aleatorios.
+- Las recompensas de dojo no dan ventaja competitiva; su catálogo, hitos y cantidades aún están pendientes.
 - Las decisiones aún no implementadas no autorizan a Copilot a anticipar trabajo.
+
+### Valores de balance pendientes
+
+- Rangos, presupuesto y distribución de atributos aleatorios.
+- Incrementos y pesos de mejora de estadísticas por nivel.
+- Probabilidades, rarezas y niveles mínimos de armas, habilidades y mascotas; catálogo y efectos concretos.
+- Límites técnicos de frecuencia de creación y umbrales de detección de automatización.
+- Catálogo, hitos y cantidades de las recompensas cosméticas/sociales del dojo.
 
 ### Revisiones futuras permitidas
 
