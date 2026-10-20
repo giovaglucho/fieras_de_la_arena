@@ -1,25 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `9.1`
+**Paso activo:** `9.2`
 **Estado:** pendiente
-**Título:** Revisar dependencias y scripts
+**Título:** Completar documentación para desarrolladores
 
 ## Objetivo
 
-Revisar dependencias y scripts.
+Completar documentación para desarrolladores.
 
 ## Permitido en este paso
 
-- Retirar dependencias realmente no usadas.
-- Verificar scripts de producción.
+- Instalación, variables, estructura, pruebas, comandos y solución de problemas frecuentes.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 9.2 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 9.3 y posteriores.
 
 ## Criterios de aceptación
 
-- instalación reproducible desde un repositorio limpio.
+- una persona puede levantar el proyecto siguiendo únicamente la documentación.
 
 ## Al terminar
 
