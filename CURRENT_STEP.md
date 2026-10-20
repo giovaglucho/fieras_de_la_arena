@@ -1,26 +1,24 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `9.3`
-**Estado:** completado
-**Título:** Preparar despliegue de prueba
+**Paso activo:** `9.4`
+**Estado:** pendiente
+**Título:** Verificación final de lanzamiento
 
 ## Objetivo
 
-Preparar un despliegue de prueba.
+Probar registro, login/logout, creación, combate, recompensas, historial, perfiles y ranking en entorno publicado.
 
 ## Permitido en este paso
 
-- Elegir proveedor, variables, MongoDB y dominio solo cuando el usuario lo apruebe.
-- Configurar HTTPS y health check.
+- Probar registro, login/logout, creación, combate, recompensas, historial, perfiles y ranking en entorno publicado.
 
 ## Fuera de alcance
 
-- No elegir proveedor, variables, MongoDB ni dominio sin aprobación expresa del usuario.
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 9.4 y posteriores.
+- No iniciar la etapa 10, que `ROADMAP.md` sitúa después de validar v1.0.
 
 ## Criterios de aceptación
 
-- build y arranque de producción comprobados sin secretos en Git.
+- checklist aprobado; fallos críticos resueltos o documentados antes de anunciar el juego.
 
 ## Al terminar
 

@@ -17,7 +17,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Paso activo: 9.3 — Preparar despliegue de prueba**. Los pasos anteriores hasta el 9.2 están completados.
+**Paso activo: 9.4 — Verificación final de lanzamiento**. Los pasos anteriores hasta el 9.3 están completados. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/); la verificación final del flujo de juego publicado sigue pendiente.
 
 ## Requisitos
 
@@ -178,12 +178,9 @@ La configuración [`render.yaml`](render.yaml) prepara un único servicio web gr
 
 El servidor admite que Render inyecte las variables de entorno sin que exista un archivo `.env` en el servidor. En producción, si `CLIENT_URL` no está definido, CORS permanece desactivado: el cliente y la API comparten origen. No configures un cliente alojado en otro origen sin definir y revisar explícitamente CORS.
 
-Para preparar el servicio cuando tengas las cuentas:
+El servicio de prueba está desplegado en el plan gratuito de Render, en Virginia, y utiliza un clúster Atlas M0 en N. Virginia (`us-east-1`). La lista de acceso de Atlas incluye los rangos de salida compartidos de Render, sin abrir el acceso a cualquier dirección IP. El endpoint [`/api/v1/health`](https://fieras-de-la-arena.onrender.com/api/v1/health) respondió correctamente con `status: "ok"` y `database: "connected"`.
 
-1. Crea un clúster gratuito M0 en MongoDB Atlas y un usuario de base de datos exclusivo para la aplicación. Revisa las [limitaciones vigentes de Atlas Free](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/); este clúster y el plan gratuito de Render son para pruebas, no para producción ni datos importantes. La configuración usa N. Virginia (`us-east-1`) para Atlas y Virginia para Render.
-2. Crea el servicio de Render desde el Blueprint del repositorio y elige una región cercana a la mayoría de las personas que probarán el juego. No pegues la URI de MongoDB ni contraseñas en el repositorio o en el chat; introdúcelas en el panel de Render cuando solicite `MONGODB_URI`.
-3. En Render, abre **Connect → Outbound** para consultar todos los rangos CIDR de salida de la región elegida. Añádelos a la lista de acceso de red del proyecto Atlas y evita `0.0.0.0/0`. Render comparte esos rangos con otros servicios de la misma región; si Atlas no permite una lista suficientemente restrictiva para la configuración elegida, detente y revisa una opción de hosting con IP de salida dedicada antes de publicar.
-4. Cuando el servicio esté disponible, abre su subdominio HTTPS de Render y comprueba `/api/v1/health`. La respuesta correcta contiene `status: "ok"` y `database: "connected"`. Si la base de datos no está accesible, el health check devuelve HTTP 503 y Render no considera sano el servicio.
+Este despliegue y la base gratuita son solo para pruebas, no para producción ni datos importantes. Revisa las [limitaciones vigentes de Atlas Free](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/). La verificación de registro, login/logout, creación, combate, recompensas, historial, perfiles y ranking en el entorno publicado corresponde al paso activo y aún no se declara completada.
 
 El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico y el primer acceso posterior puede tardar alrededor de un minuto. No lo uses para un lanzamiento ni para almacenar datos que deban estar siempre disponibles. Render puede terminar TLS antes de reenviar HTTP al servicio; la configuración de producción activa la cookie segura, HSTS y un salto de proxy de confianza.
 
