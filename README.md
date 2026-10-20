@@ -17,7 +17,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. Los resultados muestran una animación básica basada en eventos guardados junto al registro textual. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Paso verificado: 9.5 — Pulir navegación autenticada y presentación del combate**. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/). El inicio y el registro respetan la sesión y los resultados presentan visualmente los combates guardados. El usuario revisará este paso antes de decidir cómo continuar.
+**Estado del desarrollo:** los pasos 9.5, 9.6 y 9.7 están completados según `CURRENT_STEP.md`. El paso activo autorizado es **10.1.1 — Convertir la visión en reglas de juego propias**; está pendiente y se limita a definir/documentar reglas. La etapa 10 aún no tiene funcionalidades implementadas. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/).
 
 ## Requisitos
 

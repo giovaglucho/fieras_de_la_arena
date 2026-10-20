@@ -1,38 +1,38 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `9.5`
-**Estado:** completado
-**Título:** Pulir navegación autenticada y presentación del combate
+**Paso activo:** `10.1.1`
+**Estado:** autorizado; pendiente de implementación
+**Título:** Convertir la visión en reglas de juego propias
 
 ## Objetivo
 
-Mejorar la orientación de las personas con sesión iniciada, simplificar el flujo posterior al registro, completar retornos contextuales necesarios y añadir una presentación visual básica de los combates guardados.
+Resolver las diferencias entre la visión ampliada y las reglas actuales antes de cambiar datos o comportamiento. `PROJECT_SPEC.md` es el contrato final del producto; se actualiza aquí, no se fuerza el diseño nuevo a encajar en las limitaciones del MVP.
 
-## Permitido en este paso
+## Tareas permitidas
 
-- Hacer que el inicio y el logo conduzcan a un destino adecuado según la sesión y el estado de creación del luchador.
-- Actualizar el contrato de registro en la especificación para permitir el inicio automático de sesión; luego iniciar sesión tras un registro correcto y continuar al flujo correspondiente de creación del luchador.
-- Añadir retornos contextuales solo donde la navegación actual no ofrezca una salida adecuada, especialmente en perfiles públicos y estados de error.
-- Mostrar una animación visual básica de ambos luchadores basada en los eventos persistidos del combate.
-- Mantener accesible el registro textual del combate y respetar la preferencia de movimiento reducido.
-- Añadir o actualizar las pruebas y la documentación directamente relacionadas con estos cambios.
+- Definir el ciclo de vida de varios luchadores por cuenta; cantidad permitida y defensas contra creación automatizada; nombres únicos y selección del luchador activo; visibilidad pública predeterminada y estados privados; qué significa desafiar a un luchador; gestión de desafíos repetidos, inactivos o fuera de rango; cupos diarios por luchador y zona horaria; regla especial del día de creación; generación de atributos iniciales; estadísticas que pueden aumentar al subir de nivel; posibilidad y frecuencia de desbloquear armas, habilidades y mascotas tanto en la creación como al progresar; reglas iniciales de equipamiento aleatorio; relaciones de dojo/aprendiz y recompensas; límites y casos de abuso.
+- Actualizar `PROJECT_SPEC.md` y esta sección de `ROADMAP.md`.
+- Revisar las secciones de alcance, experiencia, combate, progresión, modelos y API de `PROJECT_SPEC.md`; comprobar que ningún contrato vigente contradice silenciosamente la nueva visión y que cada decisión tiene ejemplos de casos límite.
 
 ## Fuera de alcance
 
-- No iniciar la etapa 10 ni implementar armas, equipo, habilidades, mascotas u otras funciones de expansión.
-- No cambiar las reglas, los resultados, las recompensas ni la persistencia del motor de combate.
-- No añadir enlaces o botones de navegación redundantes.
+- Decidir valores de balance mediante código o empezar la implementación antes de resolver las reglas contradictorias.
+- Modificar modelos, API, aplicación o configuración del despliegue.
+- Implementar reglas de juego o migrar datos; este paso es de diseño y documentación.
+- Saltar a 10.1.2 u otras tareas posteriores.
 
 ## Criterios de aceptación
 
-- Una persona autenticada que usa el logo o visita el inicio llega a una pantalla útil, sin que la sesión se cierre ni se sugiera que debe volver a iniciar sesión.
-- Tras un registro correcto, la cuenta queda autenticada y continúa al flujo de creación del luchador sin un login manual intermedio.
-- La especificación documenta el nuevo contrato de registro antes de considerarlo completo.
-- Las pantallas que carecen de un retorno contextual adecuado ofrecen una salida pertinente; no se agregan controles redundantes.
-- El resultado de un combate guardado presenta visualmente a ambos luchadores y sus acciones a partir de los eventos persistidos; el registro textual permanece disponible.
-- La animación no altera la resolución del combate y se reduce o desactiva según la preferencia de movimiento reducido.
-- Las pruebas pertinentes pasan y se informa cualquier limitación externa.
+- La especificación reemplaza expresamente, donde corresponda, las reglas de un luchador por cuenta, cupos por cuenta y selección automática de rival; refleja la intención de varios personajes sin límite de juego arbitrario, personajes públicos por defecto y desafíos elegidos por el jugador; resuelve el valor final de cupos tomando como opciones 3 o 5 diarios y la excepción de 6 el día de creación; distingue reglas aprobadas de valores pendientes; explica cómo se representa aleatoriedad de forma reproducible; define qué atributos, equipo, habilidades y mascotas pueden asignarse inicialmente y al progresar; conserva las reglas que no cambian; concreta privacidad sin reutilizar contraseñas de cuenta como contraseña de personaje; documenta controles contra abuso, duplicación de recompensas y desafíos repetidos.
+
+## Pruebas/verificación
+
+- Revisión cruzada de las secciones de alcance, experiencia, combate, progresión, modelos y API de `PROJECT_SPEC.md`; comprobar que ningún contrato vigente contradice silenciosamente la nueva visión y que cada decisión tiene ejemplos de casos límite.
+
+## Dependencia
+
+- Ninguna. Es requisito para todos los demás pasos de la etapa.
 
 ## Al terminar
 
-Informar los resultados y detenerse. No seleccionar ni implementar el paso siguiente automáticamente. El usuario decidirá cuándo continuar.
+Informar resultados y detenerse. No activar ni implementar 10.1.2 automáticamente. El usuario decidirá cuándo continuar y actualizará el ID activo.
