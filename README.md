@@ -17,23 +17,63 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Paso activo: 9.2 — Completar documentación para desarrolladores**. Los pasos anteriores hasta el 9.1 están completados.
+**Paso activo: 9.3 — Preparar despliegue de prueba**. Los pasos anteriores hasta el 9.2 están completados.
 
 ## Requisitos
 
 - Node.js `20.19+` o `22.12+` (requisito de la versión actual de Vite).
-- npm.
+- npm, incluido con Node.js.
+- MongoDB Community Server local en ejecución para iniciar el servidor y ejecutar las pruebas de integración.
+- PowerShell para seguir los comandos de esta guía en Windows.
 - En el entorno donde se comprobó el proyecto: Node.js `v24.20.0` y npm `11.19.0`.
 
-## Ejecución local en Windows PowerShell
-
-Abre una terminal en la raíz del repositorio y crea la configuración local a partir del ejemplo:
+Comprueba las versiones desde PowerShell:
 
 ```powershell
-Copy-Item .env.example .env
+node --version
+npm.cmd --version
 ```
 
-El archivo `.env` está ignorado por Git. El ejemplo no contiene credenciales reales: reemplaza `SESSION_SECRET` por un valor aleatorio de al menos 32 bytes y no uses el valor de ejemplo. El servidor necesita `MONGODB_URI` y una instancia local de MongoDB en ejecución; si no puede conectarse, muestra un error comprensible y no empieza a escuchar. Helmet configura cabeceras de seguridad; CORS permite únicamente el origen exacto de `CLIENT_URL` y credenciales. En local, Vite usa un proxy para `/api`; en producción configura `CLIENT_URL` con el origen real del cliente. Las sesiones se guardan en MongoDB y usan una cookie `httpOnly`, `sameSite=lax` y `secure` en producción. `TRUST_PROXY` vale `0` por defecto; configúralo con el número exacto de proxies inversos de confianza (por ejemplo, `1` detrás de un único proxy TLS) para que Express reconozca HTTPS. No lo aumentes si el servidor no está detrás de esos proxies.
+Instala [MongoDB Community Server para Windows](https://www.mongodb.com/try/download/community) y selecciona la opción de instalarlo como servicio. Antes de continuar, verifica que el servicio esté iniciado:
+
+```powershell
+Get-Service MongoDB
+```
+
+Si el servicio existe pero está detenido, inicia PowerShell con permisos suficientes y ejecuta `Start-Service MongoDB`. Si el nombre del servicio difiere en tu instalación, usa el nombre que muestre `Get-Service`.
+
+## Configuración local
+
+Desde la raíz del repositorio, crea `.env` únicamente si todavía no existe, para no sobrescribir una configuración local:
+
+```powershell
+if (-not (Test-Path .env)) {
+  Copy-Item .env.example .env
+} else {
+  Write-Output ".env ya existe; no se sobrescribió."
+}
+```
+
+`.env` está ignorado por Git. Abre ese archivo y reemplaza `SESSION_SECRET` por un valor aleatorio propio; no uses ni publiques el valor de ejemplo. Puedes generar uno localmente con Node.js:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+El comando muestra el secreto en tu terminal: cópialo directamente a `.env`, no lo compartas ni lo guardes en Git. Debe contener al menos 32 bytes. Las variables locales son:
+
+| Variable | Valor local predeterminado | Uso |
+| --- | --- | --- |
+| `NODE_ENV` | `development` | Activa la configuración de desarrollo. |
+| `PORT` | `3000` | Puerto HTTP del servidor. |
+| `CLIENT_URL` | `http://localhost:5173` | Origen permitido para el cliente; debe ser un origen exacto, sin ruta ni barra final. |
+| `TRUST_PROXY` | `0` | Saltos de proxy inverso de confianza; déjalo en `0` para desarrollo local. |
+| `MONGODB_URI` | `mongodb://127.0.0.1:27017/fieras_de_la_arena` | Conexión a MongoDB local. |
+| `SESSION_SECRET` | Sin valor seguro predeterminado | Secreto aleatorio propio de al menos 32 bytes. |
+
+El servidor no empieza a escuchar si faltan variables obligatorias o no puede conectarse a MongoDB. Las sesiones se guardan en MongoDB y usan una cookie `httpOnly`, `sameSite=lax` y `secure` en producción. Helmet configura cabeceras de seguridad. En local, Vite envía `/api` al servidor en `http://localhost:3000`. `TRUST_PROXY` debe permanecer en `0` salvo que el servidor se encuentre realmente detrás de proxies inversos de confianza; no es necesario para la ejecución local.
+
+## Ejecutar el cliente y el servidor
 
 `POST /api/v1/auth/register` recibe `username`, `email` y `password`, con `referralCode` opcional. Un código válido vincula la cuenta nueva con su referente y uno inválido se rechaza con HTTP 400; el registro no inicia sesión automáticamente.
 El endpoint `POST /api/v1/auth/login` recibe `identifier` (nombre de usuario o correo) y `password`. `POST /api/v1/auth/logout` destruye una sesión iniciada.
@@ -49,21 +89,21 @@ En una primera terminal, instala e inicia el cliente:
 
 ```powershell
 Set-Location client
-npm.cmd install
+npm.cmd ci
 npm.cmd run dev
 ```
 
-Abre la URL local que indique Vite (normalmente `http://localhost:5173`).
+Abre la URL local que indique Vite (normalmente `http://localhost:5173`). Mantén esta terminal abierta.
 
-En una segunda terminal, vuelve a la raíz del repositorio, instala e inicia el servidor:
+En una segunda terminal abierta en la raíz del repositorio, instala e inicia el servidor:
 
 ```powershell
 Set-Location server
-npm.cmd install
+npm.cmd ci
 npm.cmd run dev
 ```
 
-El servidor lee el `.env` de la raíz del repositorio mediante la opción `--env-file` de Node.js. Los errores inesperados se registran como JSON en la terminal del servidor, con el evento, el tipo/código del error y, para solicitudes API, el método, la ruta y el estado. No se incluyen mensajes ni trazas de excepción para evitar exponer datos sensibles. Para comprobar el endpoint de salud desde otra terminal:
+Los archivos `package-lock.json` de cada carpeta fijan las versiones instaladas; `npm.cmd ci` instala esas dependencias. El servidor lee el `.env` de la raíz del repositorio mediante la opción `--env-file` de Node.js. Los errores inesperados se registran como JSON en la terminal del servidor, con el evento, el tipo/código del error y, para solicitudes API, el método, la ruta y el estado. No se incluyen mensajes ni trazas de excepción para evitar exponer datos sensibles. Para comprobar el endpoint de salud desde otra terminal:
 
 ```powershell
 Invoke-RestMethod http://localhost:3000/api/v1/health
@@ -71,12 +111,73 @@ Invoke-RestMethod http://localhost:3000/api/v1/health
 
 La respuesta debe incluir `status` con valor `ok` y `database` con valor `connected`. Si MongoDB deja de estar disponible, el endpoint devuelve HTTP 503 y refleja `database: "disconnected"`. El cliente y el servidor se ejecutan en terminales independientes; para detener cada uno, pulsa `Ctrl+C` en su terminal.
 
-## Tecnología prevista
+## Estructura del repositorio
 
-- React + Vite
-- Node.js + Express
-- MongoDB + Mongoose
-- Sesiones almacenadas en MongoDB
-- JavaScript con módulos ES
+```text
+client/
+  src/api/          Llamadas del cliente a la API
+  src/context/      Estado compartido de sesión
+  src/              Aplicación React, estilos y recursos
+  vite.config.js    Servidor de desarrollo y proxy /api
+server/
+  src/config/       Configuración del servidor y del juego
+  src/game-engine/  Simulación y reglas de progresión
+  src/middleware/   Sesiones, CORS, autorización y errores
+  src/models/       Modelos de MongoDB
+  src/routes/       Rutas HTTP de la API
+  src/serializers/  Respuestas públicas
+  src/services/     Casos de uso y lógica de aplicación
+  src/utils/        Utilidades del servidor
+  src/validators/   Validación de entradas
+  test/             Pruebas del servidor
+.env.example        Plantilla de configuración local
+PROJECT_SPEC.md     Especificación funcional y técnica
+ROADMAP.md          Pasos ordenados del proyecto
+CURRENT_STEP.md     Único paso autorizado
+```
 
-Consulta la especificación antes de tomar decisiones de implementación.
+Las reglas de juego y el acceso a datos pertenecen al servidor; React presenta la interfaz y consume la API. No hay un `package.json` en la raíz: los comandos npm se ejecutan en `client` o `server`.
+
+## Comandos y pruebas
+
+Ejecuta estos comandos desde la carpeta indicada. No hay actualmente un script de pruebas configurado para el cliente.
+
+| Carpeta | Comando | Resultado |
+| --- | --- | --- |
+| `client` | `npm.cmd run dev` | Inicia Vite para desarrollo. |
+| `client` | `npm.cmd run build` | Construye el cliente en `client/dist/`. |
+| `client` | `npm.cmd run preview` | Sirve localmente el build existente. |
+| `server` | `npm.cmd run dev` | Inicia el servidor con recarga al cambiar archivos. |
+| `server` | `npm.cmd start` | Inicia el servidor sin modo de observación. |
+| `server` | `npm.cmd test` | Ejecuta todas las pruebas con el runner integrado de Node.js. |
+
+Las pruebas unitarias del motor y de progresión no necesitan MongoDB. Desde `server`, puedes ejecutarlas de forma aislada:
+
+```powershell
+node --test test/combatSimulation.test.js test/fighterStats.test.js test/progression.test.js
+```
+
+La suite completa incluye pruebas de API e integración que se conectan a MongoDB. Inicia MongoDB y ejecútalas contra una base de datos de pruebas separada, no contra datos que quieras conservar. En la terminal de pruebas, configura una URI exclusiva para las pruebas antes de ejecutarlas:
+
+```powershell
+Set-Location server
+$env:MONGODB_URI = "mongodb://127.0.0.1:27017/fieras_de_la_arena_test"
+npm.cmd test
+```
+
+Después de las pruebas, elimina esa variable de la terminal para volver a usar el valor de `.env`:
+
+```powershell
+Remove-Item Env:MONGODB_URI
+```
+
+## Solución de problemas
+
+- **El servidor dice que falta `SESSION_SECRET` o que es demasiado corta:** comprueba que `.env` está en la raíz del repositorio y que `SESSION_SECRET` tiene al menos 32 bytes. No uses el texto de ejemplo.
+- **No se puede conectar a MongoDB (`ECONNREFUSED` o tiempo de espera):** confirma que MongoDB Community Server está instalado y en ejecución, y que `MONGODB_URI` apunta a la dirección correcta. El servidor no empezará a escuchar hasta conectarse.
+- **El endpoint de salud responde HTTP 503:** Express está ejecutándose, pero no tiene una conexión activa a MongoDB; revisa el servicio y su URI.
+- **El navegador no puede llamar a la API:** mantén el servidor activo en el puerto `3000`, usa el cliente iniciado por Vite y verifica que `CLIENT_URL` sea `http://localhost:5173`. Vite ya configura el proxy local para ese servidor.
+- **Un puerto está ocupado:** cierra el proceso de desarrollo anterior que aún lo use y vuelve a iniciar el comando correspondiente.
+- **`npm.cmd ci` falla:** comprueba la conexión a la red y la versión de Node.js; ejecútalo dentro de `client` o `server`, donde se encuentra el `package-lock.json`.
+
+Para las reglas del producto, la arquitectura y las decisiones del juego, consulta la especificación antes de modificar el proyecto.
