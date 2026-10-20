@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import helmet from "helmet";
 import { isDatabaseConnected } from "./database.js";
@@ -11,6 +14,14 @@ import fightersRouter from "./routes/fighters.js";
 import leaderboardsRouter from "./routes/leaderboards.js";
 import profilesRouter from "./routes/profiles.js";
 import referralsRouter from "./routes/referrals.js";
+
+const isProduction = process.env.NODE_ENV === "production";
+const clientBuildPath = fileURLToPath(new URL("../../client/dist", import.meta.url));
+const clientIndexPath = resolve(clientBuildPath, "index.html");
+
+if (isProduction && !existsSync(clientIndexPath)) {
+  throw new Error("Falta el build del cliente. Ejecuta el build de client antes de iniciar producción.");
+}
 
 const app = express();
 const trustProxyHops = process.env.TRUST_PROXY ?? "0";
@@ -42,6 +53,26 @@ app.get("/api/v1/health", (request, response) => {
     database: databaseConnected ? "connected" : "disconnected"
   });
 });
+
+if (isProduction) {
+  app.use(express.static(clientBuildPath));
+  app.get("/{*path}", (request, response, next) => {
+    if (
+      request.path === "/api" ||
+      request.path.startsWith("/api/") ||
+      request.path.startsWith("/assets/") ||
+      !request.accepts("html")
+    ) {
+      return next();
+    }
+
+    return response.sendFile(clientIndexPath, (error) => {
+      if (error) {
+        next(error);
+      }
+    });
+  });
+}
 
 app.use((request, response, next) => {
   next(new ApiError(404, "NOT_FOUND", "Ruta no encontrada."));

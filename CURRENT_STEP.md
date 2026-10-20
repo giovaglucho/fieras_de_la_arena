@@ -1,7 +1,7 @@
 # Paso activo de desarrollo
 
 **Paso activo:** `9.3`
-**Estado:** pendiente
+**Estado:** completado
 **Título:** Preparar despliegue de prueba
 
 ## Objetivo

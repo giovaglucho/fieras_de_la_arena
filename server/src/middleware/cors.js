@@ -1,30 +1,36 @@
 const allowedOrigin = process.env.CLIENT_URL;
 
-if (!allowedOrigin) {
+if (!allowedOrigin && process.env.NODE_ENV !== "production") {
   throw new Error("Falta configurar la variable CLIENT_URL.");
 }
 
 let clientOrigin;
 
-try {
-  const clientUrl = new URL(allowedOrigin);
+if (allowedOrigin) {
+  try {
+    const clientUrl = new URL(allowedOrigin);
 
-  if (
-    !["http:", "https:"].includes(clientUrl.protocol) ||
-    clientUrl.origin !== allowedOrigin
-  ) {
-    throw new Error();
+    if (
+      !["http:", "https:"].includes(clientUrl.protocol) ||
+      clientUrl.origin !== allowedOrigin
+    ) {
+      throw new Error();
+    }
+
+    clientOrigin = clientUrl.origin;
+  } catch {
+    throw new Error("CLIENT_URL debe ser un origen HTTP o HTTPS válido, sin ruta ni barra final.");
   }
-
-  clientOrigin = clientUrl.origin;
-} catch {
-  throw new Error("CLIENT_URL debe ser un origen HTTP o HTTPS válido, sin ruta ni barra final.");
 }
 
 const allowedMethods = ["GET", "HEAD", "POST"];
 const allowedHeaders = ["content-type"];
 
 function corsMiddleware(request, response, next) {
+  if (!clientOrigin) {
+    return next();
+  }
+
   const requestOrigin = request.get("Origin");
 
   if (requestOrigin) {

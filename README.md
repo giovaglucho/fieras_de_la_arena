@@ -130,6 +130,7 @@ server/
   src/utils/        Utilidades del servidor
   src/validators/   Validación de entradas
   test/             Pruebas del servidor
+render.yaml         Configuración del despliegue de prueba en Render
 .env.example        Plantilla de configuración local
 PROJECT_SPEC.md     Especificación funcional y técnica
 ROADMAP.md          Pasos ordenados del proyecto
@@ -170,6 +171,21 @@ Después de las pruebas, elimina esa variable de la terminal para volver a usar 
 ```powershell
 Remove-Item Env:MONGODB_URI
 ```
+
+## Despliegue de prueba gratuito
+
+La configuración [`render.yaml`](render.yaml) prepara un único servicio web gratuito en la región Virginia de Render. Compila React, sirve sus archivos desde Express y utiliza el mismo origen para la interfaz y la API. Render proporciona HTTPS y configura la comprobación HTTP en `/api/v1/health`; no hace falta comprar un dominio para esta prueba. `SESSION_SECRET` se genera en Render y `MONGODB_URI` se introduce directamente en su panel, no en Git.
+
+El servidor admite que Render inyecte las variables de entorno sin que exista un archivo `.env` en el servidor. En producción, si `CLIENT_URL` no está definido, CORS permanece desactivado: el cliente y la API comparten origen. No configures un cliente alojado en otro origen sin definir y revisar explícitamente CORS.
+
+Para preparar el servicio cuando tengas las cuentas:
+
+1. Crea un clúster gratuito M0 en MongoDB Atlas y un usuario de base de datos exclusivo para la aplicación. Revisa las [limitaciones vigentes de Atlas Free](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/); este clúster y el plan gratuito de Render son para pruebas, no para producción ni datos importantes. La configuración usa N. Virginia (`us-east-1`) para Atlas y Virginia para Render.
+2. Crea el servicio de Render desde el Blueprint del repositorio y elige una región cercana a la mayoría de las personas que probarán el juego. No pegues la URI de MongoDB ni contraseñas en el repositorio o en el chat; introdúcelas en el panel de Render cuando solicite `MONGODB_URI`.
+3. En Render, abre **Connect → Outbound** para consultar todos los rangos CIDR de salida de la región elegida. Añádelos a la lista de acceso de red del proyecto Atlas y evita `0.0.0.0/0`. Render comparte esos rangos con otros servicios de la misma región; si Atlas no permite una lista suficientemente restrictiva para la configuración elegida, detente y revisa una opción de hosting con IP de salida dedicada antes de publicar.
+4. Cuando el servicio esté disponible, abre su subdominio HTTPS de Render y comprueba `/api/v1/health`. La respuesta correcta contiene `status: "ok"` y `database: "connected"`. Si la base de datos no está accesible, el health check devuelve HTTP 503 y Render no considera sano el servicio.
+
+El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico y el primer acceso posterior puede tardar alrededor de un minuto. No lo uses para un lanzamiento ni para almacenar datos que deban estar siempre disponibles. Render puede terminar TLS antes de reenviar HTTP al servicio; la configuración de producción activa la cookie segura, HSTS y un salto de proxy de confianza.
 
 ## Solución de problemas
 
