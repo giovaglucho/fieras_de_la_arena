@@ -155,6 +155,7 @@
 }
 
 .button--secondary {
+  background: transparent;
   border-color: rgb(245 232 208 / 30%);
   color: var(--color-paper);
 }
@@ -905,7 +906,11 @@
 
 .form-field input:focus {
   border-color: var(--color-copper-light);
-  outline: 2px solid rgb(222 151 111 / 20%);
+}
+
+.form-field input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .form-field input[aria-invalid='true'] {

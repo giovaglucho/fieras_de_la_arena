@@ -17,7 +17,7 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Paso activo: 8.6 — Revisar accesibilidad y diseño adaptable**. Los pasos anteriores hasta el 8.5 están completados.
+**Paso activo: 9.1 — Revisar dependencias y scripts**. Los pasos anteriores hasta el 8.6 están completados.
 
 ## Requisitos
 

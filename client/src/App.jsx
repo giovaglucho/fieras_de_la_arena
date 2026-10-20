@@ -53,8 +53,10 @@ function validateLogin(formData) {
   return errors
 }
 
-function Field({ id, label, error, ...inputProps }) {
+function Field({ id, label, error, hint, ...inputProps }) {
   const errorId = `${id}-error`
+  const hintId = `${id}-hint`
+  const descriptionId = error ? errorId : hint ? hintId : undefined
 
   return (
     <div className="form-field">
@@ -62,12 +64,17 @@ function Field({ id, label, error, ...inputProps }) {
       <input
         id={id}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={descriptionId}
         {...inputProps}
       />
       {error && (
         <p className="field-error" id={errorId}>
           {error}
+        </p>
+      )}
+      {!error && hint && (
+        <p className="form-hint" id={hintId}>
+          {hint}
         </p>
       )}
     </div>
@@ -206,9 +213,9 @@ function AuthPage({ mode }) {
                   maxLength={72}
                   placeholder="Al menos 8 bytes"
                   required
+                  hint="Entre 8 y 72 bytes. Tu contraseña se guarda de forma segura."
                   error={fieldErrors.password}
                 />
-                <p className="form-hint">Entre 8 y 72 bytes. Tu contraseña se guarda de forma segura.</p>
                 <Field
                   id="referralCode"
                   name="referralCode"

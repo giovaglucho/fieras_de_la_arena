@@ -1,29 +1,25 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `8.6`
+**Paso activo:** `9.1`
 **Estado:** pendiente
-**Título:** Revisar accesibilidad y diseño adaptable
+**Título:** Revisar dependencias y scripts
 
 ## Objetivo
 
-Revisar accesibilidad y diseño adaptable.
+Revisar dependencias y scripts.
 
 ## Permitido en este paso
 
-- Teclado.
-- Etiquetas.
-- Foco.
-- Contraste.
-- Pantallas pequeñas.
-- Estados de error.
+- Retirar dependencias realmente no usadas.
+- Verificar scripts de producción.
 
 ## Fuera de alcance
 
-- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 9.1 y posteriores.
+- No iniciar ningún paso posterior de `ROADMAP.md`, incluidos los pasos 9.2 y posteriores.
 
 ## Criterios de aceptación
 
-- no hay bloqueos visuales en los tamaños de pantalla probados.
+- instalación reproducible desde un repositorio limpio.
 
 ## Al terminar
 
