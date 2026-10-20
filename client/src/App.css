@@ -815,6 +815,215 @@
   gap: 0.75rem;
 }
 
+.battle-animation {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid rgb(198 112 74 / 25%);
+  border-radius: 0.65rem;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgb(151 80 46 / 22%), transparent 65%),
+    linear-gradient(180deg, #292019, #211812);
+}
+
+.battle-animation h2 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.battle-animation__hint,
+.battle-animation__motion-note {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.battle-animation__arena {
+  position: relative;
+  display: grid;
+  min-height: 13rem;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  overflow: hidden;
+  border-bottom: 3px solid #98613e;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgb(188 117 63 / 18%), transparent 50%),
+    linear-gradient(180deg, transparent 72%, rgb(74 48 32 / 38%));
+}
+
+.battle-animation__combatant {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  align-content: end;
+  gap: 0.35rem;
+  padding: 0 0.5rem;
+}
+
+.battle-animation__fighter {
+  position: relative;
+  width: 4rem;
+  height: 7.5rem;
+  transform-origin: 50% 100%;
+  --fighter-color: #bb5d3b;
+  --fighter-shadow: #693a2f;
+}
+
+.battle-animation__fighter--right {
+  --fighter-color: #7291a0;
+  --fighter-shadow: #3e5965;
+}
+
+.battle-animation__head,
+.battle-animation__torso,
+.battle-animation__arm,
+.battle-animation__leg {
+  position: absolute;
+  display: block;
+  background: var(--fighter-color);
+  box-shadow: inset -0.25rem -0.15rem var(--fighter-shadow);
+}
+
+.battle-animation__head {
+  top: 0.35rem;
+  left: 1.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid #e0b18d;
+  border-radius: 50%;
+  background: #c88f69;
+  box-shadow: inset -0.3rem -0.1rem #9d684d;
+}
+
+.battle-animation__torso {
+  top: 2rem;
+  left: 0.85rem;
+  width: 2.3rem;
+  height: 2.7rem;
+  border: 2px solid var(--fighter-shadow);
+  border-radius: 0.8rem 0.8rem 0.45rem 0.45rem;
+}
+
+.battle-animation__arm {
+  top: 2.15rem;
+  width: 0.8rem;
+  height: 2.6rem;
+  border: 2px solid var(--fighter-shadow);
+  border-radius: 0.5rem;
+  transform-origin: 50% 0;
+}
+
+.battle-animation__arm--front {
+  left: 0.35rem;
+  transform: rotate(24deg);
+}
+
+.battle-animation__arm--back {
+  right: 0.35rem;
+  transform: rotate(-24deg);
+}
+
+.battle-animation__leg {
+  top: 4.35rem;
+  width: 0.85rem;
+  height: 2.7rem;
+  border: 2px solid var(--fighter-shadow);
+  border-radius: 0.45rem;
+  transform-origin: 50% 0;
+}
+
+.battle-animation__leg--front {
+  left: 1rem;
+  transform: rotate(8deg);
+}
+
+.battle-animation__leg--back {
+  right: 1rem;
+  transform: rotate(-8deg);
+}
+
+.battle-animation__name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-paper);
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-animation__impact {
+  position: absolute;
+  z-index: 2;
+  top: 22%;
+  animation: battle-impact 500ms ease both;
+  color: #ffd58b;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 900;
+  opacity: 0;
+  text-shadow: 0 2px 8px #21130d;
+}
+
+.battle-animation__impact--left {
+  left: 56%;
+}
+
+.battle-animation__impact--right {
+  right: 56%;
+}
+
+.battle-animation__arena-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(transparent, rgb(225 154 114 / 25%), transparent);
+}
+
+@keyframes battle-lunge-left {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  45% { transform: translateX(2.2rem) rotate(-7deg); }
+}
+
+@keyframes battle-lunge-right {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  45% { transform: translateX(-2.2rem) rotate(7deg); }
+}
+
+@keyframes battle-hit-left {
+  0%, 100% { translate: 0; }
+  35% { translate: -0.8rem 0.15rem; }
+}
+
+@keyframes battle-hit-right {
+  0%, 100% { translate: 0; }
+  35% { translate: 0.8rem 0.15rem; }
+}
+
+@keyframes battle-impact {
+  0% { opacity: 0; transform: translateY(0) scale(0.65) rotate(-8deg); }
+  25% { opacity: 1; transform: translateY(-0.5rem) scale(1.2) rotate(8deg); }
+  100% { opacity: 0; transform: translateY(-1.5rem) scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-animation__fighter,
+  .battle-animation__impact {
+    animation: none !important;
+  }
+
+  .battle-animation__impact {
+    display: none;
+  }
+}
+
 .battle-events h2 {
   margin: 0;
   color: var(--color-paper);

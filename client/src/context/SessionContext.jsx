@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { fetchSession, loginUser, logoutUser } from '../api/auth.js'
+import { fetchSession, loginUser, logoutUser, registerUser } from '../api/auth.js'
 
 const SessionContext = createContext(null)
 
@@ -39,6 +39,13 @@ export function SessionProvider({ children }) {
     return user
   }, [])
 
+  const register = useCallback(async (values) => {
+    const user = await registerUser(values)
+    requestVersion.current += 1
+    setSession({ status: 'authenticated', user, error: '' })
+    return user
+  }, [])
+
   const logout = useCallback(async () => {
     await logoutUser()
     requestVersion.current += 1
@@ -46,7 +53,7 @@ export function SessionProvider({ children }) {
   }, [])
 
   return (
-    <SessionContext.Provider value={{ ...session, login, logout, refreshSession }}>
+    <SessionContext.Provider value={{ ...session, login, register, logout, refreshSession }}>
       {children}
     </SessionContext.Provider>
   )

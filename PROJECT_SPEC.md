@@ -63,7 +63,7 @@ Estas funciones se diseñan desde el inicio para poder incorporarlas, pero no se
 - Logros, misiones y recompensas por temporada.
 - Eventos temporales y temporadas competitivas.
 - Herramientas administrativas y moderación ampliada.
-- Animaciones y presentación visual avanzada de los combates.
+- Animaciones y presentación visual avanzada de los combates; la presentación básica de los eventos guardados forma parte del MVP.
 
 ### 2.3 Fuera del alcance inicial
 
@@ -86,7 +86,7 @@ No se debe implementar nada de esta sección durante el MVP, aunque parezca fác
 1. La persona abre la página pública.
 2. Se registra con nombre de usuario, correo y contraseña.
 3. Puede introducir un código de invitación si llegó mediante el enlace de un alumno.
-4. Inicia sesión y crea su luchador.
+4. El servidor inicia su sesión y la persona crea su luchador sin volver a ingresar sus credenciales.
 5. El servidor valida que el nombre cumpla las reglas y que esté disponible.
 6. La persona entra al panel y recibe una explicación breve de cómo funciona la arena.
 
@@ -425,7 +425,7 @@ Estas rutas son el contrato objetivo, no una orden de implementarlas todas de in
 | Método | Ruta | Requiere sesión | Propósito |
 |---|---|---:|---|
 | `GET` | `/api/v1/health` | No | Verificar que el servidor responde |
-| `POST` | `/api/v1/auth/register` | No | Crear cuenta; aceptar invitación opcional desde la etapa 7 |
+| `POST` | `/api/v1/auth/register` | No | Crear cuenta, aceptar invitación opcional y abrir sesión automáticamente |
 | `POST` | `/api/v1/auth/login` | No | Iniciar sesión |
 | `POST` | `/api/v1/auth/logout` | Sí | Destruir la sesión |
 | `GET` | `/api/v1/auth/me` | Sí | Consultar cuenta autenticada |
@@ -455,7 +455,7 @@ Requisitos de API:
 
 `GET /api/v1/leaderboards` es público; acepta `category` (`elo` por defecto o `level`), `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`). Devuelve `{ fighters, pagination: { page, limit, totalItems, totalPages } }`. El servidor ordena la categoría elegida de mayor a menor y resuelve los empates por ID de luchador de menor a mayor. Cada luchador incluye únicamente los campos del perfil público y el nombre de usuario.
 
-El registro acepta `username`, `email` y `password`, y opcionalmente `referralCode`. El código debe corresponder a un luchador existente; la nueva cuenta queda vinculada de forma permanente al usuario dueño de ese luchador. Un código desconocido se rechaza con HTTP 400. Un registro correcto devuelve HTTP 201 con `id`, `username` y `email` públicos, sin iniciar sesión. Los conflictos de nombre o correo devuelven el mismo error HTTP 409 para no distinguir cuál valor está ocupado.
+El registro acepta `username`, `email` y `password`, y opcionalmente `referralCode`. El código debe corresponder a un luchador existente; la nueva cuenta queda vinculada de forma permanente al usuario dueño de ese luchador. Un código desconocido se rechaza con HTTP 400. Un registro correcto crea una sesión de servidor, regenera el identificador de sesión y devuelve HTTP 201 con `id`, `username` y `email` públicos y la cookie de sesión; nunca devuelve credenciales ni hashes. Los conflictos de nombre o correo devuelven el mismo error HTTP 409 para no distinguir cuál valor está ocupado.
 
 El inicio de sesión acepta únicamente `identifier` y `password`; `identifier` puede ser el nombre de usuario o el correo electrónico registrado.
 
@@ -498,6 +498,9 @@ Crear un componente reutilizable cuando exista una necesidad concreta, no solo p
 - No depender únicamente del color para comunicar victoria o derrota.
 - Deshabilitar botones durante peticiones para reducir dobles envíos; mantener la idempotencia en el servidor de todos modos.
 - Adaptar tablas, navegación y secuencias de combate a pantallas pequeñas.
+- La página de inicio conserva una presentación pública para visitantes y ofrece una continuación al panel para sesiones activas. El logo vuelve a ese inicio, que no destruye la sesión.
+- Después del registro, la sesión autenticada continúa al flujo de creación del luchador.
+- El resultado presenta una animación visual sencilla construida con los eventos persistidos; el registro textual permanece disponible y `prefers-reduced-motion` desactiva el movimiento.
 
 ---
 

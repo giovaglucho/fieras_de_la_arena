@@ -15,9 +15,9 @@ Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criteri
 
 ## Estado actual
 
-El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
+El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. Los resultados muestran una animación básica basada en eventos guardados junto al registro textual. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Paso activo: 9.4 — Verificación final de lanzamiento**. Los pasos anteriores hasta el 9.3 están completados. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/); la verificación final del flujo de juego publicado sigue pendiente.
+**Paso verificado: 9.5 — Pulir navegación autenticada y presentación del combate**. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/). El inicio y el registro respetan la sesión y los resultados presentan visualmente los combates guardados. El usuario revisará este paso antes de decidir cómo continuar.
 
 ## Requisitos
 
@@ -75,7 +75,7 @@ El servidor no empieza a escuchar si faltan variables obligatorias o no puede co
 
 ## Ejecutar el cliente y el servidor
 
-`POST /api/v1/auth/register` recibe `username`, `email` y `password`, con `referralCode` opcional. Un código válido vincula la cuenta nueva con su referente y uno inválido se rechaza con HTTP 400; el registro no inicia sesión automáticamente.
+`POST /api/v1/auth/register` recibe `username`, `email` y `password`, con `referralCode` opcional. Un código válido vincula la cuenta nueva con su referente y uno inválido se rechaza con HTTP 400. Un registro correcto crea una sesión autenticada y devuelve la cookie segura de sesión junto con los datos públicos de la cuenta; el cliente continúa al flujo de creación del luchador.
 El endpoint `POST /api/v1/auth/login` recibe `identifier` (nombre de usuario o correo) y `password`. `POST /api/v1/auth/logout` destruye una sesión iniciada.
 La API limita el registro a 5 solicitudes por hora y por IP, el inicio de sesión a 10 cada 15 minutos por IP, los combates a 5 por minuto y cuenta, y las consultas privadas a 60 por minuto y cuenta. Estas consultas son `GET /api/v1/auth/me`, `/api/v1/fighters/me`, `/api/v1/arena/attempts`, `/api/v1/arena/history`, `/api/v1/battles/:id` y `/api/v1/referrals/me`. El exceso responde HTTP 429 con el código `RATE_LIMIT_EXCEEDED`. Los contadores residen en memoria local: se reinician al reiniciar el servidor y no se comparten entre varias instancias.
 `GET /api/v1/auth/me` requiere la cookie de sesión y devuelve únicamente `id`, `username` y `email` de la cuenta autenticada; sin sesión responde HTTP 401.
@@ -148,6 +148,7 @@ Ejecuta estos comandos desde la carpeta indicada. No hay actualmente un script d
 | `client` | `npm.cmd run dev` | Inicia Vite para desarrollo. |
 | `client` | `npm.cmd run build` | Construye el cliente en `client/dist/`. |
 | `client` | `npm.cmd run preview` | Sirve localmente el build existente. |
+| `client` | `node --test test/battleAnimation.test.js` | Prueba la lectura de ataques persistidos para la animación visual. |
 | `server` | `npm.cmd run dev` | Inicia el servidor con recarga al cambiar archivos. |
 | `server` | `npm.cmd start` | Inicia el servidor sin modo de observación. |
 | `server` | `npm.cmd test` | Ejecuta todas las pruebas con el runner integrado de Node.js. |
@@ -180,7 +181,7 @@ El servidor admite que Render inyecte las variables de entorno sin que exista un
 
 El servicio de prueba está desplegado en el plan gratuito de Render, en Virginia, y utiliza un clúster Atlas M0 en N. Virginia (`us-east-1`). La lista de acceso de Atlas incluye los rangos de salida compartidos de Render, sin abrir el acceso a cualquier dirección IP. El endpoint [`/api/v1/health`](https://fieras-de-la-arena.onrender.com/api/v1/health) respondió correctamente con `status: "ok"` y `database: "connected"`.
 
-Este despliegue y la base gratuita son solo para pruebas, no para producción ni datos importantes. Revisa las [limitaciones vigentes de Atlas Free](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/). La verificación de registro, login/logout, creación, combate, recompensas, historial, perfiles y ranking en el entorno publicado corresponde al paso activo y aún no se declara completada.
+Este despliegue y la base gratuita son solo para pruebas, no para producción ni datos importantes. Revisa las [limitaciones vigentes de Atlas Free](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/). El checklist de registro, login/logout, creación, combate, recompensas, historial, perfiles y ranking en el entorno publicado se completó en el paso 9.4.
 
 El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico y el primer acceso posterior puede tardar alrededor de un minuto. No lo uses para un lanzamiento ni para almacenar datos que deban estar siempre disponibles. Render puede terminar TLS antes de reenviar HTTP al servicio; la configuración de producción activa la cookie segura, HSTS y un salto de proxy de confianza.
 

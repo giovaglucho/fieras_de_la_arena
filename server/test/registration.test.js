@@ -5,13 +5,14 @@ import { after, before, test } from "node:test";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import app from "../src/app.js";
-import { sessionStore } from "../src/middleware/session.js";
+import { SESSION_COOKIE_NAME, sessionStore } from "../src/middleware/session.js";
 import Fighter from "../src/models/Fighter.js";
 import User from "../src/models/User.js";
 
 const runId = randomUUID().replaceAll("-", "");
 const usernamePrefix = `reg${runId.slice(0, 12)}`;
 const server = createServer(app);
+const sessionIds = new Set();
 let baseUrl;
 let registrationCounter = 0;
 let requestIpCounter = 1;
@@ -36,6 +37,9 @@ after(async () => {
   });
 
   if (mongoose.connection.readyState === 1) {
+    await mongoose.connection.collection("sessions").deleteMany({
+      _id: { $in: [...sessionIds] }
+    });
     const users = await User.find({ username: new RegExp(`^${usernamePrefix}`) }).select("_id");
     const userIds = users.map((user) => user._id);
     await Fighter.deleteMany({ userId: { $in: userIds } });
@@ -77,7 +81,7 @@ async function createReferrer(suffix) {
 }
 
 async function register(data, ip = `192.0.2.${requestIpCounter++}`) {
-  return fetch(registrationUrl(), {
+  const response = await fetch(registrationUrl(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -85,9 +89,20 @@ async function register(data, ip = `192.0.2.${requestIpCounter++}`) {
     },
     body: JSON.stringify(data)
   });
+
+  const setCookie = response.headers.get("set-cookie");
+  if (setCookie) {
+    const cookie = setCookie.split(";")[0];
+    const sessionId = decodeURIComponent(
+      cookie.slice(`${SESSION_COOKIE_NAME}=`.length)
+    ).slice(2).split(".")[0];
+    sessionIds.add(sessionId);
+  }
+
+  return response;
 }
 
-test("crea una cuenta normalizada y solo devuelve los campos públicos", async () => {
+test("crea una cuenta normalizada, inicia sesión y solo devuelve los campos públicos", async () => {
   const password = "arena password 123";
   const response = await register(
     registrationData({
@@ -104,7 +119,20 @@ test("crea una cuenta normalizada y solo devuelve los campos públicos", async (
     username: `${usernamePrefix}_player`,
     email: `${runId}@example.test`
   });
-  assert.equal(response.headers.get("set-cookie"), null);
+  const setCookie = response.headers.get("set-cookie");
+  assert.ok(setCookie);
+  assert.match(setCookie, /HttpOnly/i);
+  const cookie = setCookie.split(";")[0];
+  const sessionId = decodeURIComponent(
+    cookie.slice(`${SESSION_COOKIE_NAME}=`.length)
+  ).slice(2).split(".")[0];
+  assert.ok(await mongoose.connection.collection("sessions").findOne({ _id: sessionId }));
+
+  const sessionResponse = await fetch(`${baseUrl}/api/v1/auth/me`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(sessionResponse.status, 200);
+  assert.equal((await sessionResponse.json()).user.username, `${usernamePrefix}_player`);
   assert.doesNotMatch(JSON.stringify(body), /password|hash/i);
 
   const user = await User.findById(body.user.id).select("+passwordHash");

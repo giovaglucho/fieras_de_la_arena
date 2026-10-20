@@ -24,6 +24,16 @@ function toPublicUser(user) {
   };
 }
 
+async function regenerateUserSession(request, user) {
+  await new Promise((resolve, reject) => {
+    request.session.regenerate((error) => (error ? reject(error) : resolve()));
+  });
+  request.session.userId = user._id.toString();
+  await new Promise((resolve, reject) => {
+    request.session.save((error) => (error ? reject(error) : resolve()));
+  });
+}
+
 router.get("/me", requireAuth, sensitiveReadRateLimit, (request, response) => {
   return response.status(200).json({ user: toPublicUser(request.user) });
 });
@@ -55,13 +65,7 @@ router.post("/login", loginRateLimit, async (request, response, next) => {
     user.lastLoginAt = new Date();
     await user.save();
 
-    await new Promise((resolve, reject) => {
-      request.session.regenerate((error) => (error ? reject(error) : resolve()));
-    });
-    request.session.userId = user._id.toString();
-    await new Promise((resolve, reject) => {
-      request.session.save((error) => (error ? reject(error) : resolve()));
-    });
+    await regenerateUserSession(request, user);
 
     return response.status(200).json({ user: toPublicUser(user) });
   } catch (error) {
@@ -114,7 +118,8 @@ router.post("/register", registrationRateLimit, async (request, response, next) 
     const user = new User({
       username: registration.username,
       email: registration.email,
-      passwordHash
+      passwordHash,
+      lastLoginAt: new Date()
     });
 
     if (registration.referralCode) {
@@ -142,6 +147,7 @@ router.post("/register", registrationRateLimit, async (request, response, next) 
     }
 
     await user.save();
+    await regenerateUserSession(request, user);
 
     return response.status(201).json({ user: toPublicUser(user) });
   } catch (error) {

@@ -68,7 +68,7 @@ Esta hoja ordena el desarrollo desde cero hasta una versión publicable. **No se
 ### 2.2 Implementar registro
 - Validar datos en servidor, normalizar valores y hashear contraseña.
 - Manejar duplicados con error público consistente.
-- No iniciar sesión automáticamente a menos que se defina y documente como parte de este paso.
+- El contrato inicial no inicia sesión automáticamente; cualquier cambio posterior debe actualizar explícitamente la especificación y sus pruebas (definido en el paso 9.5).
 - **Aceptación:** registro válido funciona; inválidos y duplicados se rechazan; nunca se devuelve el hash.
 
 ### 2.3 Implementar login, logout y sesión persistente
@@ -258,6 +258,14 @@ Esta hoja ordena el desarrollo desde cero hasta una versión publicable. **No se
 ### 9.4 Verificación final de lanzamiento
 - Probar registro, login/logout, creación, combate, recompensas, historial, perfiles y ranking en entorno publicado.
 - **Aceptación:** checklist aprobado; fallos críticos resueltos o documentados antes de anunciar el juego.
+
+### 9.5 Pulir navegación autenticada y presentación del combate
+- Hacer que el inicio y el logo orienten correctamente a las personas con sesión iniciada, sin confundir la navegación con un cierre de sesión.
+- Actualizar el contrato de registro en la especificación para permitir el inicio automático de sesión; luego iniciar sesión tras un registro correcto y continuar al flujo correspondiente de creación del luchador.
+- Añadir únicamente los retornos contextuales que falten en perfiles públicos y estados de error.
+- Presentar una animación visual básica de ambos luchadores a partir de los eventos persistidos del combate, conservando el registro textual y respetando la preferencia de movimiento reducido.
+- No modificar las reglas, resultados ni recompensas del motor de combate.
+- **Aceptación:** la especificación documenta el nuevo contrato de registro; navegación coherente para personas autenticadas y anónimas; registro continúa con una sesión autenticada; retornos contextuales disponibles donde sean necesarios; resultado muestra la animación del combate guardado y el texto sigue accesible; pruebas pertinentes pasan.
 
 ## Etapa 10 — Expansión de juego (después de validar v1.0)
 

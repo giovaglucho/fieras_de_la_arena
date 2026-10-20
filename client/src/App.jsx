@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { fetchArenaAttempts, fetchBattle, fetchBattleHistory, startArenaFight } from './api/arena.js'
-import { registerUser } from './api/auth.js'
 import { createFighter, fetchMyFighter, fetchPublicProfile } from './api/fighters.js'
 import { fetchLeaderboard } from './api/leaderboards.js'
 import { fetchReferralOverview } from './api/referrals.js'
 import { useSession } from './context/SessionContext.jsx'
+import BattleAnimation from './components/BattleAnimation.jsx'
 import './App.css'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,24}$/
@@ -81,16 +81,24 @@ function Field({ id, label, error, hint, ...inputProps }) {
   )
 }
 
+function Brand() {
+  return (
+    <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
+      <span className="brand__mark" aria-hidden="true">FA</span>
+      <span>Fieras <span className="brand__muted">de la Arena</span></span>
+    </Link>
+  )
+}
+
 function AuthPage({ mode }) {
   const isRegister = mode === 'register'
   const location = useLocation()
   const navigate = useNavigate()
   const referralCodeFromLink = new URLSearchParams(location.search).get('referralCode') || ''
-  const { login } = useSession()
+  const { login, register } = useSession()
   const [fieldErrors, setFieldErrors] = useState({})
   const [requestError, setRequestError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [success, setSuccess] = useState(null)
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -122,7 +130,8 @@ function AuthPage({ mode }) {
 
     try {
       if (isRegister) {
-        setSuccess(await registerUser(values))
+        await register(values)
+        navigate('/create-fighter', { replace: true })
       } else {
         await login(values)
         navigate(location.state?.from || '/dashboard', { replace: true })
@@ -150,10 +159,7 @@ function AuthPage({ mode }) {
 
   return (
     <main className="auth-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
 
       <section className="auth-card" aria-labelledby="auth-title">
         <Link className="back-link" to="/">← Volver al inicio</Link>
@@ -165,21 +171,7 @@ function AuthPage({ mode }) {
             : 'Ingresa tus datos para volver a la arena.'}
         </p>
 
-        {success ? (
-          <div className="success-panel" role="status" aria-live="polite">
-            <span className="success-panel__icon" aria-hidden="true">✓</span>
-            <h2>{isRegister ? '¡Cuenta creada!' : '¡Sesión iniciada!'}</h2>
-            <p>
-              {isRegister
-                ? `Tu cuenta ${success.username} está lista. Ahora puedes iniciar sesión.`
-                : `Bienvenido de nuevo, ${success.username}.`}
-            </p>
-            <Link className="button button--primary" to="/login">
-              Ir a iniciar sesión
-            </Link>
-          </div>
-        ) : (
-          <form className="auth-form" onSubmit={handleSubmit} onChange={handleChange} noValidate>
+        <form className="auth-form" onSubmit={handleSubmit} onChange={handleChange} noValidate>
             {isRegister ? (
               <>
                 <Field
@@ -264,17 +256,14 @@ function AuthPage({ mode }) {
             <button className="button button--primary" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Conectando…' : isRegister ? 'Crear cuenta' : 'Iniciar sesión'}
             </button>
-          </form>
-        )}
+        </form>
 
-        {!success && (
-          <p className="auth-switch">
-            {isRegister ? '¿Ya tienes una cuenta?' : '¿Aún no tienes una cuenta?'}{' '}
-            <Link to={isRegister ? '/login' : '/register'}>
-              {isRegister ? 'Inicia sesión' : 'Regístrate'}
-            </Link>
-          </p>
-        )}
+        <p className="auth-switch">
+          {isRegister ? '¿Ya tienes una cuenta?' : '¿Aún no tienes una cuenta?'}{' '}
+          <Link to={isRegister ? '/login' : '/register'}>
+            {isRegister ? 'Inicia sesión' : 'Regístrate'}
+          </Link>
+        </p>
       </section>
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
@@ -282,27 +271,80 @@ function AuthPage({ mode }) {
 }
 
 function HomePage() {
+  const { status, user, error, refreshSession } = useSession()
+
   return (
     <main className="home-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
-      <section className="home-hero">
-        <p className="eyebrow">Tu leyenda empieza aquí</p>
-        <h1>Entra a la arena.<br /><span>Forja tu historia.</span></h1>
-        <p className="home-hero__copy">
-          Crea tu cuenta y prepárate para demostrar de qué estás hecho.
-        </p>
-        <div className="home-actions">
-          <Link className="button button--primary" to="/register">Crear cuenta</Link>
-          <Link className="button button--secondary" to="/login">Iniciar sesión</Link>
-          <Link className="button button--secondary" to="/leaderboards">Ver clasificación</Link>
-        </div>
-      </section>
+      <Brand />
+      {status === 'loading' ? (
+        <section className="home-hero" role="status">Comprobando tu sesión…</section>
+      ) : status === 'error' ? (
+        <section className="home-hero" aria-labelledby="home-session-error-title">
+          <p className="eyebrow">No pudimos comprobar tu sesión</p>
+          <h1 id="home-session-error-title">Tu arena sigue aquí.</h1>
+          <p className="request-error" role="alert">{error}</p>
+          <button className="button button--primary" type="button" onClick={refreshSession}>
+            Intentar de nuevo
+          </button>
+        </section>
+      ) : status === 'authenticated' ? (
+        <section className="home-hero">
+          <p className="eyebrow">Qué bueno verte de nuevo</p>
+          <h1>Tu arena<br /><span>te espera, {user.username}.</span></h1>
+          <p className="home-hero__copy">
+            Tu sesión sigue activa. Continúa tu camino o consulta a tus rivales.
+          </p>
+          <div className="home-actions">
+            <Link className="button button--primary" to="/dashboard">Ir a mi panel</Link>
+            <Link className="button button--secondary" to="/leaderboards">Ver clasificación</Link>
+          </div>
+        </section>
+      ) : (
+        <section className="home-hero">
+          <p className="eyebrow">Tu leyenda empieza aquí</p>
+          <h1>Entra a la arena.<br /><span>Forja tu historia.</span></h1>
+          <p className="home-hero__copy">
+            Crea tu cuenta y prepárate para demostrar de qué estás hecho.
+          </p>
+          <div className="home-actions">
+            <Link className="button button--primary" to="/register">Crear cuenta</Link>
+            <Link className="button button--secondary" to="/login">Iniciar sesión</Link>
+            <Link className="button button--secondary" to="/leaderboards">Ver clasificación</Link>
+          </div>
+        </section>
+      )}
       <p className="home-footer">Fieras de la Arena <span>·</span> Combate. Progresa. Compite.</p>
     </main>
   )
+}
+
+function GuestRoute() {
+  const { status, error, refreshSession } = useSession()
+
+  if (status === 'loading') {
+    return <main className="session-layout" role="status">Comprobando tu sesión…</main>
+  }
+
+  if (status === 'error') {
+    return (
+      <main className="session-layout">
+        <Brand />
+        <section className="session-card" aria-labelledby="guest-route-error-title">
+          <h1 id="guest-route-error-title">No se pudo comprobar tu sesión</h1>
+          <p className="request-error" role="alert">{error}</p>
+          <button className="button button--primary" type="button" onClick={refreshSession}>
+            Intentar de nuevo
+          </button>
+        </section>
+      </main>
+    )
+  }
+
+  if (status === 'authenticated') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <Outlet />
 }
 
 function ProtectedRoute() {
@@ -316,12 +358,14 @@ function ProtectedRoute() {
   if (status === 'error') {
     return (
       <main className="session-layout">
+        <Brand />
         <section className="session-card" aria-labelledby="session-error-title">
           <h1 id="session-error-title">No se pudo comprobar tu sesión</h1>
           <p className="request-error" role="alert">{error}</p>
           <button className="button button--primary" type="button" onClick={refreshSession}>
             Intentar de nuevo
           </button>
+          <Link className="button button--secondary" to="/leaderboards">Ver clasificación</Link>
         </section>
       </main>
     )
@@ -370,6 +414,7 @@ function FighterStatusRoute({ needsCreation = false }) {
   if (status === 'error') {
     return (
       <main className="session-layout">
+        <Brand />
         <section className="session-card" aria-labelledby="fighter-check-error-title">
           <h1 id="fighter-check-error-title">No se pudo comprobar tu luchador</h1>
           <p className="request-error" role="alert">{error}</p>
@@ -380,6 +425,7 @@ function FighterStatusRoute({ needsCreation = false }) {
           >
             Intentar de nuevo
           </button>
+          <Link className="button button--secondary" to="/leaderboards">Ver clasificación</Link>
         </section>
       </main>
     )
@@ -439,13 +485,9 @@ function CreateFighterPage() {
 
   return (
     <main className="auth-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
 
       <section className="auth-card" aria-labelledby="fighter-title">
-        <Link className="back-link" to="/">Volver al inicio</Link>
         <p className="eyebrow">Tu camino empieza aquí</p>
         <h1 id="fighter-title">Crea tu luchador</h1>
         <p className="auth-intro">
@@ -512,6 +554,7 @@ function FighterSummary({
   fighter,
   eyebrow,
   showPublicLink = false,
+  returnTo,
   stats = fighter.baseStats,
   statsTitle = 'Estadísticas base',
 }) {
@@ -554,6 +597,7 @@ function FighterSummary({
         <Link
           className="button button--secondary fighter-profile__link"
           to={`/profile/${encodeURIComponent(fighter.username)}`}
+          state={returnTo ? { returnTo } : undefined}
         >
           Ver perfil público
         </Link>
@@ -644,10 +688,7 @@ function DashboardPage() {
   if (status === 'error') {
     return (
       <main className="session-layout">
-        <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-          <span className="brand__mark" aria-hidden="true">FA</span>
-          <span>Fieras <span className="brand__muted">de la Arena</span></span>
-        </Link>
+        <Brand />
         <section className="session-card" aria-labelledby="dashboard-error-title">
           <h1 id="dashboard-error-title">No se pudo cargar el panel</h1>
           <p className="request-error" role="alert">{dashboardError}</p>
@@ -658,6 +699,7 @@ function DashboardPage() {
           >
             Intentar de nuevo
           </button>
+          <Link className="button button--secondary" to="/leaderboards">Ver clasificación</Link>
         </section>
         <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
       </main>
@@ -666,15 +708,13 @@ function DashboardPage() {
 
   return (
     <main className="session-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
       <div className="fighter-dashboard">
         <FighterSummary
           fighter={fighter}
           eyebrow="Tu luchador"
           showPublicLink
+          returnTo="/dashboard"
           stats={fighter.stats}
           statsTitle="Estadísticas"
         />
@@ -807,10 +847,7 @@ function StudentsPage() {
 
   return (
     <main className="session-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
       {status === 'loading' ? (
         <section className="session-card students-card" role="status">
           Cargando tus alumnos…
@@ -826,6 +863,7 @@ function StudentsPage() {
           >
             Intentar de nuevo
           </button>
+          <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
         </section>
       ) : (
         <section className="session-card students-card" aria-labelledby="students-title">
@@ -869,6 +907,7 @@ function StudentsPage() {
                         <Link
                           className="leaderboard__profile-link"
                           to={`/profile/${encodeURIComponent(student.username)}`}
+                          state={{ returnTo: '/students' }}
                         >
                           <strong>{student.fighter.name}</strong>
                           <span>@{student.username}</span>
@@ -978,10 +1017,7 @@ function ArenaPage() {
 
   return (
     <main className="session-layout arena-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
 
       <section className="session-card arena-card" aria-labelledby="arena-title">
         <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
@@ -1083,10 +1119,7 @@ function BattleHistoryPage() {
 
   return (
     <main className="session-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
 
       <section className="session-card battle-history-card" aria-labelledby="battle-history-title">
         <div className="battle-history__navigation">
@@ -1273,10 +1306,7 @@ function BattleResultPage() {
 
   return (
     <main className="session-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
 
       {status === 'loading' ? (
         <section className="session-card battle-result-card" role="status">
@@ -1336,6 +1366,7 @@ function BattleResultPage() {
           </dl>
 
           <section className="battle-events" aria-labelledby="battle-events-title">
+            <BattleAnimation participants={battle.participants} events={battle.events} />
             <h2 id="battle-events-title">Secuencia del combate</h2>
             <ol>
               {battle.events.map((event, index) => (
@@ -1356,6 +1387,16 @@ function BattleResultPage() {
 
 function PublicProfilePage() {
   const { username } = useParams()
+  const location = useLocation()
+  const returnTo = location.state?.returnTo
+  const returnDestination = returnTo === '/dashboard' || returnTo === '/students'
+    ? returnTo
+    : '/leaderboards'
+  const returnLabel = returnDestination === '/dashboard'
+    ? 'Volver al panel'
+    : returnDestination === '/students'
+      ? 'Volver a tus alumnos'
+      : 'Volver a la clasificación'
   const [fighter, setFighter] = useState(null)
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
@@ -1386,14 +1427,15 @@ function PublicProfilePage() {
 
   return (
     <main className="session-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
       {status === 'loading' ? (
-        <section className="session-card" role="status">Cargando perfil público…</section>
+        <section className="session-card" role="status">
+          <Link className="back-link" to={returnDestination}>← {returnLabel}</Link>
+          Cargando perfil público…
+        </section>
       ) : status === 'error' ? (
         <section className="session-card" aria-labelledby="public-profile-error-title">
+          <Link className="back-link" to={returnDestination}>← {returnLabel}</Link>
           <h1 id="public-profile-error-title">No se pudo cargar el perfil</h1>
           <p className="request-error" role="alert">{error}</p>
           <button
@@ -1405,7 +1447,10 @@ function PublicProfilePage() {
           </button>
         </section>
       ) : (
-        <FighterSummary fighter={fighter} eyebrow="Perfil público" />
+        <>
+          <Link className="back-link" to={returnDestination}>← {returnLabel}</Link>
+          <FighterSummary fighter={fighter} eyebrow="Perfil público" />
+        </>
       )}
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
@@ -1453,10 +1498,7 @@ function LeaderboardPage() {
 
   return (
     <main className="session-layout leaderboard-layout">
-      <Link className="brand" to="/" aria-label="Fieras de la Arena, inicio">
-        <span className="brand__mark" aria-hidden="true">FA</span>
-        <span>Fieras <span className="brand__muted">de la Arena</span></span>
-      </Link>
+      <Brand />
 
       <section className="session-card leaderboard-card" aria-labelledby="leaderboard-title">
         <Link className="back-link" to="/">← Volver al inicio</Link>
@@ -1528,6 +1570,7 @@ function LeaderboardPage() {
                         <Link
                           className="leaderboard__profile-link"
                           to={`/profile/${encodeURIComponent(fighter.username)}`}
+                          state={{ returnTo: '/leaderboards' }}
                         >
                           <strong>{fighter.name}</strong>
                           <span>@{fighter.username}</span>
@@ -1582,8 +1625,10 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/register" element={<AuthPage key="register" mode="register" />} />
-      <Route path="/login" element={<AuthPage key="login" mode="login" />} />
+      <Route element={<GuestRoute />}>
+        <Route path="/register" element={<AuthPage key="register" mode="register" />} />
+        <Route path="/login" element={<AuthPage key="login" mode="login" />} />
+      </Route>
       <Route element={<ProtectedRoute />}>
         <Route element={<FighterStatusRoute key="has-fighter" />}>
           <Route path="/dashboard" element={<DashboardPage />} />
