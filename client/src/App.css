@@ -597,7 +597,7 @@
 }
 
 .arena-card {
-  width: min(100%, 38rem);
+  width: min(100%, 52rem);
 }
 
 .arena-card h1 {
@@ -666,6 +666,136 @@
   background: rgb(78 115 75 / 20%);
   color: #d4ebca;
   line-height: 1.5;
+}
+
+.arena-opponents,
+.arena-confirmation {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(245 232 208 / 12%);
+}
+
+.arena-opponents h2,
+.arena-confirmation h2 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.arena-opponents p,
+.arena-confirmation p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.arena-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.arena-filters label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--color-paper);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.arena-filters input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #59473b;
+  border-radius: 0.4rem;
+  background: #211915;
+  color: var(--color-paper);
+  font: inherit;
+}
+
+.arena-filters input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.arena-filters .button {
+  grid-column: 1 / -1;
+}
+
+.arena-opponents__list {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arena-opponent {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem 1rem;
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 11%);
+  border-radius: 0.45rem;
+  background: rgb(33 25 21 / 65%);
+}
+
+.arena-opponent--selected {
+  border-color: var(--color-copper-light);
+  background: rgb(199 91 57 / 10%);
+}
+
+.arena-opponent .fighter-portrait {
+  grid-row: span 2;
+}
+
+.arena-opponent__details {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.arena-opponent__details h3 {
+  margin: 0;
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+.arena-opponent__details p {
+  overflow-wrap: anywhere;
+}
+
+.arena-opponent .button {
+  grid-column: 2;
+}
+
+.arena-opponents__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.arena-opponents__pagination > span {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.arena-opponents__pagination .button {
+  width: auto;
+}
+
+.arena-confirmation > p:not(.eyebrow, .request-error) {
+  padding: 0.8rem 0.9rem;
+  border-left: 3px solid var(--color-copper);
+  background: rgb(199 91 57 / 9%);
 }
 
 .battle-history-card {
@@ -1671,6 +1801,28 @@
 
   .fighter-dashboard__actions {
     grid-template-columns: 1fr;
+  }
+
+  .arena-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .arena-filters .button {
+    grid-column: auto;
+  }
+
+  .arena-opponent {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+
+  .arena-opponent .fighter-portrait {
+    grid-row: auto;
+  }
+
+  .arena-opponent .button {
+    grid-column: auto;
   }
 
   .fighter-collection__pagination {

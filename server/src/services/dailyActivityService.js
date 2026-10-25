@@ -200,6 +200,28 @@ export async function getDailyAttempts(fighterId, now = new Date()) {
   };
 }
 
+export async function getDailyChallengeAttempts(
+  fighterId,
+  createdAt,
+  now = new Date()
+) {
+  validateFighterId(fighterId);
+  validateDate(now);
+  const limit = getDailyChallengeLimit(createdAt, now);
+  const dateKey = getDateKey(now);
+  const activity = await DailyActivity.findOne({ fighterId, dateKey })
+    .select("battlesUsed")
+    .lean();
+  const used = activity?.battlesUsed ?? 0;
+
+  return {
+    dateKey,
+    limit,
+    used,
+    remaining: Math.max(0, limit - used)
+  };
+}
+
 export async function reserveDailyAttempt(fighterId, now = new Date(), requestId) {
   validateFighterId(fighterId);
   validateDate(now);

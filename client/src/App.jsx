@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { fetchArenaAttempts, fetchBattle, fetchBattleHistory, startArenaFight } from './api/arena.js'
+import {
+  fetchArenaAttempts,
+  fetchArenaChallengeAttempts,
+  fetchArenaOpponents,
+  fetchBattle,
+  fetchBattleHistory,
+  fetchOwnedBattleHistory,
+  startDirectedChallenge,
+} from './api/arena.js'
 import {
   createFighter,
   fetchActiveFighter,
@@ -1255,45 +1263,49 @@ function ArenaPage() {
   const [attemptStatus, setAttemptStatus] = useState('loading')
   const [attemptError, setAttemptError] = useState('')
   const [reloadAttemptsVersion, setReloadAttemptsVersion] = useState(0)
-  const [fightStatus, setFightStatus] = useState('idle')
-  const [fightError, setFightError] = useState('')
-  const fightInProgress = useRef(false)
+  const [opponents, setOpponents] = useState(null)
+  const [opponentsStatus, setOpponentsStatus] = useState('loading')
+  const [opponentsError, setOpponentsError] = useState('')
+  const [reloadOpponentsVersion, setReloadOpponentsVersion] = useState(0)
+  const [filters, setFilters] = useState({ q: '', minLevel: undefined, maxLevel: undefined })
+  const [opponentPage, setOpponentPage] = useState(1)
+  const [searchText, setSearchText] = useState('')
+  const [minimumLevel, setMinimumLevel] = useState('')
+  const [maximumLevel, setMaximumLevel] = useState('')
+  const [selectedOpponent, setSelectedOpponent] = useState(null)
+  const [challengeStatus, setChallengeStatus] = useState('idle')
+  const [challengeError, setChallengeError] = useState('')
+  const challengeInProgress = useRef(false)
   const requestId = useRef(null)
+  const requestOpponentId = useRef(null)
 
   useEffect(() => {
     let isCurrent = true
 
     setAttemptStatus('loading')
     setAttemptError('')
+    setAttempts(null)
 
-    Promise.allSettled([fetchArenaAttempts(), fetchActiveFighter()])
-      .then(([attemptsResult, fighterResult]) => {
+    Promise.all([fetchArenaChallengeAttempts(), fetchActiveFighter()])
+      .then(([loadedAttempts, loadedFighter]) => {
         if (!isCurrent) {
           return
         }
 
-        if (fighterResult.status === 'fulfilled') {
-          setFighter(fighterResult.value)
-        } else {
-          setFighter(null)
-        }
-
-        if (attemptsResult.status === 'rejected') {
-          throw attemptsResult.reason
-        }
-        if (fighterResult.status === 'rejected') {
-          throw fighterResult.reason
-        }
-        if (!fighterResult.value) {
+        if (!loadedFighter) {
           throw new Error('Selecciona un luchador activo antes de entrar en la arena.')
         }
+        if (loadedAttempts.fighterId !== loadedFighter.id) {
+          throw new Error('El luchador activo cambió. Consulta de nuevo la Arena antes de continuar.')
+        }
 
-        setAttempts(attemptsResult.value)
+        setFighter(loadedFighter)
+        setAttempts(loadedAttempts)
         setAttemptStatus('ready')
       })
       .catch((error) => {
         if (isCurrent) {
-          setAttempts(null)
+          setFighter(null)
           setAttemptError(error.message)
           setAttemptStatus('error')
         }
@@ -1304,36 +1316,95 @@ function ArenaPage() {
     }
   }, [reloadAttemptsVersion])
 
-  async function handleFight() {
+  useEffect(() => {
+    if (!fighter || attemptStatus !== 'ready') {
+      return undefined
+    }
+
+    let isCurrent = true
+    setOpponentsStatus('loading')
+    setOpponentsError('')
+
+    Promise.all([
+      fetchArenaOpponents({ page: opponentPage, ...filters }),
+      fetchActiveFighter(),
+    ])
+      .then(([result, activeFighter]) => {
+        if (!isCurrent) {
+          return
+        }
+        if (!activeFighter || activeFighter.id !== fighter.id) {
+          throw new Error('El luchador activo cambió. Actualiza los datos de la Arena antes de elegir rival.')
+        }
+
+        setOpponents(result)
+        setOpponentsStatus('ready')
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setOpponents(null)
+          setOpponentsError(error.message)
+          setOpponentsStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [attemptStatus, filters, fighter, opponentPage, reloadOpponentsVersion])
+
+  function handleOpponentSearch(event) {
+    event.preventDefault()
+    setSelectedOpponent(null)
+    requestId.current = null
+    requestOpponentId.current = null
+    setOpponentPage(1)
+    setFilters({
+      q: searchText.trim(),
+      minLevel: minimumLevel ? Number(minimumLevel) : undefined,
+      maxLevel: maximumLevel ? Number(maximumLevel) : undefined,
+    })
+  }
+
+  async function handleChallenge() {
     if (
-      fightInProgress.current ||
+      challengeInProgress.current ||
       attemptStatus !== 'ready' ||
       !attempts ||
-      attempts.remaining === 0
+      attempts.remaining === 0 ||
+      !fighter ||
+      !selectedOpponent
     ) {
       return
     }
 
-    fightInProgress.current = true
-    setFightStatus('submitting')
-    setFightError('')
-    setAttempts(null)
-    setAttemptStatus('loading')
+    challengeInProgress.current = true
+    setChallengeStatus('submitting')
+    setChallengeError('')
 
     try {
-      if (!requestId.current) {
+      if (requestOpponentId.current !== selectedOpponent.id || !requestId.current) {
         requestId.current = crypto.randomUUID()
+        requestOpponentId.current = selectedOpponent.id
       }
 
-      const battle = await startArenaFight(requestId.current)
+      const battle = await startDirectedChallenge(
+        fighter.id,
+        selectedOpponent.id,
+        requestId.current,
+      )
       requestId.current = null
+      requestOpponentId.current = null
       navigate(`/battles/${battle.id}`)
     } catch (error) {
-      setFightError(error.message)
-      setFightStatus('error')
+      setChallengeError(error.message)
+      setChallengeStatus('error')
+      setAttempts(null)
+      setAttemptStatus('loading')
       setReloadAttemptsVersion((version) => version + 1)
+      setReloadOpponentsVersion((version) => version + 1)
     } finally {
-      fightInProgress.current = false
+      challengeInProgress.current = false
     }
   }
 
@@ -1343,11 +1414,24 @@ function ArenaPage() {
     setReloadAttemptsVersion((version) => version + 1)
   }
 
-  const isFightDisabled =
-    fightStatus === 'submitting' ||
+  function handleSelectOpponent(opponent) {
+    if (selectedOpponent?.id !== opponent.id) {
+      requestId.current = null
+      requestOpponentId.current = null
+    }
+    setSelectedOpponent(opponent)
+    setChallengeStatus('idle')
+    setChallengeError('')
+  }
+
+  const isChallengeDisabled =
+    challengeStatus === 'submitting' ||
     attemptStatus !== 'ready' ||
     !attempts ||
-    attempts.remaining === 0
+    attempts.remaining === 0 ||
+    !selectedOpponent ||
+    opponentsStatus !== 'ready' ||
+    !opponents?.fighters.some(({ id }) => id === selectedOpponent.id)
 
   return (
     <main className="session-layout arena-layout">
@@ -1358,13 +1442,20 @@ function ArenaPage() {
         <p className="eyebrow">El siguiente desafío te espera</p>
         <h1 id="arena-title">La Arena</h1>
         <p className="arena-card__fighter" role="status">
-          Luchador activo: <strong>{fighter?.name ?? 'cargando…'}</strong>
+          Luchador que inicia el desafío:{' '}
+          <strong>
+            {fighter
+              ? `${fighter.name} · Nivel ${fighter.level} · ELO ${fighter.elo}`
+              : 'cargando…'}
+          </strong>
         </p>
-        <p className="auth-intro">Los combates y sus intentos disponibles se resuelven en el servidor.</p>
+        <p className="auth-intro">
+          Elige un rival público dentro del rango permitido. El servidor valida la selección y resuelve el combate automáticamente.
+        </p>
 
         <div className="arena-attempts" aria-live="polite">
           {attemptStatus === 'loading' ? (
-            <p role="status">Consultando tus intentos…</p>
+            <p role="status">Consultando los desafíos disponibles…</p>
           ) : attemptStatus === 'error' ? (
             <>
               <p className="request-error" role="alert">{attemptError}</p>
@@ -1374,31 +1465,158 @@ function ArenaPage() {
             </>
           ) : (
             <>
-              <p className="eyebrow">Intentos de hoy · UTC</p>
+              <p className="eyebrow">Desafíos de hoy · UTC</p>
               <p className="arena-attempts__count">
-                <strong>{attempts.remaining}</strong> de {attempts.limit} disponibles
+                <strong>{attempts.remaining}</strong> de {attempts.limit} disponibles para {fighter.name}
               </p>
               <p className="arena-attempts__date">Fecha del servidor: {attempts.dateKey}</p>
             </>
           )}
         </div>
 
-        {fightStatus === 'error' && (
-          <p className="request-error" role="alert">{fightError}</p>
+        <section className="arena-opponents" aria-labelledby="arena-opponents-title">
+          <div>
+            <p className="eyebrow">Desafíos dirigidos</p>
+            <h2 id="arena-opponents-title">Elige a quién desafiar</h2>
+          </div>
+
+          <form className="arena-filters" onSubmit={handleOpponentSearch}>
+            <label>
+              <span>Nombre del rival</span>
+              <input
+                type="search"
+                value={searchText}
+                maxLength={18}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder="Buscar luchador"
+              />
+            </label>
+            <label>
+              <span>Nivel mínimo</span>
+              <input
+                type="number"
+                min="1"
+                value={minimumLevel}
+                onChange={(event) => setMinimumLevel(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Nivel máximo</span>
+              <input
+                type="number"
+                min="1"
+                value={maximumLevel}
+                onChange={(event) => setMaximumLevel(event.target.value)}
+              />
+            </label>
+            <button className="button button--secondary" type="submit">
+              Buscar rivales
+            </button>
+          </form>
+
+          {opponentsStatus === 'loading' ? (
+            <p role="status">Buscando rivales elegibles…</p>
+          ) : opponentsStatus === 'error' ? (
+            <div className="arena-message">
+              <p className="request-error" role="alert">{opponentsError}</p>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => {
+                  handleRetryAttempts()
+                  setReloadOpponentsVersion((version) => version + 1)
+                }}
+              >
+                Actualizar Arena
+              </button>
+            </div>
+          ) : opponents.fighters.length === 0 ? (
+            <p className="arena-message">
+              No hay rivales elegibles con esos filtros. Prueba con otros niveles o vuelve a intentarlo más tarde.
+            </p>
+          ) : (
+            <ul className="arena-opponents__list">
+              {opponents.fighters.map((opponent) => (
+                <li key={opponent.id}>
+                  <article className={`arena-opponent${selectedOpponent?.id === opponent.id ? ' arena-opponent--selected' : ''}`}>
+                    <FighterAppearancePreview appearance={opponent.appearance} name={opponent.name} />
+                    <div className="arena-opponent__details">
+                      <h3>{opponent.name}</h3>
+                      <p>@{opponent.username}</p>
+                      <p>Nivel {opponent.level} · ELO {opponent.elo}</p>
+                      <p>{opponent.wins} victorias · {opponent.losses} derrotas · {opponent.draws} empates</p>
+                    </div>
+                    <button
+                      className="button button--secondary"
+                      type="button"
+                      aria-pressed={selectedOpponent?.id === opponent.id}
+                      onClick={() => handleSelectOpponent(opponent)}
+                    >
+                      {selectedOpponent?.id === opponent.id ? 'Rival elegido' : 'Elegir rival'}
+                    </button>
+                  </article>
+                </li>
+              ))}
+            </ul>
+          )}
+          {opponentsStatus === 'ready' && opponents.pagination.totalPages > 1 && (
+            <nav className="arena-opponents__pagination" aria-label="Páginas de rivales">
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => {
+                  setSelectedOpponent(null)
+                  setOpponentPage((currentPage) => currentPage - 1)
+                }}
+                disabled={opponentPage <= 1}
+              >
+                Anterior
+              </button>
+              <span aria-live="polite">
+                Página {opponents.pagination.page} de {opponents.pagination.totalPages}
+                {' · '}{opponents.pagination.totalItems} rivales elegibles
+              </span>
+              <button
+                className="button button--secondary"
+                type="button"
+                onClick={() => {
+                  setSelectedOpponent(null)
+                  setOpponentPage((currentPage) => currentPage + 1)
+                }}
+                disabled={opponentPage >= opponents.pagination.totalPages}
+              >
+                Siguiente
+              </button>
+            </nav>
+          )}
+        </section>
+
+        {selectedOpponent && (
+          <section className="arena-confirmation" aria-labelledby="arena-confirmation-title">
+            <p className="eyebrow">Confirma tu desafío</p>
+            <h2 id="arena-confirmation-title">{fighter.name} contra {selectedOpponent.name}</h2>
+            <p>
+              Iniciará el combate {fighter.name} (nivel {fighter.level}, ELO {fighter.elo}); el rival confirmado es
+              {' '}{selectedOpponent.name} (@{selectedOpponent.username}), nivel {selectedOpponent.level}, ELO {selectedOpponent.elo}.
+              La pelea se resolverá automáticamente y no se cambiará el objetivo.
+            </p>
+            {challengeError && <p className="request-error" role="alert">{challengeError}</p>}
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={handleChallenge}
+              disabled={isChallengeDisabled}
+            >
+              {challengeStatus === 'submitting'
+                ? 'Resolviendo combate…'
+                : attempts?.remaining === 0
+                  ? 'No quedan desafíos hoy'
+                  : `Desafiar a ${selectedOpponent.name}`}
+            </button>
+          </section>
         )}
 
-        <button
-          className="button button--primary"
-          type="button"
-          onClick={handleFight}
-          disabled={isFightDisabled}
-        >
-          {fightStatus === 'submitting'
-            ? 'Iniciando combate…'
-            : attempts?.remaining === 0
-              ? 'No quedan intentos'
-              : 'Iniciar combate'}
-        </button>
+        <Link className="button button--secondary" to="/history">Consultar historial</Link>
       </section>
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
@@ -1406,7 +1624,6 @@ function ArenaPage() {
 }
 
 function BattleHistoryPage() {
-  const [fighter, setFighter] = useState(null)
   const [history, setHistory] = useState(null)
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState('loading')
@@ -1420,26 +1637,13 @@ function BattleHistoryPage() {
     setError('')
     setHistory(null)
 
-    Promise.all([fetchBattleHistory(page), fetchMyFighter()])
-      .then(([loadedHistory, loadedFighter]) => {
+    fetchOwnedBattleHistory(page)
+      .then((loadedHistory) => {
         if (!isCurrent) {
           return
         }
 
-        if (!loadedFighter) {
-          throw new Error('No se encontró el luchador de esta cuenta.')
-        }
-
-        if (
-          loadedHistory.battles.some(
-            (battle) => !battle.participants.some(({ fighter: participant }) => participant.id === loadedFighter.id),
-          )
-        ) {
-          throw new Error('El historial contiene un combate que no pertenece a tu luchador.')
-        }
-
         setHistory(loadedHistory)
-        setFighter(loadedFighter)
         setStatus('ready')
       })
       .catch((requestError) => {
@@ -1493,13 +1697,13 @@ function BattleHistoryPage() {
             <ol className="battle-history__list">
               {history.battles.map((battle) => {
                 const ownParticipant = battle.participants.find(
-                  ({ fighter: participant }) => participant.id === fighter.id,
+                  ({ fighter: participant }) => participant.id === battle.ownFighterId,
                 )
                 const opponentParticipant = battle.participants.find(
-                  ({ fighter: participant }) => participant.id !== fighter.id,
+                  ({ fighter: participant }) => participant.id !== battle.ownFighterId,
                 )
                 const isDraw = battle.winnerFighterId === null
-                const isVictory = battle.winnerFighterId === fighter.id
+                const isVictory = battle.winnerFighterId === battle.ownFighterId
                 const outcome = isDraw ? 'Empate' : isVictory ? 'Victoria' : 'Derrota'
                 const outcomeStyle = isDraw ? 'draw' : isVictory ? 'win' : 'loss'
 
@@ -1587,7 +1791,7 @@ function formatBattleEvent(event, fighterNames) {
 function BattleResultPage() {
   const { id } = useParams()
   const [battle, setBattle] = useState(null)
-  const [fighter, setFighter] = useState(null)
+  const [ownFighterId, setOwnFighterId] = useState(null)
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [reloadVersion, setReloadVersion] = useState(0)
@@ -1598,21 +1802,28 @@ function BattleResultPage() {
     setStatus('loading')
     setError('')
 
-    Promise.all([fetchBattle(id), fetchMyFighter()])
-      .then(([loadedBattle, loadedFighter]) => {
+    fetchBattle(id)
+      .then(async (loadedBattle) => {
         if (!isCurrent) {
           return
         }
 
+        const activeFighter = loadedBattle.ownFighterId
+          ? null
+          : await fetchActiveFighter()
+        if (!isCurrent) {
+          return
+        }
+        const ownerId = loadedBattle.ownFighterId ?? activeFighter?.id
         if (
-          !loadedFighter ||
-          !loadedBattle.participants.some(({ fighter: participant }) => participant.id === loadedFighter.id)
+          !ownerId ||
+          !loadedBattle.participants.some(({ fighter: participant }) => participant.id === ownerId)
         ) {
           throw new Error('El registro del combate no incluye a tu luchador.')
         }
 
         setBattle(loadedBattle)
-        setFighter(loadedFighter)
+        setOwnFighterId(ownerId)
         setStatus('ready')
       })
       .catch((requestError) => {
@@ -1628,13 +1839,13 @@ function BattleResultPage() {
   }, [id, reloadVersion])
 
   const ownParticipant = battle?.participants.find(
-    ({ fighter: participant }) => participant.id === fighter?.id,
+    ({ fighter: participant }) => participant.id === ownFighterId,
   )
   const opponentParticipant = battle?.participants.find(
-    ({ fighter: participant }) => participant.id !== fighter?.id,
+    ({ fighter: participant }) => participant.id !== ownFighterId,
   )
   const isDraw = battle?.winnerFighterId === null
-  const isVictory = battle?.winnerFighterId === fighter?.id
+  const isVictory = battle?.winnerFighterId === ownFighterId
   const fighterNames = new Map(
     battle?.participants.map(({ fighter: participant }) => [participant.id, participant.name]) ?? [],
   )

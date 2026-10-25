@@ -1,33 +1,34 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.4.3`
+**Paso activo:** `10.5.1`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Presentar selección y resultado del desafío
+**Título:** Aprobar reglas de nivel y sorteo de atributos
 
 ## Objetivo
 
-Permitir que el jugador decida a quién desafiar sin quitar al servidor el control de elegibilidad, cupos y resultado.
+Sustituir el crecimiento fijo actual por una mejora aleatoria controlada, conservando progresión justa y auditable.
 
 ## Tareas permitidas
 
-- Explorar rivales elegibles, ver información pública suficiente, confirmar el personaje propio y el objetivo antes de iniciar; presentar cupos restantes y resultado automático.
+- Mapear estadísticas actuales a conceptos de fuerza/agilidad/velocidad; decidir qué atributo puede subir por nivel, magnitud y límites; definir distribución/pesos, niveles múltiples, topes y relación con salud/defensa existentes; conservar o cambiar umbrales de XP solo con decisión explícita.
 
 ## Fuera de alcance
 
-- Iniciar cualquier paso posterior de ROADMAP.md.
+- Implementar el crecimiento aleatorio seguro de 10.5.2 o mostrar crecimiento y progreso de 10.5.3.
+- Implementar cambios en código. Como paso de diseño, ROADMAP.md limita los cambios a especificación y documentación.
 
 ## Criterios de aceptación
 
-- Interfaz y servidor coinciden sobre luchador propio, rival y cupos; la UI no selecciona un oponente distinto al confirmado; las peleas siguen siendo automáticas; la opción de combatir no queda disponible al llegar al límite y errores de red no aparentan un combate exitoso.
+- Cada subida tiene una regla y límites conocidos; los niveles ganados de una sola recompensa procesan todos los sorteos correspondientes una vez; no hay valores imposibles ni pérdida silenciosa de XP; la regla nueva está documentada en `PROJECT_SPEC.md`.
 
 ## Pruebas/verificación
 
-- Selección, confirmación, cupos, perfil privado, carga/error y presentación de historial.
+- Ejemplos de nivel único y múltiple, valores límite, nivel máximo si existe y comparación con progreso actual.
 
 ## Dependencia
 
-- 10.4.2.
+- 10.1.1.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.5 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar 10.5.2 ni ningún otro paso posterior.

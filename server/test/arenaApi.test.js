@@ -133,20 +133,286 @@ async function postChallenge(requestCookie, body) {
 }
 
 test("las rutas de arena requieren una sesión", async () => {
-  const [attempts, fight, history] = await Promise.all([
+  const [attempts, fight, history, opponentsV2, attemptsV2, historyV2] = await Promise.all([
     fetch(`${baseUrl}/api/v1/arena/attempts`),
     fetch(`${baseUrl}/api/v1/arena/fight`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requestId: "anonymous" })
     }),
-    fetch(`${baseUrl}/api/v1/arena/history`)
+    fetch(`${baseUrl}/api/v1/arena/history`),
+    fetch(`${baseUrl}/api/v2/arena/opponents`),
+    fetch(`${baseUrl}/api/v2/arena/attempts`),
+    fetch(`${baseUrl}/api/v2/arena/history`)
   ]);
 
-  assert.deepEqual([attempts.status, fight.status, history.status], [401, 401, 401]);
-  for (const response of [attempts, fight, history]) {
+  assert.deepEqual(
+    [
+      attempts.status,
+      fight.status,
+      history.status,
+      opponentsV2.status,
+      attemptsV2.status,
+      historyV2.status
+    ],
+    [401, 401, 401, 401, 401, 401]
+  );
+  for (const response of [
+    attempts,
+    fight,
+    history,
+    opponentsV2,
+    attemptsV2,
+    historyV2
+  ]) {
     assert.equal((await response.json()).error.code, "AUTHENTICATION_REQUIRED");
   }
+});
+
+test("la API v2 lista solo rivales elegibles y devuelve cupos del luchador activo", async () => {
+  await Fighter.updateOne({ _id: fighter._id }, { $set: { elo: 1000 } });
+
+  async function createOpponent({
+    name,
+    usernamePrefix,
+    level = 2,
+    elo = 1000,
+    visibility = "public",
+    status = "active",
+    ownerStatus = "active"
+  }) {
+    const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
+    const owner = await User.create({
+      username: `${usernamePrefix}_${suffix}`,
+      email: `${usernamePrefix}-${suffix}@example.test`,
+      passwordHash,
+      status: ownerStatus
+    });
+    userIds.add(owner._id);
+    const opponent = await Fighter.create({
+      userId: owner._id,
+      name: `${name}${suffix.slice(0, 18 - name.length)}`,
+      referralCode: `${usernamePrefix}-${suffix}`,
+      level,
+      elo,
+      visibility,
+      status
+    });
+    fighterIds.add(opponent._id);
+    return opponent;
+  }
+
+  const visible = await createOpponent({
+    name: "rival",
+    usernamePrefix: "visible"
+  });
+  const otherVisible = await createOpponent({
+    name: "rivales",
+    usernamePrefix: "visible2",
+    level: 4,
+    elo: 1050
+  });
+  const privateFighter = await createOpponent({
+    name: "privado",
+    usernamePrefix: "private",
+    visibility: "private"
+  });
+  const suspendedFighter = await createOpponent({
+    name: "suspendido",
+    usernamePrefix: "suspended",
+    status: "suspended"
+  });
+  const suspendedOwnerFighter = await createOpponent({
+    name: "cuentasuspendida",
+    usernamePrefix: "suspendedowner",
+    ownerStatus: "suspended"
+  });
+  const outOfRangeFighter = await createOpponent({
+    name: "lejano",
+    usernamePrefix: "outofrange",
+    elo: 1201
+  });
+
+  const attemptsResponse = await fetch(`${baseUrl}/api/v2/arena/attempts`, {
+    headers: { Cookie: cookie }
+  });
+  const attempts = await attemptsResponse.json();
+  assert.equal(attemptsResponse.status, 200);
+  assert.deepEqual(attempts, {
+    fighterId: fighter._id.toString(),
+    dateKey: new Date().toISOString().slice(0, 10),
+    limit: 6,
+    used: 0,
+    remaining: 6
+  });
+
+  for (const query of [
+    "?minLevel=4&maxLevel=2",
+    "?q=%5B&unknown=value",
+    "?limit=51"
+  ]) {
+    const invalidResponse = await fetch(
+      `${baseUrl}/api/v2/arena/opponents${query}`,
+      { headers: { Cookie: cookie } }
+    );
+    assert.equal(invalidResponse.status, 400);
+    assert.equal((await invalidResponse.json()).error.code, "INVALID_OPPONENT_QUERY");
+  }
+
+  const filteredResponse = await fetch(
+    `${baseUrl}/api/v2/arena/opponents?q=RIVAL&minLevel=2&maxLevel=2&limit=1`,
+    { headers: { Cookie: cookie } }
+  );
+  const filtered = await filteredResponse.json();
+  assert.equal(filteredResponse.status, 200);
+  assert.deepEqual(filtered.fighters.map(({ id }) => id), [visible._id.toString()]);
+  assert.deepEqual(filtered.pagination, {
+    page: 1,
+    limit: 1,
+    totalItems: 1,
+    totalPages: 1
+  });
+  const publicFighter = filtered.fighters[0];
+  assert.equal(publicFighter.username.startsWith("visible_"), true);
+  assert.equal("userId" in publicFighter, false);
+  assert.equal("baseStats" in publicFighter, false);
+  assert.equal("xp" in publicFighter, false);
+  assert.equal("email" in publicFighter, false);
+  assert.equal("passwordHash" in publicFighter, false);
+
+  const allOpponentsResponse = await fetch(
+    `${baseUrl}/api/v2/arena/opponents?limit=50`,
+    { headers: { Cookie: cookie } }
+  );
+  const allOpponents = await allOpponentsResponse.json();
+  const listedIds = allOpponents.fighters.map(({ id }) => id);
+  assert.equal(listedIds.includes(visible._id.toString()), true);
+  assert.equal(listedIds.includes(otherVisible._id.toString()), true);
+  for (const excludedFighter of [
+    fighter,
+    privateFighter,
+    suspendedFighter,
+    suspendedOwnerFighter,
+    outOfRangeFighter
+  ]) {
+    assert.equal(listedIds.includes(excludedFighter._id.toString()), false);
+  }
+
+  const challengeResponse = await postChallenge(cookie, {
+    fighterId: fighter._id.toString(),
+    opponentFighterId: visible._id.toString(),
+    requestId: `catalog-${runId}`
+  });
+  assert.equal(challengeResponse.status, 201);
+
+  const refreshedResponse = await fetch(
+    `${baseUrl}/api/v2/arena/opponents?limit=50`,
+    { headers: { Cookie: cookie } }
+  );
+  const refreshed = await refreshedResponse.json();
+  assert.equal(
+    refreshed.fighters.some(({ id }) => id === visible._id.toString()),
+    false
+  );
+
+  const usedAttemptsResponse = await fetch(`${baseUrl}/api/v2/arena/attempts`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal((await usedAttemptsResponse.json()).used, 1);
+});
+
+test("historial v2 y detalle reconocen cualquier luchador propio sin revelar combates ajenos", async () => {
+  const secondFighter = await Fighter.create({
+    userId: user._id,
+    name: `second${runId.slice(0, 8)}`,
+    referralCode: `second-${runId.slice(0, 10)}`
+  });
+  fighterIds.add(secondFighter._id);
+  const missingSelectionResponse = await fetch(
+    `${baseUrl}/api/v2/arena/attempts`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(missingSelectionResponse.status, 409);
+  assert.equal(
+    (await missingSelectionResponse.json()).error.code,
+    "ACTIVE_FIGHTER_REQUIRED"
+  );
+  await User.updateOne(
+    { _id: user._id },
+    { $set: { activeFighterId: secondFighter._id } }
+  );
+
+  const targetSuffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const targetOwner = await User.create({
+    username: `history_target_${targetSuffix}`,
+    email: `history-target-${targetSuffix}@example.test`,
+    passwordHash
+  });
+  userIds.add(targetOwner._id);
+  const target = await Fighter.create({
+    userId: targetOwner._id,
+    name: `hist${targetSuffix}`,
+    referralCode: `history-${targetSuffix}`
+  });
+  fighterIds.add(target._id);
+
+  const stats = { health: 100, attack: 10, defense: 4, speed: 5 };
+  const battle = await Battle.create({
+    battleType: "pvp",
+    status: "completed",
+    participants: [
+      {
+        snapshot: {
+          fighterId: fighter._id,
+          name: fighter.name,
+          level: 1,
+          elo: 1000,
+          stats
+        },
+        result: { xpGained: 25, eloChange: 16, eloAfter: 1016 }
+      },
+      {
+        snapshot: {
+          fighterId: target._id,
+          name: target.name,
+          level: 1,
+          elo: 1000,
+          stats
+        },
+        result: { xpGained: 10, eloChange: -16, eloAfter: 984 }
+      }
+    ],
+    winnerFighterId: fighter._id,
+    requesterFighterId: fighter._id,
+    requestId: `history-${runId}`,
+    challengeDateKey: new Date().toISOString().slice(0, 10),
+    challengePairKey: [fighter._id.toString(), target._id.toString()].sort().join(":"),
+    actionCount: 2,
+    seed: "history-seed",
+    engineVersion: "combat-v1",
+    events: [{ type: "combat_started" }]
+  });
+
+  const attemptsResponse = await fetch(`${baseUrl}/api/v2/arena/attempts`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal((await attemptsResponse.json()).fighterId, secondFighter._id.toString());
+
+  const historyResponse = await fetch(`${baseUrl}/api/v2/arena/history`, {
+    headers: { Cookie: cookie }
+  });
+  const history = await historyResponse.json();
+  assert.equal(historyResponse.status, 200);
+  assert.deepEqual(history.battles.map(({ id }) => id), [battle._id.toString()]);
+  assert.equal(history.battles[0].ownFighterId, fighter._id.toString());
+  assert.equal("events" in history.battles[0], false);
+
+  const detailResponse = await fetch(`${baseUrl}/api/v1/battles/${battle._id}`, {
+    headers: { Cookie: cookie }
+  });
+  const detail = await detailResponse.json();
+  assert.equal(detailResponse.status, 200);
+  assert.equal(detail.battle.ownFighterId, fighter._id.toString());
 });
 
 test("consulta intentos, valida solicitudes y no inicia combates sin luchador", async () => {
@@ -312,7 +578,11 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
     { headers: { Cookie: cookie } }
   );
   assert.equal(detailResponse.status, 200);
-  assert.deepEqual((await detailResponse.json()).battle, firstBody.battle);
+  const detailBattle = (await detailResponse.json()).battle;
+  assert.equal(detailBattle.ownFighterId, fighter._id.toString());
+  const detailWithoutOwner = { ...detailBattle };
+  delete detailWithoutOwner.ownFighterId;
+  assert.deepEqual(detailWithoutOwner, firstBody.battle);
 
   const repeatedResponse = await postFight(cookie, request);
   const repeatedBody = await repeatedResponse.json();
