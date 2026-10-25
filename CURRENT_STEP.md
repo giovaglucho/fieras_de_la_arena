@@ -1,8 +1,8 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.5.1`
+**Paso activo:** `10.5.2`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Aprobar reglas de nivel y sorteo de atributos
+**Título:** Implementar crecimiento aleatorio seguro
 
 ## Objetivo
 
@@ -10,25 +10,26 @@ Sustituir el crecimiento fijo actual por una mejora aleatoria controlada, conser
 
 ## Tareas permitidas
 
-- Mapear estadísticas actuales a conceptos de fuerza/agilidad/velocidad; decidir qué atributo puede subir por nivel, magnitud y límites; definir distribución/pesos, niveles múltiples, topes y relación con salud/defensa existentes; conservar o cambiar umbrales de XP solo con decisión explícita.
+- Sortear en el servidor al confirmar XP; actualizar estadísticas de forma atómica/idempotente; guardar información necesaria para explicar progresión; versionar aleatoriedad si afecta a una pelea.
+- Ejecutar las pruebas de semilla controlada, distribución, concurrencia, niveles múltiples, reintentos, fallo transaccional y regresión de luchadores antiguos.
 
 ## Fuera de alcance
 
-- Implementar el crecimiento aleatorio seguro de 10.5.2 o mostrar crecimiento y progreso de 10.5.3.
-- Implementar cambios en código. Como paso de diseño, ROADMAP.md limita los cambios a especificación y documentación.
+- Mostrar crecimiento y progreso en la interfaz (paso 10.5.3).
+- Iniciar otros pasos de la hoja de ruta o añadir funcionalidad ajena a 10.5.2.
 
 ## Criterios de aceptación
 
-- Cada subida tiene una regla y límites conocidos; los niveles ganados de una sola recompensa procesan todos los sorteos correspondientes una vez; no hay valores imposibles ni pérdida silenciosa de XP; la regla nueva está documentada en `PROJECT_SPEC.md`.
+- Cliente no puede escoger ni inflar aumentos; reintentos no repiten mejoras; fallo de persistencia no deja nivel y atributos desincronizados; las mismas entradas/versiones producen el resultado esperado; los luchadores existentes mantienen base y nivel.
 
-## Pruebas/verificación
+## Pruebas
 
-- Ejemplos de nivel único y múltiple, valores límite, nivel máximo si existe y comparación con progreso actual.
+- Semilla controlada, distribución, concurrencia, niveles múltiples, reintentos, fallo transaccional y regresión de luchadores antiguos.
 
 ## Dependencia
 
-- 10.1.1.
+- 10.5.1.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.5.2 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar 10.5.3 ni ningún otro paso posterior.
