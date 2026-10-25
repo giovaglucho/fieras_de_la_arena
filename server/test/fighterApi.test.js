@@ -294,6 +294,8 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
         JSON.stringify(profile)
     )
   );
+  assert.equal(storedFighter.progression.version, "fighter-growth-v1");
+  assert.deepEqual(storedFighter.progression.growthEvents, []);
   assert.equal(storedFighter.creation.version, "fighter-creation-v1");
   assert.equal(storedFighter.creation.seed.length, 32);
   assert.equal(storedFighter.userId.toString(), userIds[0].toString());
@@ -337,7 +339,13 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
 test("GET /fighters/me devuelve estadísticas efectivas y XP del nivel actual", async () => {
   const cookie = await login(0);
   const fighter = await Fighter.findOne({ userId: userIds[0] });
-  await Fighter.updateOne({ _id: fighter._id }, { level: 3, xp: 25 });
+  await Fighter.updateOne(
+    { _id: fighter._id },
+    {
+      $set: { level: 3, xp: 25 },
+      $unset: { progression: 1 }
+    }
+  );
 
   const response = await getMyFighter(cookie);
   const body = await response.json();

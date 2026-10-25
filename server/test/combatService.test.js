@@ -116,7 +116,7 @@ test("guarda el combate PvP y aplica XP, ELO y contadores a ambos luchadores", a
 });
 
 test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra vez", async () => {
-  await createFighters();
+  await createFighters([{ xp: 95 }, { xp: 95 }]);
   const request = combatRequest("retry");
 
   const firstBattle = await resolveCombat(request);
@@ -127,14 +127,17 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
   assert.equal(await Battle.countDocuments({ requestId: request.requestId }), 1);
   assert.equal(
     fighters.every(
-      (fighter) => fighter.wins + fighter.losses + fighter.draws === 1
+      (fighter) =>
+        fighter.wins + fighter.losses + fighter.draws === 1 &&
+        fighter.progression.growthEvents.length === 1 &&
+        fighter.progression.growthEvents[0].requestId === request.requestId
     ),
     true
   );
 });
 
 test("serializa solicitudes concurrentes con la misma clave idempotente", async () => {
-  await createFighters();
+  await createFighters([{ xp: 95 }, { xp: 95 }]);
   const request = combatRequest("concurrent");
 
   const battles = await Promise.all([
@@ -147,9 +150,32 @@ test("serializa solicitudes concurrentes con la misma clave idempotente", async 
   const fighters = await Fighter.find({ _id: { $in: fighterIds } }).sort({ _id: 1 });
   assert.equal(
     fighters.every(
-      (fighter) => fighter.wins + fighter.losses + fighter.draws === 1
+      (fighter) =>
+        fighter.wins + fighter.losses + fighter.draws === 1 &&
+        fighter.progression.growthEvents.length === 1
     ),
     true
+  );
+});
+
+test("aplica recompensas concurrentes distintas sin perder niveles ni sorteos", async () => {
+  await createFighters([{ xp: 90 }, { xp: 90 }]);
+
+  const battles = await Promise.all([
+    resolveCombat(combatRequest("growth-race-a")),
+    resolveCombat(combatRequest("growth-race-b"))
+  ]);
+  const fighters = await Fighter.find({ _id: { $in: fighterIds } }).sort({ _id: 1 });
+
+  assert.equal(await Battle.countDocuments({ requesterFighterId: fighterIds[0] }), 2);
+  assert.equal(battles.length, 2);
+  assert.ok(
+    fighters.every(
+      (fighter) =>
+        fighter.level === 2 &&
+        fighter.progression.growthEvents.length === 1 &&
+        fighter.wins + fighter.losses + fighter.draws === 2
+    )
   );
 });
 
@@ -211,7 +237,7 @@ test("rechaza usar un luchador persistido como rival de entrenamiento", async ()
 });
 
 test("un error al aplicar recompensas revierte la pelea y evita aparentar una victoria", async () => {
-  const initialFighters = await createFighters();
+  const initialFighters = await createFighters([{ xp: 90 }, { xp: 90 }]);
   const originalBulkWrite = Fighter.bulkWrite;
   const failure = new Error("Simulated fighter update failure.");
   Fighter.bulkWrite = async () => {
@@ -233,19 +259,23 @@ test("un error al aplicar recompensas revierte la pelea y evita aparentar una vi
   ]);
   assert.equal(battles.length, 0);
   assert.deepEqual(
-    fighters.map(({ xp, elo, wins, losses, draws }) => ({
+    fighters.map(({ xp, level, elo, wins, losses, draws, progression }) => ({
       xp,
+      level,
       elo,
       wins,
       losses,
-      draws
+      draws,
+      progression
     })),
-    initialFighters.map(({ xp, elo, wins, losses, draws }) => ({
+    initialFighters.map(({ xp, level, elo, wins, losses, draws, progression }) => ({
       xp,
+      level,
       elo,
       wins,
       losses,
-      draws
+      draws,
+      progression
     }))
   );
 });

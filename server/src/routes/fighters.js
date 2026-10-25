@@ -12,6 +12,7 @@ import {
   createInitialFighterData,
   NEUTRAL_FIGHTER_APPEARANCE
 } from "../game-engine/fighterCreation.js";
+import { createFighterGrowthState } from "../game-engine/fighterGrowth.js";
 import { toPublicFighter } from "../serializers/publicFighter.js";
 import {
   findSingleFighterForUser
@@ -24,7 +25,7 @@ router.get("/me", requireAuth, sensitiveReadRateLimit, async (request, response,
   try {
     const fighter = await findSingleFighterForUser(
       request.user._id,
-      "_id name level xp elo baseStats appearance wins losses draws",
+      "_id name level xp elo baseStats progression appearance wins losses draws",
       request.user.activeFighterId
     );
 
@@ -33,7 +34,11 @@ router.get("/me", requireAuth, sensitiveReadRateLimit, async (request, response,
         ? {
             ...toPublicFighter(fighter),
             username: request.user.username,
-            stats: calculateFighterStats(fighter.level, fighter.baseStats),
+            stats: calculateFighterStats(
+              fighter.level,
+              fighter.baseStats,
+              fighter.progression
+            ),
             xpToNextLevel: getXpRequiredForNextLevel(fighter.level)
           }
         : null
@@ -134,6 +139,7 @@ router.post("/", requireAuth, async (request, response, next) => {
           userId: request.user._id,
           name: fighterData.name,
           ...initialData,
+          progression: createFighterGrowthState(initialData.baseStats),
           appearance: { ...NEUTRAL_FIGHTER_APPEARANCE },
           referralCode: randomBytes(16).toString("hex")
         });

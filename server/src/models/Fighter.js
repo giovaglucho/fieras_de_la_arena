@@ -36,6 +36,46 @@ const appearanceSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const growthEventSchema = new mongoose.Schema(
+  {
+    level: { type: Number, required: true, min: 2 },
+    seed: {
+      type: Buffer,
+      required: true,
+      validate: {
+        validator: (seed) => Buffer.isBuffer(seed) && seed.length === 32,
+        message: "La semilla de crecimiento debe contener exactamente 32 bytes."
+      }
+    },
+    version: {
+      type: String,
+      required: true,
+      enum: ["fighter-growth-v1"]
+    },
+    stat: {
+      type: String,
+      enum: ["health", "attack", "defense", "speed"]
+    },
+    amount: { type: Number, required: true, min: 0, max: 1 },
+    requestId: { type: String, required: true, minlength: 1, maxlength: 128 }
+  },
+  { _id: false }
+);
+
+const progressionSchema = new mongoose.Schema(
+  {
+    version: {
+      type: String,
+      required: true,
+      enum: ["fighter-growth-v1"]
+    },
+    startingStats: { type: baseStatsSchema, required: true },
+    legacyStats: { type: baseStatsSchema, default: null },
+    growthEvents: { type: [growthEventSchema], default: [] }
+  },
+  { _id: false }
+);
+
 const creationSchema = new mongoose.Schema(
   {
     version: {
@@ -120,6 +160,9 @@ const fighterSchema = new mongoose.Schema(
     },
     creation: {
       type: creationSchema
+    },
+    progression: {
+      type: progressionSchema
     },
     wins: {
       type: Number,

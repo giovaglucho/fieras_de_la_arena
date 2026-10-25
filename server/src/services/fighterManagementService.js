@@ -8,6 +8,7 @@ import {
   getFighterAppearance,
   NEUTRAL_FIGHTER_APPEARANCE
 } from "../game-engine/fighterCreation.js";
+import { createFighterGrowthState } from "../game-engine/fighterGrowth.js";
 
 const FIGHTER_FIELDS =
   "_id name level xp elo baseStats appearance wins losses draws status visibility createdAt";
@@ -260,6 +261,7 @@ export async function createOwnedFighter(
         name: normalizedName,
         creationRequestId: requestId,
         ...initialData,
+        progression: createFighterGrowthState(initialData.baseStats),
         appearance: requestedAppearance,
         referralCode: randomBytes(16).toString("hex"),
         status: "active",

@@ -4,8 +4,8 @@ import Battle from "../models/Battle.js";
 import Fighter from "../models/Fighter.js";
 import { TRAINING_OPPONENT } from "../config/trainingOpponent.js";
 import { calculateFighterStats } from "../game-engine/fighterStats.js";
+import { applyFighterProgression } from "../game-engine/fighterGrowth.js";
 import {
-  applyExperience,
   calculateEloChanges,
   calculateXpReward
 } from "../game-engine/progression.js";
@@ -145,11 +145,17 @@ function getOutcome(winnerFighterId, fighterId) {
   return winnerFighterId === fighterId ? "win" : "loss";
 }
 
-function createParticipantResult(fighter, xpGained, eloChange) {
-  const experience = applyExperience({
+function createParticipantResult(fighter, xpGained, eloChange, requestId) {
+  const growth = applyFighterProgression({
     level: fighter.level,
     xp: fighter.xp,
-    xpGained
+    xpGained,
+    baseStats:
+      typeof fighter.baseStats.toObject === "function"
+        ? fighter.baseStats.toObject()
+        : fighter.baseStats,
+    progression: fighter.progression,
+    requestId
   });
   const eloAfter = Math.max(0, fighter.elo + eloChange);
 
@@ -157,8 +163,11 @@ function createParticipantResult(fighter, xpGained, eloChange) {
     xpGained,
     eloChange: eloAfter - fighter.elo,
     eloAfter,
-    level: experience.level,
-    xp: experience.xp
+    level: growth.level,
+    xp: growth.xp,
+    levelsGained: growth.levelsGained,
+    baseStats: growth.baseStats,
+    progression: growth.progression
   };
 }
 
@@ -172,7 +181,8 @@ function createSnapshot(fighter) {
       fighter.level,
       typeof fighter.baseStats.toObject === "function"
         ? fighter.baseStats.toObject()
-        : fighter.baseStats
+        : fighter.baseStats,
+      fighter.progression
     )
   };
 }
@@ -186,19 +196,28 @@ function createCounterUpdate(outcome) {
 }
 
 async function applyRewards(fighters, outcomes, results, session) {
-  const updates = fighters.map((fighter, index) => ({
-    updateOne: {
-      filter: { _id: fighter._id },
-      update: {
-        $set: {
-          xp: results[index].xp,
-          level: results[index].level,
-          elo: results[index].eloAfter
-        },
-        $inc: createCounterUpdate(outcomes[index])
-      }
+  const updates = fighters.map((fighter, index) => {
+    const result = results[index];
+    const fields = {
+      xp: result.xp,
+      level: result.level,
+      elo: result.eloAfter
+    };
+    if (result.levelsGained > 0) {
+      fields.baseStats = result.baseStats;
+      fields.progression = result.progression;
     }
-  }));
+
+    return {
+      updateOne: {
+        filter: { _id: fighter._id },
+        update: {
+          $set: fields,
+          $inc: createCounterUpdate(outcomes[index])
+        }
+      }
+    };
+  });
   const updateResult = await Fighter.bulkWrite(updates, { session });
 
   if (updateResult.matchedCount !== fighters.length) {
@@ -242,6 +261,7 @@ async function resolveCombatInSession(request, session, challenge) {
         }
       ]
     : requestedIds.map((fighterId) => fighterById.get(fighterId));
+  const battleId = new mongoose.Types.ObjectId();
   const snapshots = orderedFighters.map(createSnapshot);
   const seed = randomUUID();
   const combatResult = simulateCombat({ fighters: snapshots, seed });
@@ -264,11 +284,13 @@ async function resolveCombatInSession(request, session, challenge) {
           ? calculateXpReward({ outcome: outcomes[index], isTraining: true })
           : 0
         : calculateXpReward({ outcome: outcomes[index] }),
-      changes[index]
+      changes[index],
+      request.requestId
     )
   );
 
   const completedBattle = new Battle({
+    _id: battleId,
     battleType: request.battleType,
     requesterFighterId: request.requesterFighterId,
     requestId: request.requestId,
