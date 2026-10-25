@@ -1,3 +1,5 @@
+import { isFighterAppearance } from '../fighterAppearance.js'
+
 const FIGHTERS_URL = '/api/v1/fighters'
 const FIGHTERS_V2_URL = '/api/v2/fighters'
 const PROFILES_URL = '/api/v1/profiles'
@@ -37,24 +39,6 @@ function fighterRequest(path, options = {}) {
 
 function managedFighterRequest(path, options = {}) {
   return apiRequest(`${FIGHTERS_V2_URL}${path}`, options)
-}
-
-function readFighter(result) {
-  const fighter = result?.fighter
-
-  if (fighter === null) {
-    return null
-  }
-
-  if (
-    !fighter ||
-    typeof fighter.id !== 'string' ||
-    typeof fighter.name !== 'string'
-  ) {
-    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
-  }
-
-  return fighter
 }
 
 function readFighterProfile(result) {
@@ -188,14 +172,22 @@ export async function fetchPublicProfile(username) {
   return readFighterProfile(result)
 }
 
-export async function createFighter(name) {
-  const fighter = readFighter(await fighterRequest('', {
+export async function createFighter(name, { requestId, appearance }) {
+  if (!isFighterAppearance(appearance)) {
+    throw new Error('La apariencia seleccionada no es válida. Revisa tus opciones e inténtalo de nuevo.')
+  }
+
+  const fighter = readManagedFighter((await managedFighterRequest('', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  }))
+    body: JSON.stringify({ name, requestId, appearance }),
+  })).fighter)
 
-  if (!fighter) {
+  if (
+    fighter.name !== name.trim().toLowerCase() ||
+    !isFighterAppearance(fighter.appearance) ||
+    Object.keys(appearance).some((field) => fighter.appearance[field] !== appearance[field])
+  ) {
     throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
   }
 

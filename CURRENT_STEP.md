@@ -1,37 +1,36 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.3.3`
+**Paso activo:** `10.4.1`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Presentar creación y personalización
+**Título:** Definir catálogo público y reglas de desafío
 
 ## Objetivo
 
-Dar identidad visual propia a cada personaje y generar sus atributos dentro de límites de balance del servidor.
+Permitir que el jugador decida a quién desafiar sin quitar al servidor el control de elegibilidad, cupos y resultado.
 
 ## Tareas permitidas
 
-- Implementar un flujo claro para elegir nombre y opciones visuales, explicar qué es aleatorio, mostrar el resultado y ofrecer solo las repeticiones permitidas por diseño.
+- Definir qué información de personajes públicos se lista; qué ocultará un perfil privado; filtros/búsqueda, criterios de elegibilidad, rango de nivel/ELO, exclusión del propio dueño, inactividad, repetición de rival, límites contra abuso y alternativa cuando no haya rivales.
 
 ## Fuera de alcance
 
-- Modificar o volver a implementar la generación y persistencia de atributos y apariencia del paso 10.3.2.
-- Iniciar cualquier paso posterior de la hoja de ruta, incluido 10.4.
+- Implementar endpoints, servicios, reservas de cupos, idempotencia o recuperación de desafíos correspondientes a 10.4.2.
+- Implementar la exploración de rivales, confirmación de desafíos, presentación de cupos o resultados correspondientes a 10.4.3.
+- Modificar la aplicación, los modelos, la API, los datos o el despliegue; este paso se limita a definir reglas y documentación.
+- Contradecir o cambiar silenciosamente las reglas aprobadas en `PROJECT_SPEC.md`.
 
 ## Criterios de aceptación
 
-- La interfaz no promete elecciones que el servidor no admite.
-- No simula resultados ni modifica atributos.
-- Muestra errores accionables y no pierde el formulario ante errores recuperables.
-- Funciona en escritorio y móvil.
+- La selección pertenece al jugador; el servidor valida cada objetivo y la privacidad antes de aceptar el desafío; no se revela información privada; los bots o rivales de entrenamiento quedan claramente diferenciados y no generan ELO si así continúa el contrato aprobado.
 
-## Pruebas
+## Pruebas/verificación
 
-- Flujo completo en pruebas de UI, validación, estados de error y accesibilidad.
+- Tabla de visibilidad y elegibilidad, solicitudes a objetivo propio/privado/inexistente y revisión de consistencia con ranking e historial.
 
 ## Dependencia
 
-- 10.3.2.
+- 10.1.1 y 10.2.2.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.4 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar 10.4.2, 10.4.3 ni ningún otro paso posterior.
