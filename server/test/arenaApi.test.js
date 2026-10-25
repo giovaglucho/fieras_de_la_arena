@@ -121,6 +121,17 @@ async function postFight(requestCookie, body) {
   });
 }
 
+async function postChallenge(requestCookie, body) {
+  return fetch(`${baseUrl}/api/v2/arena/challenges`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: requestCookie
+    },
+    body: JSON.stringify(body)
+  });
+}
+
 test("las rutas de arena requieren una sesión", async () => {
   const [attempts, fight, history] = await Promise.all([
     fetch(`${baseUrl}/api/v1/arena/attempts`),
@@ -185,6 +196,94 @@ test("consulta intentos, valida solicitudes y no inicia combates sin luchador", 
     assert.equal(response.status, 400);
     assert.equal((await response.json()).error.code, "INVALID_PAGINATION");
   }
+});
+
+test("la API v2 fija el objetivo, valida el payload e idempotencia", async () => {
+  const anonymousResponse = await fetch(`${baseUrl}/api/v2/arena/challenges`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  assert.equal(anonymousResponse.status, 401);
+
+  for (const body of [
+    {
+      fighterId: fighter._id.toString(),
+      opponentFighterId: fighter._id.toString(),
+      requestId: "self",
+      battlesUsed: 0
+    }
+  ]) {
+    const response = await postChallenge(cookie, body);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, "INVALID_CHALLENGE_REQUEST");
+  }
+  assert.equal(await DailyActivity.countDocuments({ fighterId: fighter._id }), 0);
+
+  await Fighter.updateOne({ _id: fighter._id }, { $set: { elo: 1000 } });
+  const targetSuffix = randomUUID().replaceAll("-", "").slice(0, 12);
+  const targetOwner = await User.create({
+    username: `target_${targetSuffix}`,
+    email: `target-${targetSuffix}@example.test`,
+    passwordHash
+  });
+  userIds.add(targetOwner._id);
+  const target = await Fighter.create({
+    userId: targetOwner._id,
+    name: `t${targetSuffix}`,
+    referralCode: `target-${targetSuffix}`,
+    elo: 1000
+  });
+  fighterIds.add(target._id);
+  const otherTargetOwner = await User.create({
+    username: `target2_${targetSuffix}`,
+    email: `target2-${targetSuffix}@example.test`,
+    passwordHash
+  });
+  userIds.add(otherTargetOwner._id);
+  const otherTarget = await Fighter.create({
+    userId: otherTargetOwner._id,
+    name: `u${targetSuffix}`,
+    referralCode: `target2-${targetSuffix}`,
+    elo: 1000
+  });
+  fighterIds.add(otherTarget._id);
+
+  const request = {
+    fighterId: fighter._id.toString(),
+    opponentFighterId: target._id.toString(),
+    requestId: `directed-${runId}`
+  };
+  const [firstResponse, replayResponse] = await Promise.all([
+    postChallenge(cookie, request),
+    postChallenge(cookie, request)
+  ]);
+  const [firstBody, replayBody] = await Promise.all([
+    firstResponse.json(),
+    replayResponse.json()
+  ]);
+  assert.ok([firstResponse.status, replayResponse.status].includes(201));
+  assert.ok([firstResponse.status, replayResponse.status].includes(200));
+  assert.equal(firstBody.battle.id, replayBody.battle.id);
+  assert.ok(
+    firstBody.battle.participants.some(
+      ({ fighter: participant }) => participant.id === target._id.toString()
+    )
+  );
+
+  const conflictingResponse = await postChallenge(cookie, {
+    ...request,
+    opponentFighterId: otherTarget._id.toString()
+  });
+  assert.equal(conflictingResponse.status, 409);
+  assert.equal(
+    (await conflictingResponse.json()).error.code,
+    "IDEMPOTENCY_KEY_REUSED"
+  );
+  assert.equal(
+    (await DailyActivity.findOne({ fighterId: fighter._id })).battlesUsed,
+    1
+  );
 });
 
 test("idempotencia, límite diario e historial paginado funcionan en la API", async () => {

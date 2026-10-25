@@ -114,8 +114,9 @@ function validateRequest(input) {
   };
 }
 
-function getExistingBattleQuery({ requesterFighterId, requestId }) {
-  return Battle.findOne({ requesterFighterId, requestId });
+function getExistingBattleQuery({ requesterFighterId, requestId }, session) {
+  const query = Battle.findOne({ requesterFighterId, requestId });
+  return session ? query.session(session) : query;
 }
 
 function validateExistingBattle(battle, request) {
@@ -213,12 +214,112 @@ function isDuplicateRequestError(error) {
   );
 }
 
-export async function resolveCombat(input) {
+async function resolveCombatInSession(request, session, challenge) {
+  const isTraining = request.battleType === "training";
+  const requestedIds = [
+    request.requesterFighterId,
+    request.opponentFighterId
+  ];
+  const persistedIds = isTraining
+    ? [request.requesterFighterId]
+    : requestedIds;
+  const fighters = await Fighter.find({ _id: { $in: persistedIds } }).session(session);
+  if (fighters.length !== persistedIds.length) {
+    throw new CombatServiceError(
+      404,
+      "COMBATANT_NOT_FOUND",
+      "No se encontró uno de los luchadores del combate."
+    );
+  }
+
+  const fighterById = new Map(fighters.map((fighter) => [fighter._id.toString(), fighter]));
+  const orderedFighters = isTraining
+    ? [
+        fighterById.get(request.requesterFighterId),
+        {
+          ...TRAINING_OPPONENT,
+          _id: new mongoose.Types.ObjectId(TRAINING_OPPONENT._id)
+        }
+      ]
+    : requestedIds.map((fighterId) => fighterById.get(fighterId));
+  const snapshots = orderedFighters.map(createSnapshot);
+  const seed = randomUUID();
+  const combatResult = simulateCombat({ fighters: snapshots, seed });
+  const winnerFighterId = combatResult.summary.winnerFighterId;
+  const outcomes = orderedFighters.map((fighter) =>
+    getOutcome(winnerFighterId, fighter._id.toString())
+  );
+  const eloChanges = calculateEloChanges({
+    firstElo: orderedFighters[0].elo,
+    secondElo: orderedFighters[1].elo,
+    outcome: outcomes[0],
+    isTraining: request.battleType === "training"
+  });
+  const changes = [eloChanges.firstChange, eloChanges.secondChange];
+  const results = orderedFighters.map((fighter, index) =>
+    createParticipantResult(
+      fighter,
+      isTraining
+        ? index === 0
+          ? calculateXpReward({ outcome: outcomes[index], isTraining: true })
+          : 0
+        : calculateXpReward({ outcome: outcomes[index] }),
+      changes[index]
+    )
+  );
+
+  const completedBattle = new Battle({
+    battleType: request.battleType,
+    requesterFighterId: request.requesterFighterId,
+    requestId: request.requestId,
+    ...(challenge
+      ? {
+          challengeDateKey: challenge.dateKey,
+          challengePairKey: challenge.pairKey
+        }
+      : {}),
+    participants: snapshots.map((snapshot, index) => ({
+      snapshot,
+      result: {
+        xpGained: results[index].xpGained,
+        eloChange: results[index].eloChange,
+        eloAfter: results[index].eloAfter
+      }
+    })),
+    winnerFighterId,
+    actionCount: combatResult.summary.actionCount,
+    seed,
+    engineVersion: combatResult.engineVersion,
+    events: combatResult.events
+  });
+  await completedBattle.save({ session });
+  await applyRewards(
+    isTraining ? orderedFighters.slice(0, 1) : orderedFighters,
+    isTraining ? outcomes.slice(0, 1) : outcomes,
+    isTraining ? results.slice(0, 1) : results,
+    session
+  );
+  return completedBattle;
+}
+
+export async function resolveCombat(input, { session: externalSession, challenge } = {}) {
   const request = validateRequest(input);
   const idempotencyQuery = {
     requesterFighterId: request.requesterFighterId,
     requestId: request.requestId
   };
+
+  if (externalSession) {
+    const existingBattle = await getExistingBattleQuery(
+      idempotencyQuery,
+      externalSession
+    );
+    if (existingBattle) {
+      return validateExistingBattle(existingBattle, request);
+    }
+    return resolveCombatInSession(request, externalSession, challenge);
+  }
+
   const existingBattle = await getExistingBattleQuery(idempotencyQuery);
   if (existingBattle) {
     return validateExistingBattle(existingBattle, request);
@@ -229,89 +330,19 @@ export async function resolveCombat(input) {
 
   try {
     await session.withTransaction(async () => {
-      const previousBattle = await getExistingBattleQuery(idempotencyQuery).session(session);
+      const previousBattle = await getExistingBattleQuery(
+        idempotencyQuery,
+        session
+      );
       if (previousBattle) {
         completedBattle = validateExistingBattle(previousBattle, request);
         return;
       }
 
-      const isTraining = request.battleType === "training";
-      const requestedIds = [
-        request.requesterFighterId,
-        request.opponentFighterId
-      ];
-      const persistedIds = isTraining
-        ? [request.requesterFighterId]
-        : requestedIds;
-      const fighters = await Fighter.find({ _id: { $in: persistedIds } }).session(session);
-      if (fighters.length !== persistedIds.length) {
-        throw new CombatServiceError(
-          404,
-          "COMBATANT_NOT_FOUND",
-          "No se encontró uno de los luchadores del combate."
-        );
-      }
-
-      const fighterById = new Map(fighters.map((fighter) => [fighter._id.toString(), fighter]));
-      const orderedFighters = isTraining
-        ? [
-            fighterById.get(request.requesterFighterId),
-            {
-              ...TRAINING_OPPONENT,
-              _id: new mongoose.Types.ObjectId(TRAINING_OPPONENT._id)
-            }
-          ]
-        : requestedIds.map((fighterId) => fighterById.get(fighterId));
-      const snapshots = orderedFighters.map(createSnapshot);
-      const seed = randomUUID();
-      const combatResult = simulateCombat({ fighters: snapshots, seed });
-      const winnerFighterId = combatResult.summary.winnerFighterId;
-      const outcomes = orderedFighters.map((fighter) =>
-        getOutcome(winnerFighterId, fighter._id.toString())
-      );
-      const eloChanges = calculateEloChanges({
-        firstElo: orderedFighters[0].elo,
-        secondElo: orderedFighters[1].elo,
-        outcome: outcomes[0],
-        isTraining: request.battleType === "training"
-      });
-      const changes = [eloChanges.firstChange, eloChanges.secondChange];
-      const results = orderedFighters.map((fighter, index) =>
-        createParticipantResult(
-          fighter,
-          isTraining
-            ? index === 0
-              ? calculateXpReward({ outcome: outcomes[index], isTraining: true })
-              : 0
-            : calculateXpReward({ outcome: outcomes[index] }),
-          changes[index]
-        )
-      );
-
-      completedBattle = new Battle({
-        battleType: request.battleType,
-        requesterFighterId: request.requesterFighterId,
-        requestId: request.requestId,
-        participants: snapshots.map((snapshot, index) => ({
-          snapshot,
-          result: {
-            xpGained: results[index].xpGained,
-            eloChange: results[index].eloChange,
-            eloAfter: results[index].eloAfter
-          }
-        })),
-        winnerFighterId,
-        actionCount: combatResult.summary.actionCount,
-        seed,
-        engineVersion: combatResult.engineVersion,
-        events: combatResult.events
-      });
-      await completedBattle.save({ session });
-      await applyRewards(
-        isTraining ? orderedFighters.slice(0, 1) : orderedFighters,
-        isTraining ? outcomes.slice(0, 1) : outcomes,
-        isTraining ? results.slice(0, 1) : results,
-        session
+      completedBattle = await resolveCombatInSession(
+        request,
+        session,
+        challenge
       );
     });
 

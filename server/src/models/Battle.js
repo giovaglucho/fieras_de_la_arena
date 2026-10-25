@@ -84,6 +84,13 @@ const battleSchema = new mongoose.Schema(
       minlength: 1,
       maxlength: 128
     },
+    challengeDateKey: {
+      type: String,
+      match: /^\d{4}-\d{2}-\d{2}$/
+    },
+    challengePairKey: {
+      type: String
+    },
     actionCount: { type: Number, required: true, min: 1 },
     seed: { type: String, required: true, minlength: 1 },
     engineVersion: { type: String, required: true, minlength: 1 },
@@ -141,6 +148,16 @@ battleSchema.index(
   {
     unique: true,
     partialFilterExpression: { requestId: { $type: "string" } }
+  }
+);
+battleSchema.index(
+  { challengeDateKey: 1, challengePairKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      challengeDateKey: { $type: "string" },
+      challengePairKey: { $type: "string" }
+    }
   }
 );
 
