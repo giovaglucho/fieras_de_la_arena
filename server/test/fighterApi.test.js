@@ -79,11 +79,14 @@ after(async () => {
 });
 
 async function login(userIndex) {
+  const identifier = userIndex === 2
+    ? studentUsername
+    : `fighter_${runId.slice(userIndex * 12, userIndex * 12 + 12)}`;
   const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      identifier: `fighter_${runId.slice(userIndex * 12, userIndex * 12 + 12)}`,
+      identifier,
       password: "arena password 123"
     })
   });
@@ -103,6 +106,28 @@ async function login(userIndex) {
 async function createFighter(cookie, body) {
   return fetch(`${baseUrl}/api/v1/fighters`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookie
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+async function createManagedFighter(cookie, body) {
+  return fetch(`${baseUrl}/api/v2/fighters`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookie
+    },
+    body: JSON.stringify(body)
+  });
+}
+
+async function updateActiveFighter(cookie, body) {
+  return fetch(`${baseUrl}/api/v2/fighters/active`, {
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Cookie: cookie
@@ -222,11 +247,12 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
     level: 1,
     xp: 0,
     elo: 1000,
-    baseStats: {
-      health: 100,
-      attack: 10,
-      defense: 4,
-      speed: 5
+    baseStats: body.fighter.baseStats,
+    appearance: {
+      tone: "arena",
+      hair: "rapado",
+      clothing: "tunica-cruzada",
+      accessory: "ninguno"
     },
     wins: 0,
     losses: 0,
@@ -246,19 +272,35 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
       ...body.fighter,
       username: `fighter_${runId.slice(0, 12)}`,
       stats: {
-        health: 100,
-        attack: 10,
-        defense: 4,
-        speed: 5
+        health: body.fighter.baseStats.health,
+        attack: body.fighter.baseStats.attack,
+        defense: body.fighter.baseStats.defense,
+        speed: body.fighter.baseStats.speed
       },
       xpToNextLevel: 100
     }
   });
 
   const storedFighter = await Fighter.findById(body.fighter.id);
+  const approvedInitialProfiles = [
+    { health: 85, attack: 10, defense: 5, speed: 5 },
+    { health: 100, attack: 10, defense: 4, speed: 5 },
+    { health: 115, attack: 10, defense: 3, speed: 5 }
+  ];
+  assert.ok(
+    approvedInitialProfiles.some(
+      (profile) =>
+        JSON.stringify(storedFighter.baseStats.toObject()) ===
+        JSON.stringify(profile)
+    )
+  );
+  assert.equal(storedFighter.creation.version, "fighter-creation-v1");
+  assert.equal(storedFighter.creation.seed.length, 32);
   assert.equal(storedFighter.userId.toString(), userIds[0].toString());
   assert.equal(storedFighter.referralCode.length, 32);
   assert.match(storedFighter.referralCode, /^[a-f0-9]{32}$/);
+  const storedUser = await User.findById(userIds[0]);
+  assert.equal(storedUser.activeFighterId.toString(), storedFighter._id.toString());
 
   const referralCodeResponse = await getMyReferralCode(cookie);
   assert.equal(referralCodeResponse.status, 200);
@@ -288,6 +330,8 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   });
   assert.equal(duplicateName.status, 409);
   assert.equal((await duplicateName.json()).error.code, "FIGHTER_NAME_TAKEN");
+  const userAfterFailedCreation = await User.findById(userIds[1]).lean();
+  assert.equal(userAfterFailedCreation.activeFighterId, null);
 });
 
 test("GET /fighters/me devuelve estadísticas efectivas y XP del nivel actual", async () => {
@@ -300,10 +344,10 @@ test("GET /fighters/me devuelve estadísticas efectivas y XP del nivel actual", 
 
   assert.equal(response.status, 200);
   assert.deepEqual(body.fighter.stats, {
-    health: 110,
-    attack: 11,
-    defense: 4,
-    speed: 5
+    health: fighter.baseStats.health + 10,
+    attack: fighter.baseStats.attack + 1,
+    defense: fighter.baseStats.defense,
+    speed: fighter.baseStats.speed
   });
   assert.equal(body.fighter.xpToNextLevel, 150);
   assert.equal(body.fighter.xp, 25);
@@ -329,6 +373,7 @@ test("los perfiles públicos exponen solo los campos de juego permitidos", async
       defense: fighter.baseStats.defense,
       speed: fighter.baseStats.speed
     },
+    appearance: fighter.appearance.toObject(),
     wins: fighter.wins,
     losses: fighter.losses,
     draws: fighter.draws,
@@ -360,4 +405,284 @@ test("los perfiles inexistentes responden 404, incluso con un ID inválido", asy
     assert.equal(response.status, 404);
     assert.equal((await response.json()).error.code, "PROFILE_NOT_FOUND");
   }
+});
+
+test("rechaza una selección activa obsoleta en rutas que requieren el luchador activo", async () => {
+  const cookie = await login(1);
+  await User.updateOne(
+    { _id: userIds[1] },
+    { $set: { activeFighterId: new mongoose.Types.ObjectId() } }
+  );
+
+  const response = await getMyFighter(cookie);
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, "ACTIVE_FIGHTER_REQUIRED");
+
+  await User.updateOne(
+    { _id: userIds[1] },
+    { $unset: { activeFighterId: 1 } }
+  );
+});
+
+test("las rutas singulares no eligen un luchador arbitrario para cuentas con varios", async () => {
+  const cookie = await login(2);
+  const firstFighter = await Fighter.findOne({ userId: userIds[2] });
+  const legacyActiveResponse = await fetch(`${baseUrl}/api/v2/fighters/active`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(
+    (await legacyActiveResponse.json()).fighter.id,
+    firstFighter._id.toString()
+  );
+  const secondFighter = await Fighter.create({
+    userId: userIds[2],
+    name: `extra_${runId.slice(0, 10)}`,
+    referralCode: `extra-${runId}`
+  });
+  const requests = [
+    getMyFighter(cookie),
+    getMyReferralCode(cookie),
+    fetch(`${baseUrl}/api/v1/profiles/${studentUsername}`),
+    fetch(`${baseUrl}/api/v1/arena/attempts`, { headers: { Cookie: cookie } }),
+    fetch(`${baseUrl}/api/v1/arena/history`, { headers: { Cookie: cookie } }),
+    fetch(`${baseUrl}/api/v1/battles/${new mongoose.Types.ObjectId()}`, {
+      headers: { Cookie: cookie }
+    }),
+    createFighter(cookie, { name: "OtroLuchador" }),
+    fetch(`${baseUrl}/api/v1/arena/fight`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie
+      },
+      body: JSON.stringify({ requestId: `multiple-${runId}` })
+    })
+  ];
+  const responses = await Promise.all(requests);
+  const bodies = await Promise.all(responses.map((response) => response.json()));
+
+  for (const [index, response] of responses.entries()) {
+    assert.equal(response.status, 409, `request ${index} should reject ambiguous ownership`);
+    assert.equal(bodies[index].error.code, "MULTIPLE_FIGHTERS_REQUIRE_V2");
+  }
+  assert.equal(firstFighter.userId.toString(), userIds[2].toString());
+  assert.equal(secondFighter.userId.toString(), userIds[2].toString());
+  const ambiguousActiveResponse = await fetch(
+    `${baseUrl}/api/v2/fighters/active`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.deepEqual(await ambiguousActiveResponse.json(), { fighter: null });
+  assert.equal(
+    await mongoose.connection.collection("dailyactivities").countDocuments({
+      fighterId: { $in: [firstFighter._id, secondFighter._id] }
+    }),
+    0
+  );
+});
+
+test("la API v2 crea y lista luchadores propios con selección activa e idempotencia", async () => {
+  const unauthenticated = await fetch(`${baseUrl}/api/v2/fighters`);
+  assert.equal(unauthenticated.status, 401);
+
+  const cookie = await login(1);
+  const emptyListResponse = await fetch(`${baseUrl}/api/v2/fighters`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(emptyListResponse.status, 200);
+  assert.deepEqual((await emptyListResponse.json()).fighters, []);
+
+  const emptyActiveResponse = await fetch(`${baseUrl}/api/v2/fighters/active`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(emptyActiveResponse.status, 200);
+  assert.deepEqual(await emptyActiveResponse.json(), { fighter: null });
+
+  const unknownField = await createManagedFighter(cookie, {
+    name: "valido",
+    requestId: `unknown-${runId}`,
+    status: "suspended"
+  });
+  assert.equal(unknownField.status, 400);
+  assert.equal((await unknownField.json()).error.code, "INVALID_FIGHTER_DATA");
+
+  const invalidName = await createManagedFighter(cookie, {
+    name: "ab",
+    requestId: `invalid-${runId}`
+  });
+  assert.equal(invalidName.status, 400);
+
+  const requestId = `create-${runId}`;
+  const appearance = {
+    tone: "cobre",
+    hair: "trenzas",
+    clothing: "manto-corto",
+    accessory: "cinta"
+  };
+  const createRequest = createManagedFighter(cookie, {
+    name: `V2_${runId.slice(0, 8)}`,
+    requestId,
+    appearance
+  });
+  const retryRequest = createManagedFighter(cookie, {
+    name: `v2_${runId.slice(0, 8)}`,
+    requestId,
+    appearance
+  });
+  const [firstResponse, retryResponse] = await Promise.all([
+    createRequest,
+    retryRequest
+  ]);
+  assert.deepEqual(
+    [firstResponse.status, retryResponse.status].sort(),
+    [200, 201]
+  );
+  const firstBody = await firstResponse.json();
+  const retryBody = await retryResponse.json();
+  const createdFighter = firstResponse.status === 201
+    ? firstBody.fighter
+    : retryBody.fighter;
+  const retriedFighter = firstResponse.status === 200
+    ? firstBody.fighter
+    : retryBody.fighter;
+  assert.equal(createdFighter.status, "active");
+  assert.equal(createdFighter.visibility, "public");
+  assert.equal(createdFighter.isActive, true);
+  assert.equal(retriedFighter.id, createdFighter.id);
+  assert.deepEqual(retriedFighter, createdFighter);
+  assert.deepEqual(createdFighter.appearance, appearance);
+  assert.ok(
+    [
+      { health: 85, attack: 10, defense: 5, speed: 5 },
+      { health: 100, attack: 10, defense: 4, speed: 5 },
+      { health: 115, attack: 10, defense: 3, speed: 5 }
+    ].some((profile) => JSON.stringify(profile) === JSON.stringify(createdFighter.baseStats))
+  );
+  assert.doesNotMatch(
+    JSON.stringify([firstBody, retryBody]),
+    /userId|referralCode|creation|seed/i
+  );
+  assert.equal(await Fighter.countDocuments({ userId: userIds[1] }), 1);
+  const persistedManagedFighter = await Fighter.findById(createdFighter.id);
+  assert.equal(persistedManagedFighter.creation.version, "fighter-creation-v1");
+  assert.equal(persistedManagedFighter.creation.seed.length, 32);
+
+  const reusedKey = await createManagedFighter(cookie, {
+    name: `v2_${runId.slice(0, 8)}`,
+    requestId,
+    appearance: {
+      tone: "arcilla",
+      hair: "rapado",
+      clothing: "tunica-cruzada",
+      accessory: "ninguno"
+    }
+  });
+  assert.equal(reusedKey.status, 409);
+  assert.equal((await reusedKey.json()).error.code, "IDEMPOTENCY_KEY_REUSED");
+
+  const listResponse = await fetch(`${baseUrl}/api/v2/fighters?page=1&limit=1`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(listResponse.status, 200);
+  const listBody = await listResponse.json();
+  assert.equal(listBody.fighters.length, 1);
+  assert.equal(listBody.pagination.totalItems, 1);
+  assert.equal(listBody.pagination.totalPages, 1);
+  assert.equal(listBody.fighters[0].isActive, true);
+
+  const emptyPage = await fetch(`${baseUrl}/api/v2/fighters?page=2&limit=1`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(emptyPage.status, 200);
+  assert.deepEqual((await emptyPage.json()).fighters, []);
+
+  const invalidPagination = await fetch(
+    `${baseUrl}/api/v2/fighters?page=1&limit=51`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(invalidPagination.status, 400);
+  const unknownQueryField = await fetch(
+    `${baseUrl}/api/v2/fighters?status=active`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(unknownQueryField.status, 400);
+
+  const secondFighter = await Fighter.create({
+    userId: userIds[1],
+    name: `second_${runId.slice(0, 8)}`,
+    referralCode: `second-${runId}`
+  });
+  const foreignFighter = await Fighter.findOne({ userId: userIds[2] });
+  const foreignSelection = await updateActiveFighter(cookie, {
+    fighterId: foreignFighter._id.toString()
+  });
+  assert.equal(foreignSelection.status, 404);
+  assert.equal((await foreignSelection.json()).error.code, "FIGHTER_NOT_FOUND");
+
+  const unknownSelectionField = await updateActiveFighter(cookie, {
+    fighterId: secondFighter._id.toString(),
+    status: "active"
+  });
+  assert.equal(unknownSelectionField.status, 400);
+
+  await Fighter.updateOne(
+    { _id: secondFighter._id },
+    { $set: { status: "suspended", visibility: "private" } }
+  );
+  const suspendedListResponse = await fetch(`${baseUrl}/api/v2/fighters`, {
+    headers: { Cookie: cookie }
+  });
+  const suspendedListedFighter = (await suspendedListResponse.json()).fighters.find(
+    (fighter) => fighter.id === secondFighter._id.toString()
+  );
+  assert.equal(suspendedListedFighter.status, "suspended");
+  assert.equal(suspendedListedFighter.visibility, "private");
+
+  const suspendedSelection = await updateActiveFighter(cookie, {
+    fighterId: secondFighter._id.toString()
+  });
+  assert.equal(suspendedSelection.status, 404);
+  await Fighter.updateOne({ _id: secondFighter._id }, { $set: { status: "active" } });
+
+  const selectedResponse = await updateActiveFighter(cookie, {
+    fighterId: secondFighter._id.toString()
+  });
+  assert.equal(selectedResponse.status, 200);
+  assert.equal((await selectedResponse.json()).fighter.id, secondFighter._id.toString());
+
+  const activeResponse = await fetch(`${baseUrl}/api/v2/fighters/active`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal((await activeResponse.json()).fighter.id, secondFighter._id.toString());
+
+  const currentList = await fetch(`${baseUrl}/api/v2/fighters`, {
+    headers: { Cookie: cookie }
+  });
+  const currentListBody = await currentList.json();
+  assert.equal(currentListBody.fighters.filter((fighter) => fighter.isActive).length, 1);
+  assert.equal(
+    currentListBody.fighters.find((fighter) => fighter.isActive).id,
+    secondFighter._id.toString()
+  );
+});
+
+test("la API v2 limita la creación temporal por cuenta e IP, sin un máximo permanente", async () => {
+  const cookie = await login(0);
+  const accountLimit = Number(process.env.FIGHTER_CREATION_ACCOUNT_LIMIT ?? 5);
+  const ipLimit = Number(process.env.FIGHTER_CREATION_IP_LIMIT ?? 30);
+  const allowedCreations = Math.min(accountLimit, Math.max(0, ipLimit - 5));
+
+  for (let index = 0; index < allowedCreations; index += 1) {
+    const response = await createManagedFighter(cookie, {
+      name: `limit${runId.slice(0, 7)}${index.toString(36)}`,
+      requestId: `limit-${runId}-${index}`
+    });
+    assert.equal(response.status, 201);
+  }
+
+  const limitedResponse = await createManagedFighter(cookie, {
+    name: `limitx${runId.slice(0, 7)}`,
+    requestId: `limit-${runId}-exceeded`
+  });
+  assert.equal(limitedResponse.status, 429);
+  assert.equal((await limitedResponse.json()).error.code, "RATE_LIMIT_EXCEEDED");
 });

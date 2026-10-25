@@ -8,15 +8,25 @@ import requireAuth from "../middleware/requireAuth.js";
 import { sensitiveReadRateLimit } from "../middleware/rateLimit.js";
 import { calculateFighterStats } from "../game-engine/fighterStats.js";
 import { getXpRequiredForNextLevel } from "../game-engine/progression.js";
+import {
+  createInitialFighterData,
+  NEUTRAL_FIGHTER_APPEARANCE
+} from "../game-engine/fighterCreation.js";
 import { toPublicFighter } from "../serializers/publicFighter.js";
+import {
+  findSingleFighterForUser
+} from "../services/legacyFighter.js";
 import { validateFighterCreation } from "../validators/fighterCreation.js";
 
 const router = Router();
 
 router.get("/me", requireAuth, sensitiveReadRateLimit, async (request, response, next) => {
   try {
-    const fighter = await Fighter.findOne({ userId: request.user._id })
-      .select("_id name level xp elo baseStats wins losses draws");
+    const fighter = await findSingleFighterForUser(
+      request.user._id,
+      "_id name level xp elo baseStats appearance wins losses draws",
+      request.user.activeFighterId
+    );
 
     return response.status(200).json({
       fighter: fighter
@@ -42,7 +52,7 @@ router.get("/:id", async (request, response, next) => {
 
   try {
     const fighter = await Fighter.findById(request.params.id)
-      .select("_id userId name level xp elo baseStats wins losses draws");
+      .select("_id userId name level xp elo baseStats appearance wins losses draws");
 
     if (!fighter) {
       return next(
@@ -83,26 +93,60 @@ router.post("/", requireAuth, async (request, response, next) => {
   }
 
   try {
-    const fighter = await Fighter.create({
-      userId: request.user._id,
-      name: fighterData.name,
-      referralCode: randomBytes(16).toString("hex")
-    });
+    const existingFighter = await findSingleFighterForUser(request.user._id, "_id");
+    if (existingFighter) {
+      return next(
+        new ApiError(
+          409,
+          "FIGHTER_ALREADY_EXISTS",
+          "Esta cuenta ya tiene un luchador."
+        )
+      );
+    }
+
+    const fighterId = new mongoose.Types.ObjectId();
+    const initialData = createInitialFighterData();
+    const session = await mongoose.startSession();
+    let fighter;
+    try {
+      await session.withTransaction(async () => {
+        const claimedUser = await User.findOneAndUpdate(
+          {
+            _id: request.user._id,
+            $or: [
+              { activeFighterId: { $exists: false } },
+              { activeFighterId: null }
+            ]
+          },
+          { $set: { activeFighterId: fighterId } },
+          { returnDocument: "after", session }
+        );
+        if (!claimedUser) {
+          throw new ApiError(
+            409,
+            "FIGHTER_ALREADY_EXISTS",
+            "Esta cuenta ya tiene un luchador."
+          );
+        }
+
+        fighter = new Fighter({
+          _id: fighterId,
+          userId: request.user._id,
+          name: fighterData.name,
+          ...initialData,
+          appearance: { ...NEUTRAL_FIGHTER_APPEARANCE },
+          referralCode: randomBytes(16).toString("hex")
+        });
+        await fighter.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     return response.status(201).json({ fighter: toPublicFighter(fighter) });
   } catch (error) {
     if (error?.code === 11000) {
       const duplicateFields = error.keyPattern ?? error.keyValue ?? {};
-
-      if (Object.hasOwn(duplicateFields, "userId")) {
-        return next(
-          new ApiError(
-            409,
-            "FIGHTER_ALREADY_EXISTS",
-            "Esta cuenta ya tiene un luchador."
-          )
-        );
-      }
 
       if (Object.hasOwn(duplicateFields, "name")) {
         return next(
@@ -110,6 +154,16 @@ router.post("/", requireAuth, async (request, response, next) => {
             409,
             "FIGHTER_NAME_TAKEN",
             "El nombre del luchador no está disponible."
+          )
+        );
+      }
+
+      if (Object.hasOwn(duplicateFields, "referralCode")) {
+        return next(
+          new ApiError(
+            409,
+            "FIGHTER_CODE_CONFLICT",
+            "No se pudo generar un código de invitación único."
           )
         );
       }

@@ -43,6 +43,7 @@ test("normaliza cuentas, aplica valores por defecto y restringe duplicados en Mo
   assert.equal(user.email, `${runId}-player@example.test`);
   assert.equal(user.role, "user");
   assert.equal(user.status, "active");
+  assert.equal(user.activeFighterId, null);
   assert.equal(referrer.referredByUserId, null);
   assert.equal(user.referredByUserId.toString(), referrer._id.toString());
   assert.ok(user.createdAt instanceof Date);

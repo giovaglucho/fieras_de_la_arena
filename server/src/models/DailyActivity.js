@@ -5,12 +5,24 @@ const dailyActivitySchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      default: undefined
+    },
+    fighterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Fighter",
+      default: undefined
     },
     dateKey: {
       type: String,
       required: true,
       match: /^\d{4}-\d{2}-\d{2}$/
+    },
+    limit: {
+      type: Number,
+      required: true,
+      default: 3,
+      min: 1,
+      validate: Number.isInteger
     },
     battlesUsed: {
       type: Number,
@@ -27,7 +39,13 @@ const dailyActivitySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-dailyActivitySchema.index({ userId: 1, dateKey: 1 }, { unique: true });
+dailyActivitySchema.index(
+  { fighterId: 1, dateKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { fighterId: { $type: "objectId" } }
+  }
+);
 
 const DailyActivity = mongoose.model("DailyActivity", dailyActivitySchema);
 

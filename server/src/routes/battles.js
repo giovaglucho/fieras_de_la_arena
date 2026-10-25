@@ -1,10 +1,10 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import Battle from "../models/Battle.js";
-import Fighter from "../models/Fighter.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
 import { sensitiveReadRateLimit } from "../middleware/rateLimit.js";
+import { findSingleFighterForUser } from "../services/legacyFighter.js";
 import serializeBattle from "../utils/serializeBattle.js";
 
 const router = Router();
@@ -17,9 +17,11 @@ router.get("/:id", requireAuth, sensitiveReadRateLimit, async (request, response
   }
 
   try {
-    const fighter = await Fighter.findOne({ userId: request.user._id })
-      .select("_id")
-      .lean();
+    const fighter = await findSingleFighterForUser(
+      request.user._id,
+      "_id",
+      request.user.activeFighterId
+    );
     if (!fighter) {
       return next(
         new ApiError(404, "BATTLE_NOT_FOUND", "No se encontró el combate solicitado.")

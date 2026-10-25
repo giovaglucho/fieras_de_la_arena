@@ -27,7 +27,7 @@ after(async () => {
   await mongoose.disconnect();
 });
 
-test("aplica valores iniciales, normaliza el nombre y restringe índices únicos en MongoDB", async () => {
+test("permite varios luchadores por dueño y mantiene únicos nombres y códigos en MongoDB", async () => {
   const fighter = await Fighter.create({
     userId: testUserIds[0],
     name: `  ${namePrefix.toUpperCase()}  `,
@@ -51,19 +51,20 @@ test("aplica valores iniciales, normaliza el nombre y restringe índices únicos
   assert.ok(fighter.updatedAt instanceof Date);
 
   const indexes = await Fighter.collection.indexes();
-  assert.equal(indexes.find((index) => index.name === "userId_1")?.unique, true);
+  assert.notEqual(indexes.find((index) => index.name === "userId_1")?.unique, true);
+  assert.ok(indexes.some(
+    (index) => index.key.userId === 1 && index.key.createdAt === 1 && index.key._id === 1
+  ));
   assert.equal(indexes.find((index) => index.name === "name_1")?.unique, true);
   assert.equal(indexes.find((index) => index.name === "referralCode_1")?.unique, true);
   assert.ok(indexes.some((index) => index.key.elo === -1));
 
-  await assert.rejects(
-    Fighter.create({
-      userId: testUserIds[0],
-      name: `${namePrefix}-alt`,
-      referralCode: `ref-${runId}-two`
-    }),
-    (error) => error.code === 11000 && error.keyPattern.userId === 1
-  );
+  const secondFighter = await Fighter.create({
+    userId: testUserIds[0],
+    name: `${namePrefix}-alt`,
+    referralCode: `ref-${runId}-two`
+  });
+  assert.equal(secondFighter.userId.toString(), fighter.userId.toString());
   await assert.rejects(
     Fighter.create({
       userId: testUserIds[1],
@@ -75,7 +76,7 @@ test("aplica valores iniciales, normaliza el nombre y restringe índices únicos
   await assert.rejects(
     Fighter.create({
       userId: testUserIds[1],
-      name: `${namePrefix}-alt`,
+      name: `${namePrefix}-x`,
       referralCode: `ref-${runId}-one`
     }),
     (error) => error.code === 11000 && error.keyPattern.referralCode === 1

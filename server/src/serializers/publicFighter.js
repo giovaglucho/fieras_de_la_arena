@@ -1,3 +1,5 @@
+import { getFighterAppearance } from "../game-engine/fighterCreation.js";
+
 export function toPublicFighter(fighter) {
   return {
     id: fighter._id.toString(),
@@ -6,6 +8,7 @@ export function toPublicFighter(fighter) {
     xp: fighter.xp,
     elo: fighter.elo,
     baseStats: fighter.baseStats.toObject(),
+    appearance: getFighterAppearance(fighter.appearance),
     wins: fighter.wins,
     losses: fighter.losses,
     draws: fighter.draws

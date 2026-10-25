@@ -6,8 +6,8 @@ export const DAILY_BATTLE_LIMIT = 3;
 function isDailyActivityDuplicateKeyError(error) {
   return (
     error?.code === 11000 &&
-    ((error.keyPattern?.userId === 1 && error.keyPattern?.dateKey === 1) ||
-      error.message?.includes("userId_1_dateKey_1"))
+    ((error.keyPattern?.fighterId === 1 && error.keyPattern?.dateKey === 1) ||
+      error.message?.includes("fighterId_1_dateKey_1"))
   );
 }
 
@@ -21,9 +21,9 @@ function validateDate(now) {
   }
 }
 
-function validateUserId(userId) {
-  if (!mongoose.isObjectIdOrHexString(userId)) {
-    throw new TypeError("userId must be a valid MongoDB ObjectId.");
+function validateFighterId(fighterId) {
+  if (!mongoose.isObjectIdOrHexString(fighterId)) {
+    throw new TypeError("fighterId must be a valid MongoDB ObjectId.");
   }
 }
 
@@ -42,12 +42,12 @@ function createReservationResult(
   };
 }
 
-export async function getDailyAttempts(userId, now = new Date()) {
-  validateUserId(userId);
+export async function getDailyAttempts(fighterId, now = new Date()) {
+  validateFighterId(fighterId);
   validateDate(now);
 
   const dateKey = getDateKey(now);
-  const activity = await DailyActivity.findOne({ userId, dateKey })
+  const activity = await DailyActivity.findOne({ fighterId, dateKey })
     .select("battlesUsed")
     .lean();
   const battlesUsed = activity?.battlesUsed ?? 0;
@@ -60,8 +60,8 @@ export async function getDailyAttempts(userId, now = new Date()) {
   };
 }
 
-export async function reserveDailyAttempt(userId, now = new Date(), requestId) {
-  validateUserId(userId);
+export async function reserveDailyAttempt(fighterId, now = new Date(), requestId) {
+  validateFighterId(fighterId);
   validateDate(now);
   if (
     requestId !== undefined &&
@@ -76,7 +76,7 @@ export async function reserveDailyAttempt(userId, now = new Date(), requestId) {
 
   const dateKey = getDateKey(now);
   const filter = {
-    userId,
+    fighterId,
     dateKey,
     battlesUsed: { $lt: DAILY_BATTLE_LIMIT }
   };
@@ -85,7 +85,7 @@ export async function reserveDailyAttempt(userId, now = new Date(), requestId) {
   }
   const update = {
     $inc: { battlesUsed: 1 },
-    $setOnInsert: { userId, dateKey }
+    $setOnInsert: { fighterId, dateKey }
   };
   if (requestId !== undefined) {
     update.$addToSet = { requestIds: requestId };
@@ -116,7 +116,7 @@ export async function reserveDailyAttempt(userId, now = new Date(), requestId) {
     }
   }
 
-  const activity = await DailyActivity.findOne({ userId, dateKey }).lean();
+  const activity = await DailyActivity.findOne({ fighterId, dateKey }).lean();
   if (requestId !== undefined && activity?.requestIds?.includes(requestId)) {
     return createReservationResult(activity, dateKey, {
       reserved: true,

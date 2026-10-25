@@ -23,7 +23,7 @@ if (allowedOrigin) {
   }
 }
 
-const allowedMethods = ["GET", "HEAD", "POST"];
+const allowedMethods = ["GET", "HEAD", "POST", "PUT"];
 const allowedHeaders = ["content-type"];
 
 function corsMiddleware(request, response, next) {

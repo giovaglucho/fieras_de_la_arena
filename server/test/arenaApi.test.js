@@ -77,7 +77,7 @@ afterEach(async () => {
     Battle.deleteMany({
       "participants.snapshot.fighterId": { $in: [...fighterIds] }
     }),
-    DailyActivity.deleteMany({ userId: { $in: [...userIds] } }),
+    DailyActivity.deleteMany({ fighterId: { $in: [...fighterIds] } }),
     Fighter.deleteMany({ _id: { $in: [...fighterIds] } }),
     User.deleteMany({ _id: { $in: [...userIds] } }),
     mongoose.connection.collection("sessions").deleteMany({
@@ -161,7 +161,7 @@ test("consulta intentos, valida solicitudes y no inicia combates sin luchador", 
     assert.equal(response.status, 400);
     assert.equal((await response.json()).error.code, "INVALID_FIGHT_REQUEST");
   }
-  assert.equal(await DailyActivity.countDocuments({ userId: user._id }), 0);
+  assert.equal(await DailyActivity.countDocuments({ fighterId: fighter._id }), 0);
 
   const otherId = new mongoose.Types.ObjectId();
   const accountWithoutFighter = await User.create({
@@ -176,7 +176,7 @@ test("consulta intentos, valida solicitudes y no inicia combates sin luchador", 
 
   assert.equal(rejectedFight.status, 409);
   assert.equal((await rejectedFight.json()).error.code, "FIGHTER_REQUIRED");
-  assert.equal(await DailyActivity.countDocuments({ userId: otherId }), 0);
+  assert.equal(await DailyActivity.countDocuments({ fighterId: otherId }), 0);
 
   for (const query of ["?page=0", "?limit=51", "?page=1&unexpected=true"]) {
     const response = await fetch(`${baseUrl}/api/v1/arena/history${query}`, {
@@ -260,7 +260,7 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
   assert.equal(exhaustedResponse.status, 429);
   assert.equal((await exhaustedResponse.json()).error.code, "RATE_LIMIT_EXCEEDED");
   assert.equal(
-    (await DailyActivity.findOne({ userId: user._id })).battlesUsed,
+    (await DailyActivity.findOne({ fighterId: fighter._id })).battlesUsed,
     3
   );
   assert.equal(await Battle.countDocuments({ requesterFighterId: fighter._id }), 3);

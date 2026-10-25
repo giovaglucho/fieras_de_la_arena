@@ -11,13 +11,13 @@ Juego web de combates automáticos inspirado en el ciclo de crear luchador, comb
 
 ## Regla de trabajo
 
-Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criterios, informar los resultados y detenerse. No iniciar el siguiente paso hasta que se cambie manualmente `CURRENT_STEP.md`.
+Desarrollar una sola tarea de `ROADMAP.md` por iteración. Verificar sus criterios, informar los resultados y detenerse. No iniciar el siguiente paso hasta que el usuario lo autorice y `CURRENT_STEP.md` lo active.
 
 ## Estado actual
 
 El cliente React con Vite incluye registro e inicio de sesión conectados a la API, sesión persistente, creación de luchador y rutas protegidas. También están implementados el dashboard del jugador, Arena, resultados e historial de combates, perfiles públicos, clasificaciones por ELO, nivel y cantidad de alumnos confirmados, y una sección de alumnos con enlace de invitación y resumen público de las cuentas asociadas. Los resultados muestran una animación básica basada en eventos guardados junto al registro textual. El servidor Express usa MongoDB con Mongoose y proporciona autenticación, gestión de luchadores, invitaciones, combates e intentos diarios. Los combates se simulan y persisten en el servidor.
 
-**Estado del desarrollo:** los pasos 9.5, 9.6 y 9.7 están completados según `CURRENT_STEP.md`. El paso activo autorizado es **10.1.1 — Convertir la visión en reglas de juego propias**; está pendiente y se limita a definir/documentar reglas. La etapa 10 aún no tiene funcionalidades implementadas. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/).
+**Estado del desarrollo:** los pasos **10.1.1 — Convertir la visión en reglas de juego propias**, **10.1.2 — Definir el plan de datos, API y transición de cuentas**, **10.2.1 — Adaptar propiedad y persistencia**, **10.2.2 — Crear servicios y API de gestión de luchadores**, **10.2.3 — Añadir selección y gestión en la interfaz**, **10.3.1 — Definir apariencia y generación inicial** y **10.3.2 — Implementar creación y persistencia de atributos y apariencia** están completados. El servidor genera los atributos iniciales y persiste la apariencia; la interfaz de creación y personalización todavía está pendiente. El panel permite consultar los luchadores propios, cambiar el activo y ver el perfil seleccionado; la Arena identifica al luchador activo. Las rutas de juego heredadas que no admiten varias fichas muestran explícitamente el error del servidor en cuentas con más de un luchador. El paso activo es **10.3.3 — Presentar creación y personalización**. El despliegue de prueba está activo en [Render](https://fieras-de-la-arena.onrender.com/).
 
 ## Requisitos
 

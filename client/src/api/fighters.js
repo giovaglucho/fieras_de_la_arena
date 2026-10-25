@@ -1,4 +1,5 @@
 const FIGHTERS_URL = '/api/v1/fighters'
+const FIGHTERS_V2_URL = '/api/v2/fighters'
 const PROFILES_URL = '/api/v1/profiles'
 
 async function apiRequest(url, options = {}) {
@@ -32,6 +33,10 @@ async function apiRequest(url, options = {}) {
 
 function fighterRequest(path, options = {}) {
   return apiRequest(`${FIGHTERS_URL}${path}`, options)
+}
+
+function managedFighterRequest(path, options = {}) {
+  return apiRequest(`${FIGHTERS_V2_URL}${path}`, options)
 }
 
 function readFighter(result) {
@@ -77,6 +82,60 @@ function readFighterProfile(result) {
   return fighter
 }
 
+function readManagedFighter(fighter) {
+  const stats = fighter?.baseStats
+  const hasValidStats = stats &&
+    ['health', 'attack', 'defense', 'speed'].every((key) => Number.isFinite(stats[key]))
+
+  if (
+    !fighter ||
+    typeof fighter.id !== 'string' ||
+    typeof fighter.name !== 'string' ||
+    !Number.isSafeInteger(fighter.level) ||
+    !Number.isSafeInteger(fighter.xp) ||
+    !Number.isFinite(fighter.elo) ||
+    !Number.isSafeInteger(fighter.wins) ||
+    !Number.isSafeInteger(fighter.losses) ||
+    !Number.isSafeInteger(fighter.draws) ||
+    !['active', 'suspended'].includes(fighter.status) ||
+    !['public', 'private'].includes(fighter.visibility) ||
+    typeof fighter.isActive !== 'boolean' ||
+    typeof fighter.createdAt !== 'string' ||
+    !Number.isFinite(Date.parse(fighter.createdAt)) ||
+    !hasValidStats
+  ) {
+    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
+  }
+
+  return fighter
+}
+
+function readFighterCollection(result) {
+  const { fighters, pagination } = result ?? {}
+  const { page, limit, totalItems, totalPages } = pagination ?? {}
+
+  if (
+    !Array.isArray(fighters) ||
+    !Number.isSafeInteger(page) ||
+    page < 1 ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 50 ||
+    !Number.isSafeInteger(totalItems) ||
+    totalItems < 0 ||
+    !Number.isSafeInteger(totalPages) ||
+    totalPages !== Math.ceil(totalItems / limit) ||
+    fighters.length > limit
+  ) {
+    throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
+  }
+
+  return {
+    fighters: fighters.map(readManagedFighter),
+    pagination: { page, limit, totalItems, totalPages },
+  }
+}
+
 export async function fetchMyFighter() {
   const result = await fighterRequest('/me')
 
@@ -94,6 +153,33 @@ export async function fetchMyFighter() {
   }
 
   return fighter
+}
+
+export async function fetchOwnedFighters(page = 1, limit = 20) {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) })
+  return readFighterCollection(
+    await managedFighterRequest(`/?${query}`),
+  )
+}
+
+export async function fetchActiveFighter() {
+  const result = await managedFighterRequest('/active')
+
+  if (result?.fighter === null) {
+    return null
+  }
+
+  return readManagedFighter(result?.fighter)
+}
+
+export async function selectActiveFighter(fighterId) {
+  const result = await managedFighterRequest('/active', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fighterId }),
+  })
+
+  return readManagedFighter(result?.fighter)
 }
 
 export async function fetchPublicProfile(username) {

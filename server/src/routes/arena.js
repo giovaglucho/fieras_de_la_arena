@@ -1,6 +1,5 @@
 import { Router } from "express";
 import Battle from "../models/Battle.js";
-import Fighter from "../models/Fighter.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import requireAuth from "../middleware/requireAuth.js";
 import {
@@ -12,6 +11,7 @@ import {
   resolveCombat
 } from "../services/combatService.js";
 import {
+  DAILY_BATTLE_LIMIT,
   getDailyAttempts,
   reserveDailyAttempt
 } from "../services/dailyActivityService.js";
@@ -19,6 +19,7 @@ import {
   MatchmakingServiceError,
   selectOpponent
 } from "../services/matchmakingService.js";
+import { findSingleFighterForUser } from "../services/legacyFighter.js";
 import {
   validateFightRequest,
   validateHistoryPagination
@@ -39,7 +40,19 @@ function createApiError(error) {
 
 router.get("/attempts", requireAuth, sensitiveReadRateLimit, async (request, response, next) => {
   try {
-    const attempts = await getDailyAttempts(request.user._id);
+    const fighter = await findSingleFighterForUser(
+      request.user._id,
+      "_id",
+      request.user.activeFighterId
+    );
+    const attempts = fighter
+      ? await getDailyAttempts(fighter._id)
+      : {
+          dateKey: new Date().toISOString().slice(0, 10),
+          limit: DAILY_BATTLE_LIMIT,
+          used: 0,
+          remaining: DAILY_BATTLE_LIMIT
+        };
     return response.status(200).json({
       dateKey: attempts.dateKey,
       limit: attempts.limit,
@@ -64,9 +77,11 @@ router.post("/fight", requireAuth, fightRateLimit, async (request, response, nex
   }
 
   try {
-    const requester = await Fighter.findOne({ userId: request.user._id })
-      .select("_id")
-      .lean();
+    const requester = await findSingleFighterForUser(
+      request.user._id,
+      "_id",
+      request.user.activeFighterId
+    );
     if (!requester) {
       return next(
         new ApiError(
@@ -89,7 +104,7 @@ router.post("/fight", requireAuth, fightRateLimit, async (request, response, nex
 
     const opponent = await selectOpponent(requester._id);
     const reservation = await reserveDailyAttempt(
-      request.user._id,
+      requester._id,
       new Date(),
       fightRequest.requestId
     );
@@ -129,9 +144,11 @@ router.get("/history", requireAuth, sensitiveReadRateLimit, async (request, resp
   }
 
   try {
-    const fighter = await Fighter.findOne({ userId: request.user._id })
-      .select("_id")
-      .lean();
+    const fighter = await findSingleFighterForUser(
+      request.user._id,
+      "_id",
+      request.user.activeFighterId
+    );
     const filter = fighter
       ? {
           status: "completed",

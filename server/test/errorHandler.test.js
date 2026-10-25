@@ -110,6 +110,14 @@ test("acepta preflight solo para métodos y cabeceras permitidos", async () => {
       "Access-Control-Request-Method": "DELETE"
     }
   });
+  const putPreflight = await fetch(`${apiBaseUrl}/api/v2/fighters/active`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: process.env.CLIENT_URL,
+      "Access-Control-Request-Method": "PUT",
+      "Access-Control-Request-Headers": "content-type"
+    }
+  });
   const deniedHeaderPreflight = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
     method: "OPTIONS",
     headers: {
@@ -127,7 +135,15 @@ test("acepta preflight solo para métodos y cabeceras permitidos", async () => {
   });
 
   assert.equal(allowedPreflight.status, 204);
-  assert.equal(allowedPreflight.headers.get("access-control-allow-methods"), "GET, HEAD, POST");
+  assert.equal(putPreflight.status, 204);
+  assert.equal(
+    allowedPreflight.headers.get("access-control-allow-methods"),
+    "GET, HEAD, POST, PUT"
+  );
+  assert.equal(
+    putPreflight.headers.get("access-control-allow-methods"),
+    "GET, HEAD, POST, PUT"
+  );
   assert.equal(allowedPreflight.headers.get("access-control-allow-headers"), "Content-Type");
   assert.equal(deniedPreflight.status, 403);
   assert.equal(deniedPreflight.headers.get("access-control-allow-origin"), process.env.CLIENT_URL);

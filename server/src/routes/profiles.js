@@ -1,7 +1,7 @@
 import { Router } from "express";
-import Fighter from "../models/Fighter.js";
 import { ApiError } from "../middleware/errorHandler.js";
 import User from "../models/User.js";
+import { findSingleFighterForUser } from "../services/legacyFighter.js";
 import { toPublicFighter } from "../serializers/publicFighter.js";
 
 const router = Router();
@@ -10,7 +10,8 @@ router.get("/:username", async (request, response, next) => {
   const username = request.params.username.trim().toLowerCase();
 
   try {
-    const user = await User.findOne({ username }).select("_id username");
+    const user = await User.findOne({ username })
+      .select("_id username activeFighterId");
 
     if (!user) {
       return next(
@@ -18,8 +19,11 @@ router.get("/:username", async (request, response, next) => {
       );
     }
 
-    const fighter = await Fighter.findOne({ userId: user._id })
-      .select("_id name level xp elo baseStats wins losses draws");
+    const fighter = await findSingleFighterForUser(
+      user._id,
+      "_id name level xp elo baseStats wins losses draws",
+      user.activeFighterId
+    );
 
     if (!fighter) {
       return next(

@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema(
       default: "active",
       required: true
     },
+    activeFighterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Fighter",
+      default: null
+    },
     referredByUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
