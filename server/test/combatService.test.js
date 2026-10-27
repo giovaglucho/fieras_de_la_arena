@@ -93,6 +93,7 @@ test("guarda el combate PvP y aplica XP, ELO y contadores a ambos luchadores", a
   for (const participant of battle.participants) {
     const fighterId = participant.snapshot.fighterId.toString();
     const fighter = fightersById.get(fighterId);
+    const progression = participant.result.progression;
     const expectedXp = battle.winnerFighterId
       ? battle.winnerFighterId.toString() === fighterId
         ? 25
@@ -102,6 +103,17 @@ test("guarda el combate PvP y aplica XP, ELO y contadores a ambos luchadores", a
     assert.equal(participant.result.xpGained, expectedXp);
     assert.equal(fighter.xp, expectedXp);
     assert.equal(fighter.elo, participant.result.eloAfter);
+    assert.equal(progression.levelsGained, 0);
+    assert.equal(progression.levelBefore, participant.snapshot.level);
+    assert.equal(progression.levelAfter, participant.snapshot.level);
+    assert.deepEqual(
+      progression.statsBefore.toObject(),
+      participant.snapshot.stats.toObject()
+    );
+    assert.deepEqual(
+      progression.statsAfter.toObject(),
+      participant.snapshot.stats.toObject()
+    );
   }
   assert.ok(
     fighters.every(
@@ -135,8 +147,10 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
     true
   );
   assert.ok(
-    firstBattle.participants.every(({ result }) => {
+    firstBattle.participants.every(({ snapshot, result }) => {
       const [growthEvent] = result.growthEvents;
+      const expectedStats = result.progression.statsBefore.toObject();
+      expectedStats[growthEvent.stat] += growthEvent.amount;
       return (
         result.growthEvents.length === 1 &&
         growthEvent.version === "fighter-growth-v1" &&
@@ -144,7 +158,15 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
         growthEvent.amount === 1 &&
         growthEvent.requestId === request.requestId &&
         Buffer.isBuffer(growthEvent.seed) &&
-        growthEvent.seed.length === 32
+        growthEvent.seed.length === 32 &&
+        result.progression.levelBefore === snapshot.level &&
+        result.progression.levelAfter === snapshot.level + 1 &&
+        result.progression.levelsGained === 1 &&
+        result.progression.xpBefore === 95 &&
+        result.progression.statsBefore.health === snapshot.stats.health &&
+        Object.keys(expectedStats).every(
+          (stat) => result.progression.statsAfter[stat] === expectedStats[stat]
+        )
       );
     })
   );

@@ -576,6 +576,8 @@ En la expansión, `GET /api/v1/profiles/:username` de v1 conserva la respuesta s
 
 El contrato MVP de `POST /api/v1/arena/fight` recibe solo `{ requestId }` y deja que el servidor seleccione rival. En `/api/v2`, los desafíos identifican al luchador propio seleccionado, al rival elegido y la clave de idempotencia; no reutilizan la selección automática. La reserva diaria se consulta para el luchador iniciador y devuelve `{ dateKey, limit, used, remaining }`, con el día UTC y límite 6 en la fecha de creación o 5 en fechas posteriores. Repetir la misma clave con el mismo iniciador y rival devuelve el combate persistido sin consumir otro intento ni aplicar recompensas nuevamente; reutilizarla con otra petición se rechaza. Una nueva solicitud contra el mismo par ese día se rechaza sin consumir cuota. `GET /api/v1/arena/history` acepta `page` (por defecto `1`) y `limit` (por defecto `20`, máximo `50`), y devuelve `{ battles, pagination: { page, limit, totalItems, totalPages } } ordenado por fecha descendente.
 
+El detalle autorizado de `GET /api/v1/battles/:id` incluye, por participante, `result.progression` con nivel y XP antes/después, niveles ganados, estadísticas efectivas antes/después y los aumentos `{ level, stat, amount }` guardados para esa recompensa. Los valores anterior y posterior se guardan en el resultado del combate y se calculan en el servidor; el cliente no los deriva. La respuesta no expone semillas ni claves de idempotencia. Los combates históricos creados antes de guardar estos datos pueden omitir `progression`.
+
 #### Contrato de API de la expansión
 
 Las rutas `/api/v2` soportan varias fichas sin cambiar silenciosamente el significado de las respuestas singulares existentes:

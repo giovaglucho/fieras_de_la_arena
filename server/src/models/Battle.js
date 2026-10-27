@@ -26,11 +26,25 @@ const fighterSnapshotSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const progressionSnapshotSchema = new mongoose.Schema(
+  {
+    levelBefore: { type: Number, required: true, min: 1 },
+    levelAfter: { type: Number, required: true, min: 1 },
+    xpBefore: { type: Number, required: true, min: 0 },
+    xpAfter: { type: Number, required: true, min: 0 },
+    levelsGained: { type: Number, required: true, min: 0 },
+    statsBefore: { type: fighterStatsSchema, required: true },
+    statsAfter: { type: fighterStatsSchema, required: true }
+  },
+  { _id: false }
+);
+
 const participantResultSchema = new mongoose.Schema(
   {
     xpGained: { type: Number, required: true, min: 0 },
     eloChange: { type: Number, required: true },
     eloAfter: { type: Number, required: true, min: 0 },
+    progression: { type: progressionSnapshotSchema, default: undefined },
     growthEvents: { type: [growthEventSchema], default: [] }
   },
   { _id: false }

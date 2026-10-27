@@ -1,3 +1,28 @@
+function serializeStats(stats) {
+  return typeof stats.toObject === "function" ? stats.toObject() : stats;
+}
+
+function serializeProgression(progression, growthEvents) {
+  if (!progression) {
+    return undefined;
+  }
+
+  return {
+    levelBefore: progression.levelBefore,
+    levelAfter: progression.levelAfter,
+    xpBefore: progression.xpBefore,
+    xpAfter: progression.xpAfter,
+    levelsGained: progression.levelsGained,
+    statsBefore: serializeStats(progression.statsBefore),
+    statsAfter: serializeStats(progression.statsAfter),
+    growthEvents: (growthEvents ?? []).map(({ level, stat, amount }) => ({
+      level,
+      stat: stat ?? null,
+      amount
+    }))
+  };
+}
+
 export default function serializeBattle(battle, includeEvents = false) {
   const result = {
     id: battle._id.toString(),
@@ -20,7 +45,15 @@ export default function serializeBattle(battle, includeEvents = false) {
       result: {
         xpGained: participantResult.xpGained,
         eloChange: participantResult.eloChange,
-        eloAfter: participantResult.eloAfter
+        eloAfter: participantResult.eloAfter,
+        ...(includeEvents && participantResult.progression
+          ? {
+              progression: serializeProgression(
+                participantResult.progression,
+                participantResult.growthEvents
+              )
+            }
+          : {})
       }
     }))
   };

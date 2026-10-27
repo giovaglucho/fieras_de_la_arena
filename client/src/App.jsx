@@ -21,6 +21,7 @@ import { fetchLeaderboard } from './api/leaderboards.js'
 import { fetchReferralOverview } from './api/referrals.js'
 import { useSession } from './context/SessionContext.jsx'
 import BattleAnimation from './components/BattleAnimation.jsx'
+import BattleProgression, { BattleResultError } from './components/BattleProgression.jsx'
 import FighterAppearancePreview from './components/FighterAppearancePreview.jsx'
 import {
   FIGHTER_APPEARANCE_FIELD_LABELS,
@@ -1861,16 +1862,11 @@ function BattleResultPage() {
           Cargando el resultado guardado…
         </section>
       ) : status === 'error' ? (
-        <section className="session-card battle-result-card" aria-labelledby="battle-error-title">
-          <h1 id="battle-error-title">No se pudo cargar el combate</h1>
-          <p className="request-error" role="alert">{error}</p>
-          <button
-            className="button button--primary"
-            type="button"
-            onClick={() => setReloadVersion((version) => version + 1)}
-          >
-            Intentar de nuevo
-          </button>
+        <section className="session-card battle-result-card">
+          <BattleResultError
+            error={error}
+            onRetry={() => setReloadVersion((version) => version + 1)}
+          />
           <Link className="button button--secondary" to="/arena">Volver a la Arena</Link>
         </section>
       ) : (
@@ -1912,6 +1908,11 @@ function BattleResultPage() {
               <dd>{battle.actionCount}</dd>
             </div>
           </dl>
+
+          <BattleProgression
+            progression={ownParticipant.result.progression}
+            xpGained={ownParticipant.result.xpGained}
+          />
 
           <section className="battle-events" aria-labelledby="battle-events-title">
             <BattleAnimation participants={battle.participants} events={battle.events} />

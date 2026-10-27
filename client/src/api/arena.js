@@ -56,20 +56,74 @@ function readAttempts(result) {
   return { dateKey, limit, used, remaining }
 }
 
+const BATTLE_STATS = ['health', 'attack', 'defense', 'speed']
+
+function isValidStats(stats) {
+  return (
+    stats &&
+    typeof stats === 'object' &&
+    BATTLE_STATS.every((stat) => Number.isFinite(stats[stat]) && stats[stat] >= 0)
+  )
+}
+
+function isValidProgression(progression, fighter) {
+  if (!progression || typeof progression !== 'object') {
+    return false
+  }
+
+  const { levelBefore, levelAfter, levelsGained, growthEvents } = progression
+  if (
+    !Number.isSafeInteger(levelBefore) ||
+    levelBefore !== fighter.level ||
+    !Number.isSafeInteger(levelAfter) ||
+    levelAfter < levelBefore ||
+    !Number.isSafeInteger(levelsGained) ||
+    levelsGained !== levelAfter - levelBefore ||
+    !Number.isSafeInteger(progression.xpBefore) ||
+    progression.xpBefore < 0 ||
+    !Number.isSafeInteger(progression.xpAfter) ||
+    progression.xpAfter < 0 ||
+    !isValidStats(progression.statsBefore) ||
+    !isValidStats(progression.statsAfter) ||
+    !Array.isArray(growthEvents) ||
+    growthEvents.length !== levelsGained ||
+    !BATTLE_STATS.every((stat) => progression.statsBefore[stat] === fighter.stats?.[stat])
+  ) {
+    return false
+  }
+
+  return growthEvents.every((event, index) =>
+    event &&
+    event.level === levelBefore + index + 1 &&
+    Number.isSafeInteger(event.amount) &&
+    (event.amount === 0 || event.amount === 1) &&
+    (event.amount === 0
+      ? event.stat === null
+      : BATTLE_STATS.includes(event.stat))
+  )
+}
+
 function readBattle(result) {
   const battle = result?.battle
   const hasValidParticipants =
     Array.isArray(battle?.participants) &&
     battle.participants.length === 2 &&
-    battle.participants.every(({ fighter, result: participantResult }) =>
-      typeof fighter?.id === 'string' &&
-      typeof fighter.name === 'string' &&
-      Number.isFinite(fighter.level) &&
-      Number.isFinite(fighter.elo) &&
-      Number.isFinite(participantResult?.xpGained) &&
-      Number.isFinite(participantResult?.eloChange) &&
-      Number.isFinite(participantResult?.eloAfter)
-    )
+    battle.participants.every(({ fighter, result: participantResult }) => {
+      if (
+        typeof fighter?.id !== 'string' ||
+        typeof fighter.name !== 'string' ||
+        !Number.isFinite(fighter.level) ||
+        !Number.isFinite(fighter.elo) ||
+        !Number.isFinite(participantResult?.xpGained) ||
+        !Number.isFinite(participantResult?.eloChange) ||
+        !Number.isFinite(participantResult?.eloAfter)
+      ) {
+        return false
+      }
+
+      return participantResult.progression === undefined ||
+        isValidProgression(participantResult.progression, fighter)
+    })
 
   if (
     !battle ||

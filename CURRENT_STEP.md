@@ -1,40 +1,45 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.5.3`
+**Paso activo:** `10.6.1`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Mostrar crecimiento y progreso
+**Título:** Diseñar catálogo, propiedad, equipamiento y efectos
 
 ## Objetivo
 
-Explicar la mejora otorgada y mostrar atributos actuales y anteriores sin recalcularlos en el cliente.
+Añadir variedad táctica a la simulación mediante objetos obtenidos por progresión y carga automática, sin exigir microtransacciones ni decisiones de combate en tiempo real.
 
 ## Tareas permitidas
 
-- Explicar la mejora otorgada.
-- Mostrar los atributos actuales y anteriores sin recalcularlos en el cliente.
-- Implementar los componentes, estilos, cliente API y pruebas de interfaz necesarios para este alcance.
-- Ejecutar pruebas de render de aumentos, progreso sin aumento si se define, niveles múltiples y estados de error.
+- Definir tipos y espacios de equipo.
+- Definir el tamaño inicial de un catálogo original.
+- Definir la obtención aleatoria al crear y subir de nivel.
+- Definir la colección permanente.
+- Definir el sorteo automático por combate.
+- Definir duplicados, modificadores, efectos especiales, golpe crítico y fallo crítico.
+- Definir límites y orden de resolución.
+- Revisar combinaciones, casos sin equipo, colección parcial/completa, duplicados y replay de combate.
 
 ## Fuera de alcance
 
-- Modificar reglas o lógica de progresión en el servidor.
-- Implementar tareas hermanas o posteriores de la hoja de ruta, incluida la etapa 10.6.
-- Añadir funcionalidad ajena a 10.5.3.
+- Implementar el catálogo, los desbloqueos, la carga aleatoria o los efectos en el servidor (paso 10.6.2).
+- Implementar la colección o presentar equipamiento y resultados en la interfaz (paso 10.6.3).
+- Implementar tareas ajenas al diseño autorizado de 10.6.1.
 
 ## Criterios de aceptación
 
-- La persona puede entender qué aumentó y por qué.
-- La pantalla usa datos oficiales del servidor.
-- La subida múltiple y el error se representan sin duplicar recompensas.
+- Cada objeto tiene identidad y valores propios.
+- Queda claro qué se guarda, qué se sortea al combatir y qué snapshot se registra.
+- Crítico y pifia son resultados distintos.
+- Los ejemplos de efectos no son valores definitivos hasta aprobar balance.
 
-## Pruebas
+## Pruebas y verificación
 
-- Render de aumentos, progreso sin aumento si se define, niveles múltiples y estados de error.
+- Revisar combinaciones, sin equipo, colección parcial/completa, duplicado y replay de combate.
 
 ## Dependencia
 
-- 10.5.2.
+- Reglas de 10.1 y motor de 10.5.2.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.6.1 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar 10.6.2 ni ningún otro paso posterior.
