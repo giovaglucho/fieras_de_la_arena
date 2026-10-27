@@ -1,46 +1,36 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.6.3`
-**Estado:** autorizado; pendiente de implementación
-**Título:** Mostrar colección, desbloqueos y equipo del combate
+**Paso activo:** `10.7.1`
+**Estado:** autorizado; pendiente de diseño
+**Título:** Definir catálogo y condiciones
 
 ## Objetivo
 
-Añadir variedad táctica a la simulación mediante objetos obtenidos por progresión y carga automática, sin exigir microtransacciones ni decisiones de combate en tiempo real.
+Incorporar técnicas propias que se desbloquean por progresión y se resuelven como parte de la simulación automática.
 
 ## Tareas permitidas
 
-- Implementar la UI de colección y la presentación de carga/equipamiento en el resultado e historial.
-- Distinguir la colección del luchador de la carga sorteada para cada combate.
-- Presentar eventos que expliquen los efectos del equipo sin ocultar el registro de combate.
-- Mantener legible el historial de combates anteriores.
-- Añadir y ejecutar las pruebas de colección vacía/llena, desbloqueo, pelea nueva e histórica, errores y accesibilidad.
+- Definir categorías pasivas/activas, condiciones de disparo, frecuencia, objetivos, duración, acumulación, interacción con equipo/mascotas, asignación inicial aleatoria, desbloqueo aleatorio al progresar y contrajuego.
+- Documentar el diseño en la especificación y documentación directamente relacionada, sin implementar código de aplicación.
 
 ## Fuera de alcance
 
-- Implementar habilidades o mascotas (pasos 10.7 y 10.8).
-- Cambiar las reglas del catálogo, adquisición, desbloqueo, sorteo de carga o combate implementadas en 10.6.2.
-- Permitir que la UI altere el combate o el inventario.
-- Implementar tareas de cualquier otro paso de la hoja de ruta.
+- Implementar habilidades versionadas y reproducibles (10.7.2).
+- Presentar habilidades y sus activaciones en la interfaz (10.7.3).
+- Diseñar o implementar el sistema de mascotas (10.8), salvo especificar los puntos de interacción necesarios dentro del diseño de habilidades.
+- Implementar cualquier tarea de otro paso de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Colección y carga sorteada se distinguen.
-- Eventos explican efectos sin ocultar el registro de combate.
-- Historial anterior sigue legible.
-- La UI no permite alterar combate ni inventario.
+- No hay activaciones ilimitadas, ciclos infinitos ni reglas ambiguas; las condiciones son evaluables por el servidor; catálogo y textos son originales.
 
-## Pruebas
+## Pruebas y verificación
 
-- Colección vacía/llena.
-- Desbloqueo.
-- Pelea nueva e histórica.
-- Errores.
-- Accesibilidad.
+- Tabla de condiciones/efectos y análisis de extremos.
 
 ## Dependencia
 
-- 10.6.2.
+- 10.1.1 y modelo de evento de 10.6.
 
 ## Al terminar
 

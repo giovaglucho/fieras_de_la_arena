@@ -21,7 +21,11 @@ import { fetchLeaderboard } from './api/leaderboards.js'
 import { fetchReferralOverview } from './api/referrals.js'
 import { useSession } from './context/SessionContext.jsx'
 import BattleAnimation from './components/BattleAnimation.jsx'
+import BattleEquipment from './components/BattleEquipment.jsx'
 import BattleProgression, { BattleResultError } from './components/BattleProgression.jsx'
+import { EquipmentCollectionPanel } from './components/EquipmentCollection.jsx'
+import { getBattleEquipmentSummary } from './equipment.js'
+import { formatBattleEvent } from './battleEvents.js'
 import FighterAppearancePreview from './components/FighterAppearancePreview.jsx'
 import {
   FIGHTER_APPEARANCE_FIELD_LABELS,
@@ -1110,6 +1114,7 @@ function DashboardPage() {
           {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
           {fighter && <Link className="button button--primary" to="/arena">Entrar a la Arena</Link>}
           {fighter && <Link className="button button--secondary" to="/history">Ver historial de combates</Link>}
+          {fighter && <Link className="button button--secondary" to="/collection">Ver colección de equipo</Link>}
           <Link className="button button--secondary" to="/students">Ver alumnos</Link>
           <button
             className="button button--secondary"
@@ -1667,6 +1672,7 @@ function BattleHistoryPage() {
         <div className="battle-history__navigation">
           <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
           <Link className="button button--secondary" to="/arena">Ir a la Arena</Link>
+          <Link className="button button--secondary" to="/collection">Ver colección de equipo</Link>
         </div>
         <p className="eyebrow">Tus combates guardados</p>
         <h1 id="battle-history-title">Historial de combates</h1>
@@ -1729,6 +1735,9 @@ function BattleHistoryPage() {
                         +{ownParticipant.result.xpGained} XP · ELO {ownParticipant.result.eloChange > 0 ? '+' : ''}
                         {ownParticipant.result.eloChange}
                       </span>
+                      <span className="battle-history__equipment">
+                        {getBattleEquipmentSummary(ownParticipant.fighter)}
+                      </span>
                       <time className="battle-history__date" dateTime={battle.createdAt}>
                         {new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })
                           .format(new Date(battle.createdAt))}
@@ -1768,25 +1777,60 @@ function BattleHistoryPage() {
   )
 }
 
-function formatBattleEvent(event, fighterNames) {
-  const fighterName = (fighterId) => fighterNames.get(fighterId) ?? 'luchador desconocido'
+function EquipmentCollectionPage() {
+  const [fighter, setFighter] = useState(null)
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+  const [reloadVersion, setReloadVersion] = useState(0)
 
-  switch (event.type) {
-    case 'combat_started':
-      return '¡Comienza el combate!'
-    case 'attack':
-      return `Acción ${event.actionNumber}: ${fighterName(event.attackerFighterId)} ataca a ${fighterName(event.targetFighterId)}.`
-    case 'damage':
-      return `${fighterName(event.targetFighterId)} recibe ${event.amount} de daño y conserva ${event.remainingHealth} de vida.`
-    case 'fighter_defeated':
-      return `${fighterName(event.fighterId)} queda fuera de combate.`
-    case 'combat_finished':
-      return event.winnerFighterId
-        ? `${fighterName(event.winnerFighterId)} gana el combate.`
-        : 'El combate termina en empate.'
-    default:
-      return `Evento no compatible con esta versión del motor: ${event.type}.`
-  }
+  useEffect(() => {
+    let isCurrent = true
+
+    setStatus('loading')
+    setError('')
+
+    fetchActiveFighter()
+      .then((activeFighter) => {
+        if (!isCurrent) {
+          return
+        }
+        if (!activeFighter) {
+          throw new Error('Selecciona un luchador activo antes de consultar su colección.')
+        }
+
+        setFighter(activeFighter)
+        setStatus('ready')
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setError(requestError.message)
+          setStatus('error')
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [reloadVersion])
+
+  return (
+    <main className="session-layout">
+      <Brand />
+      <section className="session-card equipment-collection-card" aria-label="Colección de equipo">
+        <nav className="equipment-collection__navigation" aria-label="Navegación de colección">
+          <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
+          <Link className="button button--secondary" to="/history">Ver historial de combates</Link>
+        </nav>
+        <EquipmentCollectionPanel
+          status={status}
+          fighter={fighter}
+          error={error}
+          onRetry={() => setReloadVersion((version) => version + 1)}
+        />
+      </section>
+      <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
+    </main>
+  )
 }
 
 function BattleResultPage() {
@@ -1873,6 +1917,7 @@ function BattleResultPage() {
         <article className="session-card battle-result-card" aria-labelledby="battle-result-title">
           <Link className="button button--secondary" to="/arena">Volver a la Arena</Link>
           <Link className="button button--secondary" to="/history">Ver historial de combates</Link>
+          <Link className="button button--secondary" to="/collection">Ver colección de equipo</Link>
           <p className="eyebrow">
             {battle.battleType === 'training' ? 'Combate de entrenamiento' : 'Combate PvP'}
           </p>
@@ -1908,6 +1953,8 @@ function BattleResultPage() {
               <dd>{battle.actionCount}</dd>
             </div>
           </dl>
+
+          <BattleEquipment participants={battle.participants} />
 
           <BattleProgression
             progression={ownParticipant.result.progression}
@@ -2183,6 +2230,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/arena" element={<ArenaPage />} />
           <Route path="/history" element={<BattleHistoryPage />} />
+          <Route path="/collection" element={<EquipmentCollectionPage />} />
           <Route path="/students" element={<StudentsPage />} />
           <Route path="/battles/:id" element={<BattleResultPage />} />
         </Route>

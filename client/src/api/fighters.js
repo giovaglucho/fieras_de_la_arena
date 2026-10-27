@@ -66,7 +66,72 @@ function readFighterProfile(result) {
   return fighter
 }
 
-function readManagedFighter(fighter) {
+function isValidEquipmentItem(item, expectedSlot, includeMinimumLevel = true) {
+  const expectedModifiers = expectedSlot === 'weapon'
+    ? ['attack', 'initiative', 'piercing', 'criticalChance']
+    : ['defense', 'initiative']
+
+  return (
+    item &&
+    typeof item.itemId === 'string' &&
+    item.itemId.length > 0 &&
+    typeof item.catalogVersion === 'string' &&
+    item.catalogVersion.length > 0 &&
+    typeof item.name === 'string' &&
+    item.name.length > 0 &&
+    ['weapon', 'armor'].includes(item.slot) &&
+    item.slot === expectedSlot &&
+    (!includeMinimumLevel ||
+      (Number.isSafeInteger(item.minLevel) && item.minLevel >= 1)) &&
+    item.modifiers &&
+    typeof item.modifiers === 'object' &&
+    !Array.isArray(item.modifiers) &&
+    expectedModifiers.every((modifier) =>
+      Number.isSafeInteger(item.modifiers[modifier])
+    ) &&
+    Object.keys(item.modifiers).length === expectedModifiers.length
+  )
+}
+
+function readEquipmentCollection(fighter) {
+  const { equipment, equipmentUnlocks } = fighter
+
+  if (
+    !Array.isArray(equipment) ||
+    !Array.isArray(equipmentUnlocks) ||
+    !equipment.every((item) =>
+      isValidEquipmentItem(item, item?.slot)
+    ) ||
+    new Set(equipment.map(({ itemId }) => itemId)).size !== equipment.length ||
+    !equipmentUnlocks.every((unlock) =>
+      unlock &&
+      Number.isSafeInteger(unlock.level) &&
+      unlock.level >= 2 &&
+      typeof unlock.catalogVersion === 'string' &&
+      unlock.catalogVersion.length > 0 &&
+      (unlock.itemId === null
+        ? unlock.item === null
+        : typeof unlock.itemId === 'string' &&
+          isValidEquipmentItem(unlock.item, unlock.item?.slot) &&
+          unlock.item.itemId === unlock.itemId &&
+          unlock.item.catalogVersion === unlock.catalogVersion)
+    ) ||
+    new Set(equipmentUnlocks.map(({ level }) => level)).size !== equipmentUnlocks.length ||
+    equipmentUnlocks.some((unlock) =>
+      unlock.itemId !== null &&
+      !equipment.some((item) =>
+        item.itemId === unlock.itemId &&
+        item.catalogVersion === unlock.catalogVersion
+      )
+    )
+  ) {
+    throw new Error('El servidor devolvió una colección de equipo inesperada. Inténtalo de nuevo.')
+  }
+
+  return { equipment, equipmentUnlocks }
+}
+
+function readManagedFighter(fighter, { includeEquipment = false } = {}) {
   const stats = fighter?.baseStats
   const hasValidStats = stats &&
     ['health', 'attack', 'defense', 'speed'].every((key) => Number.isFinite(stats[key]))
@@ -91,7 +156,9 @@ function readManagedFighter(fighter) {
     throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
   }
 
-  return fighter
+  return includeEquipment
+    ? { ...fighter, ...readEquipmentCollection(fighter) }
+    : fighter
 }
 
 function readFighterCollection(result) {
@@ -153,7 +220,7 @@ export async function fetchActiveFighter() {
     return null
   }
 
-  return readManagedFighter(result?.fighter)
+  return readManagedFighter(result?.fighter, { includeEquipment: true })
 }
 
 export async function selectActiveFighter(fighterId) {
@@ -163,7 +230,7 @@ export async function selectActiveFighter(fighterId) {
     body: JSON.stringify({ fighterId }),
   })
 
-  return readManagedFighter(result?.fighter)
+  return readManagedFighter(result?.fighter, { includeEquipment: true })
 }
 
 export async function fetchPublicProfile(username) {

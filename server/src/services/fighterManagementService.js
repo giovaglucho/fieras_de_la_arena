@@ -9,11 +9,30 @@ import {
   NEUTRAL_FIGHTER_APPEARANCE
 } from "../game-engine/fighterCreation.js";
 import { createFighterGrowthState } from "../game-engine/fighterGrowth.js";
+import { getEquipmentById } from "../game-engine/equipmentCatalog.js";
 
 const FIGHTER_FIELDS =
   "_id name level xp elo baseStats appearance wins losses draws status visibility createdAt";
+const FIGHTER_EQUIPMENT_FIELDS =
+  `${FIGHTER_FIELDS} equipment equipmentUnlocks`;
 
-function serializeManagedFighter(fighter, activeFighterId) {
+function serializeEquipmentItem({ itemId, catalogVersion }) {
+  const item = getEquipmentById(itemId, catalogVersion);
+  return {
+    itemId: item.id,
+    catalogVersion,
+    name: item.name,
+    slot: item.slot,
+    minLevel: item.minLevel,
+    modifiers: { ...item.modifiers }
+  };
+}
+
+function serializeManagedFighter(
+  fighter,
+  activeFighterId,
+  includeEquipment = false
+) {
   const baseStats = fighter.baseStats?.toObject
     ? fighter.baseStats.toObject()
     : fighter.baseStats;
@@ -34,7 +53,21 @@ function serializeManagedFighter(fighter, activeFighterId) {
       activeFighterId != null &&
       fighter._id.equals(activeFighterId) &&
       (fighter.status === undefined || fighter.status === "active"),
-    createdAt: fighter.createdAt
+    createdAt: fighter.createdAt,
+    ...(includeEquipment
+      ? {
+          equipment: (fighter.equipment ?? []).map(serializeEquipmentItem),
+          equipmentUnlocks: (fighter.equipmentUnlocks ?? []).map((unlock) => ({
+            level: unlock.level,
+            itemId: unlock.itemId ?? null,
+            catalogVersion: unlock.catalogVersion,
+            item:
+              unlock.itemId === null || unlock.itemId === undefined
+                ? null
+                : serializeEquipmentItem(unlock)
+          }))
+        }
+      : {})
   };
 }
 
@@ -115,17 +148,17 @@ export async function getActiveFighter(userId) {
       userId,
       $or: [{ status: "active" }, { status: { $exists: false } }]
     })
-      .select(FIGHTER_FIELDS)
+      .select(FIGHTER_EQUIPMENT_FIELDS)
       .lean();
     return {
       fighter: fighter
-        ? serializeManagedFighter(fighter, user.activeFighterId)
+        ? serializeManagedFighter(fighter, user.activeFighterId, true)
         : null
     };
   }
 
   const fighters = await Fighter.find({ userId })
-    .select(FIGHTER_FIELDS)
+    .select(FIGHTER_EQUIPMENT_FIELDS)
     .limit(2)
     .lean();
   const legacyFighter =
@@ -136,7 +169,7 @@ export async function getActiveFighter(userId) {
 
   return {
     fighter: legacyFighter
-      ? serializeManagedFighter(legacyFighter, legacyFighter._id)
+      ? serializeManagedFighter(legacyFighter, legacyFighter._id, true)
       : null
   };
 }
@@ -151,7 +184,7 @@ export async function selectActiveFighter(userId, fighterId) {
         userId,
         $or: [{ status: "active" }, { status: { $exists: false } }]
       })
-        .select(FIGHTER_FIELDS)
+        .select(FIGHTER_EQUIPMENT_FIELDS)
         .session(session)
         .lean();
       if (!selectedFighter) {
@@ -176,7 +209,7 @@ export async function selectActiveFighter(userId, fighterId) {
   }
 
   return {
-    fighter: serializeManagedFighter(selectedFighter, selectedFighter._id)
+    fighter: serializeManagedFighter(selectedFighter, selectedFighter._id, true)
   };
 }
 

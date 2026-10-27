@@ -8,6 +8,7 @@ import app from "../src/app.js";
 import Fighter from "../src/models/Fighter.js";
 import { SESSION_COOKIE_NAME, sessionStore } from "../src/middleware/session.js";
 import User from "../src/models/User.js";
+import { getEquipmentById } from "../src/game-engine/equipmentCatalog.js";
 
 const runId = randomUUID().replaceAll("-", "");
 const userIds = Array.from({ length: 3 }, () => new mongoose.Types.ObjectId());
@@ -138,6 +139,12 @@ async function updateActiveFighter(cookie, body) {
 
 async function getMyFighter(cookie) {
   return fetch(`${baseUrl}/api/v1/fighters/me`, {
+    headers: { Cookie: cookie }
+  });
+}
+
+async function getActiveFighter(cookie) {
+  return fetch(`${baseUrl}/api/v2/fighters/active`, {
     headers: { Cookie: cookie }
   });
 }
@@ -307,6 +314,52 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   );
   assert.equal(storedFighter.equipment[0].catalogVersion, "equipment-v1");
   assert.deepEqual(storedFighter.equipmentUnlocks, []);
+  const activeFighterResponse = await getActiveFighter(cookie);
+  assert.equal(activeFighterResponse.status, 200);
+  const activeFighter = (await activeFighterResponse.json()).fighter;
+  const initialWeapon = getEquipmentById(
+    storedFighter.equipment[0].itemId,
+    storedFighter.equipment[0].catalogVersion
+  );
+  assert.deepEqual(activeFighter.equipment, [{
+    itemId: initialWeapon.id,
+    catalogVersion: "equipment-v1",
+    name: initialWeapon.name,
+    slot: initialWeapon.slot,
+    minLevel: initialWeapon.minLevel,
+    modifiers: { ...initialWeapon.modifiers }
+  }]);
+  assert.deepEqual(activeFighter.equipmentUnlocks, []);
+  const unlockedArmor = getEquipmentById("armor-yute-01", "equipment-v1");
+  storedFighter.equipment.push({
+    itemId: unlockedArmor.id,
+    catalogVersion: "equipment-v1"
+  });
+  storedFighter.equipmentUnlocks.push({
+    level: 2,
+    seed: Buffer.alloc(32, 1),
+    version: "equipment-unlock-v1",
+    itemId: unlockedArmor.id,
+    catalogVersion: "equipment-v1",
+    requestId: "test-unlock"
+  });
+  await storedFighter.save();
+  const unlockedFighterResponse = await getActiveFighter(cookie);
+  const unlockedFighter = (await unlockedFighterResponse.json()).fighter;
+  assert.deepEqual(unlockedFighter.equipmentUnlocks, [{
+    level: 2,
+    itemId: unlockedArmor.id,
+    catalogVersion: "equipment-v1",
+    item: {
+      itemId: unlockedArmor.id,
+      catalogVersion: "equipment-v1",
+      name: unlockedArmor.name,
+      slot: unlockedArmor.slot,
+      minLevel: unlockedArmor.minLevel,
+      modifiers: { ...unlockedArmor.modifiers }
+    }
+  }]);
+  assert.doesNotMatch(JSON.stringify(unlockedFighter), /seed|requestId/i);
   assert.equal(storedFighter.userId.toString(), userIds[0].toString());
   assert.equal(storedFighter.referralCode.length, 32);
   assert.match(storedFighter.referralCode, /^[a-f0-9]{32}$/);

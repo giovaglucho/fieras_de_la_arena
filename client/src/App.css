@@ -1995,3 +1995,167 @@
     flex-direction: column;
   }
 }
+
+.equipment-collection-card {
+  width: min(100%, 58rem);
+}
+
+.equipment-collection,
+.equipment-collection__group,
+.equipment-collection__unlocks,
+.equipment-item,
+.battle-equipment,
+.battle-equipment__participant {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.equipment-collection > *,
+.equipment-collection__group > *,
+.equipment-collection__unlocks > *,
+.equipment-item > *,
+.battle-equipment > *,
+.battle-equipment__participant > * {
+  margin: 0;
+}
+
+.equipment-collection h1,
+.equipment-collection h2,
+.equipment-collection h3,
+.battle-equipment h2,
+.battle-equipment h3,
+.battle-equipment h4 {
+  color: var(--color-paper);
+  font-family: var(--font-display);
+}
+
+.equipment-collection h1,
+.battle-equipment h2 {
+  font-size: 1.65rem;
+}
+
+.equipment-collection h2,
+.battle-equipment h3 {
+  font-size: 1.2rem;
+}
+
+.equipment-collection__navigation,
+.battle-history__navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1.2rem;
+}
+
+.equipment-collection__groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.equipment-collection__group,
+.equipment-collection__unlocks,
+.equipment-item,
+.battle-equipment__participant {
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 12%);
+  border-radius: 0.55rem;
+  background: rgb(33 25 21 / 65%);
+}
+
+.equipment-collection__items,
+.equipment-collection__unlocks ol,
+.battle-equipment__slots {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipment-collection__unlocks ol {
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+.equipment-collection__empty,
+.equipment-collection__legacy,
+.equipment-collection__message,
+.equipment-item__slot,
+.equipment-item__level,
+.battle-equipment > p,
+.battle-equipment__legacy,
+.battle-equipment__participant > p,
+.battle-equipment__empty-slot p {
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.equipment-collection__legacy,
+.equipment-collection__message {
+  margin-top: 1rem;
+}
+
+.equipment-item h3,
+.equipment-item h4 {
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.equipment-item__slot {
+  color: var(--color-copper-light);
+  font-weight: 700;
+}
+
+.equipment-item__modifiers {
+  margin: 0;
+}
+
+.equipment-item__modifiers dt {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.equipment-item__modifiers dd {
+  margin: 0.25rem 0 0;
+  color: var(--color-paper);
+  line-height: 1.5;
+}
+
+.battle-equipment {
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 12%);
+  border-radius: 0.55rem;
+  background: rgb(33 25 21 / 65%);
+}
+
+.battle-equipment__participants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.battle-equipment__empty-slot {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.battle-equipment__empty-slot h4 {
+  color: var(--color-paper);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+}
+
+.battle-history__equipment {
+  color: var(--color-copper-light);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .equipment-collection__groups,
+  .battle-equipment__participants {
+    grid-template-columns: 1fr;
+  }
+}

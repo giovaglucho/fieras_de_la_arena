@@ -66,6 +66,53 @@ function isValidStats(stats) {
   )
 }
 
+function isValidLoadoutItem(item, expectedSlot) {
+  const expectedModifiers = expectedSlot === 'weapon'
+    ? ['attack', 'initiative', 'piercing', 'criticalChance']
+    : ['defense', 'initiative']
+
+  return (
+    item &&
+    typeof item.itemId === 'string' &&
+    item.itemId.length > 0 &&
+    typeof item.catalogVersion === 'string' &&
+    item.catalogVersion.length > 0 &&
+    typeof item.name === 'string' &&
+    item.name.length > 0 &&
+    item.slot === expectedSlot &&
+    item.modifiers &&
+    typeof item.modifiers === 'object' &&
+    !Array.isArray(item.modifiers) &&
+    expectedModifiers.every((modifier) =>
+      Number.isSafeInteger(item.modifiers[modifier])
+    ) &&
+    Object.keys(item.modifiers).length === expectedModifiers.length
+  )
+}
+
+function isValidBattleEquipment(fighter) {
+  if (
+    fighter.initiative !== undefined &&
+    (!Number.isFinite(fighter.initiative) || fighter.initiative < 1)
+  ) {
+    return false
+  }
+  if (fighter.equipment === undefined) {
+    return true
+  }
+
+  const equipment = fighter.equipment
+  return (
+    equipment &&
+    typeof equipment.version === 'string' &&
+    equipment.version.length > 0 &&
+    typeof equipment.catalogVersion === 'string' &&
+    equipment.catalogVersion.length > 0 &&
+    (equipment.weapon === null || isValidLoadoutItem(equipment.weapon, 'weapon')) &&
+    (equipment.armor === null || isValidLoadoutItem(equipment.armor, 'armor'))
+  )
+}
+
 function isValidProgression(progression, fighter) {
   if (!progression || typeof progression !== 'object') {
     return false
@@ -114,6 +161,7 @@ function readBattle(result) {
         typeof fighter.name !== 'string' ||
         !Number.isFinite(fighter.level) ||
         !Number.isFinite(fighter.elo) ||
+        !isValidBattleEquipment(fighter) ||
         !Number.isFinite(participantResult?.xpGained) ||
         !Number.isFinite(participantResult?.eloChange) ||
         !Number.isFinite(participantResult?.eloAfter)
@@ -156,6 +204,7 @@ function readBattleSummary(battle) {
       typeof fighter.name === 'string' &&
       Number.isFinite(fighter.level) &&
       Number.isFinite(fighter.elo) &&
+      isValidBattleEquipment(fighter) &&
       Number.isFinite(result?.xpGained) &&
       Number.isFinite(result?.eloChange) &&
       Number.isFinite(result?.eloAfter)

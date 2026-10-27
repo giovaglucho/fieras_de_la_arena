@@ -23,6 +23,32 @@ function serializeProgression(progression, growthEvents) {
   };
 }
 
+function serializeEquipmentItem(item) {
+  if (!item) {
+    return null;
+  }
+
+  return {
+    itemId: item.itemId,
+    catalogVersion: item.catalogVersion,
+    name: item.name,
+    slot: item.slot,
+    modifiers:
+      typeof item.modifiers.toObject === "function"
+        ? item.modifiers.toObject()
+        : item.modifiers
+  };
+}
+
+function serializeEquipmentLoadout(equipment) {
+  return {
+    version: equipment.version,
+    catalogVersion: equipment.catalogVersion,
+    weapon: serializeEquipmentItem(equipment.weapon),
+    armor: serializeEquipmentItem(equipment.armor)
+  };
+}
+
 export default function serializeBattle(battle, includeEvents = false) {
   const result = {
     id: battle._id.toString(),
@@ -40,7 +66,13 @@ export default function serializeBattle(battle, includeEvents = false) {
         stats:
           typeof snapshot.stats.toObject === "function"
             ? snapshot.stats.toObject()
-            : snapshot.stats
+            : snapshot.stats,
+        ...(snapshot.equipment
+          ? { equipment: serializeEquipmentLoadout(snapshot.equipment) }
+          : {}),
+        ...(snapshot.initiative === undefined
+          ? {}
+          : { initiative: snapshot.initiative })
       },
       result: {
         xpGained: participantResult.xpGained,
