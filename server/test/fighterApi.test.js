@@ -214,6 +214,7 @@ test("rechaza nombres inválidos y atributos enviados por el cliente", async () 
     { name: "Tramposo", level: 99 },
     { name: "Tramposo", elo: 999999 },
     { name: "Tramposo", baseStats: { health: 999999 } },
+    { name: "Tramposo", equipment: [{ itemId: "weapon-arbitrario" }] },
     { name: "Tramposo", userId: userIds[1].toString() },
     { name: "Tramposo", referralCode: "codigo-elegido-por-cliente" }
   ]) {
@@ -298,6 +299,14 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   assert.deepEqual(storedFighter.progression.growthEvents, []);
   assert.equal(storedFighter.creation.version, "fighter-creation-v1");
   assert.equal(storedFighter.creation.seed.length, 32);
+  assert.equal(storedFighter.creation.equipmentCatalogVersion, "equipment-v1");
+  assert.equal(storedFighter.equipment.length, 1);
+  assert.equal(
+    storedFighter.equipment[0].itemId,
+    storedFighter.creation.initialWeaponId
+  );
+  assert.equal(storedFighter.equipment[0].catalogVersion, "equipment-v1");
+  assert.deepEqual(storedFighter.equipmentUnlocks, []);
   assert.equal(storedFighter.userId.toString(), userIds[0].toString());
   assert.equal(storedFighter.referralCode.length, 32);
   assert.match(storedFighter.referralCode, /^[a-f0-9]{32}$/);

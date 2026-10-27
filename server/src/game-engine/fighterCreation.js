@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { createInitialEquipment } from "./equipmentCatalog.js";
 
 export const FIGHTER_CREATION_VERSION = "fighter-creation-v1";
 
@@ -112,13 +113,18 @@ export function createInitialFighterData(seed = randomBytes(32)) {
   const profile = INITIAL_PROFILES[
     drawUniformIndex(seed, "fighter-profile", INITIAL_PROFILES.length)
   ];
+  const initialEquipment = createInitialEquipment(seed);
 
   return {
     baseStats: { ...profile.baseStats },
     creation: {
       version: FIGHTER_CREATION_VERSION,
       seed: Buffer.from(seed),
-      profile: profile.id
-    }
+      profile: profile.id,
+      initialWeaponId: initialEquipment.initialWeaponId,
+      equipmentCatalogVersion: initialEquipment.equipmentCatalogVersion
+    },
+    equipment: initialEquipment.equipment,
+    equipmentUnlocks: []
   };
 }

@@ -7,6 +7,27 @@
  */
 
 /**
+ * Equipment properties copied into a single combat snapshot.
+ *
+ * @typedef {Object} EquipmentSnapshot
+ * @property {string} itemId
+ * @property {string} catalogVersion
+ * @property {string} name
+ * @property {"weapon" | "armor"} slot
+ * @property {Object<string, number>} modifiers
+ */
+
+/**
+ * Equipment selected for one fighter for one battle.
+ *
+ * @typedef {Object} EquipmentLoadout
+ * @property {string} version
+ * @property {string} catalogVersion
+ * @property {EquipmentSnapshot | null} weapon
+ * @property {EquipmentSnapshot | null} armor
+ */
+
+/**
  * Immutable fighter data used by a single combat.
  *
  * @typedef {Object} FighterSnapshot
@@ -15,6 +36,8 @@
  * @property {number} level
  * @property {number} elo
  * @property {FighterCombatStats} stats
+ * @property {EquipmentLoadout} [equipment]
+ * @property {number} [initiative]
  */
 
 /**
@@ -35,6 +58,7 @@
  * @property {number} actionNumber
  * @property {string} attackerFighterId
  * @property {string} targetFighterId
+ * @property {"misfire" | "normal" | "critical"} [outcome]
  */
 
 /**

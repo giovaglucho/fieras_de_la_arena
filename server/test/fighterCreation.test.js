@@ -142,6 +142,14 @@ test("los payloads de creación aceptan apariencia pero nunca stats del cliente"
     }),
     null
   );
+  assert.equal(
+    validateManagedFighterCreation({
+      name: "Luchador",
+      requestId: "request-5",
+      equipment: [{ itemId: "weapon-tomado-del-cliente" }]
+    }),
+    null
+  );
 });
 
 test("los luchadores existentes reciben una apariencia neutral por defecto", () => {

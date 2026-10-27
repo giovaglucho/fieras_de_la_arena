@@ -1,10 +1,17 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Battle from "../models/Battle.js";
 import Fighter from "../models/Fighter.js";
 import { TRAINING_OPPONENT } from "../config/trainingOpponent.js";
 import { calculateFighterStats } from "../game-engine/fighterStats.js";
 import { applyFighterProgression } from "../game-engine/fighterGrowth.js";
+import {
+  EQUIPMENT_CATALOG_VERSION,
+  EQUIPMENT_LOADOUT_VERSION,
+  getEffectiveInitiative,
+  selectEquipmentLoadout,
+  unlockEquipmentForLevels
+} from "../game-engine/equipmentCatalog.js";
 import {
   calculateEloChanges,
   calculateXpReward
@@ -165,6 +172,20 @@ function createParticipantResult(
     progression: fighter.progression,
     requestId
   });
+  const equipmentProgression =
+    growth.levelsGained > 0
+      ? unlockEquipmentForLevels({
+          fromLevel: fighter.level,
+          toLevel: growth.level,
+          inventory: fighter.equipment ?? [],
+          existingUnlocks: fighter.equipmentUnlocks ?? [],
+          requestId,
+          seedFactory: () => randomBytes(32)
+        })
+      : {
+          inventory: fighter.equipment ?? [],
+          unlocks: fighter.equipmentUnlocks ?? []
+        };
   const eloAfter = Math.max(0, fighter.elo + eloChange);
 
   return {
@@ -176,6 +197,8 @@ function createParticipantResult(
     levelsGained: growth.levelsGained,
     baseStats: growth.baseStats,
     progression: growth.progression,
+    equipment: equipmentProgression.inventory,
+    equipmentUnlocks: equipmentProgression.unlocks,
     progressionSnapshot: {
       levelBefore: fighter.level,
       levelAfter: growth.level,
@@ -194,19 +217,27 @@ function createParticipantResult(
   };
 }
 
-function createSnapshot(fighter) {
+function createSnapshot(fighter, seed) {
+  const stats = calculateFighterStats(
+    fighter.level,
+    typeof fighter.baseStats.toObject === "function"
+      ? fighter.baseStats.toObject()
+      : fighter.baseStats,
+    fighter.progression
+  );
+  const equipment = selectEquipmentLoadout({
+    fighterId: fighter._id.toString(),
+    seed: Buffer.from(seed, "utf8"),
+    inventory: fighter.equipment ?? []
+  });
   return {
     fighterId: fighter._id.toString(),
     name: fighter.name,
     level: fighter.level,
     elo: fighter.elo,
-    stats: calculateFighterStats(
-      fighter.level,
-      typeof fighter.baseStats.toObject === "function"
-        ? fighter.baseStats.toObject()
-        : fighter.baseStats,
-      fighter.progression
-    )
+    stats,
+    equipment,
+    initiative: getEffectiveInitiative(stats, equipment)
   };
 }
 
@@ -229,6 +260,8 @@ async function applyRewards(fighters, outcomes, results, session) {
     if (result.levelsGained > 0) {
       fields.baseStats = result.baseStats;
       fields.progression = result.progression;
+      fields.equipment = result.equipment;
+      fields.equipmentUnlocks = result.equipmentUnlocks;
     }
 
     return {
@@ -285,8 +318,8 @@ async function resolveCombatInSession(request, session, challenge) {
       ]
     : requestedIds.map((fighterId) => fighterById.get(fighterId));
   const battleId = new mongoose.Types.ObjectId();
-  const snapshots = orderedFighters.map(createSnapshot);
   const seed = randomUUID();
+  const snapshots = orderedFighters.map((fighter) => createSnapshot(fighter, seed));
   const combatResult = simulateCombat({ fighters: snapshots, seed });
   const winnerFighterId = combatResult.summary.winnerFighterId;
   const outcomes = orderedFighters.map((fighter) =>
@@ -338,6 +371,9 @@ async function resolveCombatInSession(request, session, challenge) {
     actionCount: combatResult.summary.actionCount,
     seed,
     engineVersion: combatResult.engineVersion,
+    snapshotVersion: "battle-snapshot-v2",
+    equipmentCatalogVersion: EQUIPMENT_CATALOG_VERSION,
+    loadoutVersion: EQUIPMENT_LOADOUT_VERSION,
     events: combatResult.events
   });
   await completedBattle.save({ session });

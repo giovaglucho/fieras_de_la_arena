@@ -1,7 +1,7 @@
 # Paso activo de desarrollo
 
 **Paso activo:** `10.6.2`
-**Estado:** autorizado; pendiente de implementación
+**Estado:** completado; pendiente de revisión del usuario
 **Título:** Implementar catálogo, desbloqueo y carga aleatoria
 
 ## Objetivo

@@ -70,7 +70,53 @@ const creationSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: ["resistente", "equilibrado", "vitalidad"]
+    },
+    initialWeaponId: {
+      type: String
+    },
+    equipmentCatalogVersion: {
+      type: String,
+      enum: ["equipment-v1"]
     }
+  },
+  { _id: false }
+);
+
+const equipmentItemSchema = new mongoose.Schema(
+  {
+    itemId: { type: String, required: true },
+    catalogVersion: {
+      type: String,
+      required: true,
+      enum: ["equipment-v1"]
+    }
+  },
+  { _id: false }
+);
+
+const equipmentUnlockSchema = new mongoose.Schema(
+  {
+    level: { type: Number, required: true, min: 2 },
+    seed: {
+      type: Buffer,
+      required: true,
+      validate: {
+        validator: (seed) => Buffer.isBuffer(seed) && seed.length === 32,
+        message: "La semilla de desbloqueo debe contener exactamente 32 bytes."
+      }
+    },
+    version: {
+      type: String,
+      required: true,
+      enum: ["equipment-unlock-v1"]
+    },
+    itemId: { type: String, default: null },
+    catalogVersion: {
+      type: String,
+      required: true,
+      enum: ["equipment-v1"]
+    },
+    requestId: { type: String, required: true, minlength: 1, maxlength: 128 }
   },
   { _id: false }
 );
@@ -138,6 +184,26 @@ const fighterSchema = new mongoose.Schema(
     },
     progression: {
       type: progressionSchema
+    },
+    equipment: {
+      type: [equipmentItemSchema],
+      default: undefined,
+      validate: {
+        validator(items) {
+          return new Set(items.map(({ itemId }) => itemId)).size === items.length;
+        },
+        message: "La colección de equipo no puede contener duplicados."
+      }
+    },
+    equipmentUnlocks: {
+      type: [equipmentUnlockSchema],
+      default: undefined,
+      validate: {
+        validator(unlocks) {
+          return new Set(unlocks.map(({ level }) => level)).size === unlocks.length;
+        },
+        message: "Un nivel no puede producir más de un desbloqueo de equipo."
+      }
     },
     wins: {
       type: Number,

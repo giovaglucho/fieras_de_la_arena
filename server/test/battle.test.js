@@ -99,7 +99,13 @@ test("conserva instantáneas, eventos y resultados aunque cambien los luchadores
   assert.equal(loadedBattle.status, "completed");
   assert.equal(loadedBattle.seed, "test-seed");
   assert.equal(loadedBattle.engineVersion, "1.0.0");
+  assert.equal(loadedBattle.snapshotVersion, undefined);
   assert.equal(loadedBattle.winnerFighterId.toString(), fighterIds[0].toString());
+  assert.ok(
+    loadedBattle.participants.every(
+      ({ snapshot }) => !Object.hasOwn(snapshot, "equipment")
+    )
+  );
   assert.deepEqual(
     loadedBattle.participants.map(({ snapshot }) => ({
       ...snapshot,

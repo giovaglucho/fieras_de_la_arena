@@ -11,6 +11,38 @@ const fighterStatsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const equipmentModifiersSchema = new mongoose.Schema(
+  {
+    attack: Number,
+    defense: Number,
+    initiative: Number,
+    piercing: Number,
+    criticalChance: Number
+  },
+  { _id: false }
+);
+
+const equipmentSnapshotSchema = new mongoose.Schema(
+  {
+    itemId: { type: String, required: true },
+    catalogVersion: { type: String, required: true },
+    name: { type: String, required: true },
+    slot: { type: String, enum: ["weapon", "armor"], required: true },
+    modifiers: { type: equipmentModifiersSchema, required: true }
+  },
+  { _id: false }
+);
+
+const loadoutSnapshotSchema = new mongoose.Schema(
+  {
+    version: { type: String, required: true },
+    catalogVersion: { type: String, required: true },
+    weapon: { type: equipmentSnapshotSchema, default: null },
+    armor: { type: equipmentSnapshotSchema, default: null }
+  },
+  { _id: false }
+);
+
 const fighterSnapshotSchema = new mongoose.Schema(
   {
     fighterId: {
@@ -21,7 +53,9 @@ const fighterSnapshotSchema = new mongoose.Schema(
     name: { type: String, required: true },
     level: { type: Number, required: true, min: 1 },
     elo: { type: Number, required: true, min: 0 },
-    stats: { type: fighterStatsSchema, required: true }
+    stats: { type: fighterStatsSchema, required: true },
+    equipment: { type: loadoutSnapshotSchema, default: undefined },
+    initiative: { type: Number, min: 1 }
   },
   { _id: false }
 );
@@ -110,6 +144,9 @@ const battleSchema = new mongoose.Schema(
     actionCount: { type: Number, required: true, min: 1 },
     seed: { type: String, required: true, minlength: 1 },
     engineVersion: { type: String, required: true, minlength: 1 },
+    snapshotVersion: { type: String },
+    equipmentCatalogVersion: { type: String },
+    loadoutVersion: { type: String },
     // Keep version-specific event payloads intact for replay and historical display.
     events: {
       type: [mongoose.Schema.Types.Mixed],

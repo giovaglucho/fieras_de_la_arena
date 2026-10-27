@@ -142,7 +142,9 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
       (fighter) =>
         fighter.wins + fighter.losses + fighter.draws === 1 &&
         fighter.progression.growthEvents.length === 1 &&
-        fighter.progression.growthEvents[0].requestId === request.requestId
+      fighter.progression.growthEvents[0].requestId === request.requestId &&
+      fighter.equipmentUnlocks.length === 1 &&
+      fighter.equipmentUnlocks[0].level === 2
     ),
     true
   );
@@ -191,6 +193,55 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
         requestId: event.requestId
       }))
     )
+  );
+});
+
+test("guarda en el snapshot solo la carga sorteada de la colección de cada luchador", async () => {
+  await createFighters([
+    {
+      equipment: [
+        { itemId: "weapon-caliza-01", catalogVersion: "equipment-v1" }
+      ]
+    },
+    {
+      equipment: [
+        { itemId: "armor-yute-01", catalogVersion: "equipment-v1" }
+      ]
+    }
+  ]);
+
+  const battle = await resolveCombat(combatRequest("equipment-snapshot"));
+  const snapshots = battle.participants.map(({ snapshot }) => snapshot);
+
+  assert.equal(battle.snapshotVersion, "battle-snapshot-v2");
+  assert.equal(battle.equipmentCatalogVersion, "equipment-v1");
+  assert.equal(battle.loadoutVersion, "equipment-loadout-v1");
+  assert.ok(
+    snapshots.some(
+      ({ equipment }) => equipment.weapon?.itemId === "weapon-caliza-01"
+    )
+  );
+  assert.ok(
+    snapshots.some(
+      ({ equipment }) => equipment.armor?.itemId === "armor-yute-01"
+    )
+  );
+  assert.ok(
+    snapshots.every(
+      ({ equipment }) =>
+        equipment.version === battle.loadoutVersion &&
+        equipment.catalogVersion === battle.equipmentCatalogVersion &&
+        [equipment.weapon, equipment.armor].every(
+          (item) => item === null || typeof item.itemId === "string"
+        )
+    )
+  );
+  assert.ok(
+    battle.events
+      .filter((event) => event.type === "attack")
+      .every((event) =>
+        ["misfire", "normal", "critical"].includes(event.outcome)
+      )
   );
 });
 
@@ -316,6 +367,12 @@ test("un error al aplicar recompensas revierte la pelea y evita aparentar una vi
     Fighter.find({ _id: { $in: fighterIds } }).sort({ _id: 1 })
   ]);
   assert.equal(battles.length, 0);
+  assert.ok(
+    fighters.every(
+      (fighter) =>
+        fighter.equipment == null && fighter.equipmentUnlocks == null
+    )
+  );
   assert.deepEqual(
     fighters.map(({ xp, level, elo, wins, losses, draws, progression }) => ({
       xp,
