@@ -526,6 +526,12 @@ La inspiración en *El Bruto* se limita a ideas generales de diseño y al ciclo 
 - **Pruebas/verificación:** revisión final de checklist, documentación y plan de rollback. No implica desplegar por sí misma.
 - **Dependencia:** 10.10.2.
 
+## Propuestas futuras no priorizadas
+
+Estas propuestas no forman parte del orden de ejecución ni autorizan trabajo. Antes de implementarlas, deben evaluarse, aprobarse y recibir un ID y una posición explícitos en la hoja de ruta.
+
+- **Evaluar elecciones manuales de recompensas al subir de nivel:** estudiar una variante futura que ofrezca alternativas de objetos o mejoras para elegir, en contraste con la progresión automática de la primera versión. No cambia el comportamiento de 10.5 ni autoriza a adelantarlo en los pasos 10.6–10.8.
+
 ---
 
 ## Plantilla para una tarea individual

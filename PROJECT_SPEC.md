@@ -288,7 +288,7 @@ Esta sección resuelve las reglas de producto de la etapa 10. Los porcentajes, r
   - **Vitalidad:** vida 115, ataque 10, defensa 3, velocidad 5.
   Ningún cliente puede elegir ni alterar el perfil. El análisis reproducible con el motor de combate `1.0.0`, 5.000 semillas determinísticas distintas por enfrentamiento y posiciones alternadas dio entre 50,2 % y 50,3 % de victorias equivalentes entre cada pareja de perfiles en los niveles 1, 3, 4 y 10. Las semillas de prueba siguen el patrón `10.3.1-independent-${level}-${index}`. El resultado describe el motor actual; debe repetirse si cambia su versión o las reglas de combate.
 - La persona elige la apariencia en catálogos cerrados, originales y puramente cosméticos. La paleta de tono ofrece `arena`, `arcilla`, `cobre`, `pizarra` y `marfil`; el cabello, `rapado`, `corto`, `trenzas`, `melena` y `cresta`; la vestimenta, `tunica-cruzada`, `manto-corto`, `faldon-tejido` y `chaleco-tejido`; los accesorios, `ninguno`, `cinta`, `collar-cuentas`, `brazaletes` y `pendientes`. Las cuatro elecciones se combinan libremente: hay 500 combinaciones válidas, cada una representable con recursos visuales originales. Ninguna opción estética modifica estadísticas, equipo ni reglas de combate. Para luchadores legados sin apariencia se usará la combinación neutral `arena`, `rapado`, `tunica-cruzada`, `ninguno`.
-- El equipo inicial no incluye armadura: el único objeto inicial es el arma aleatoria indicada abajo, que se entrega y equipa en el espacio de arma al crear el luchador. No se asignan habilidades ni mascotas al crear. La armadura no forma parte de la primera tabla de desbloqueos de la expansión y queda pendiente para una tarea de diseño posterior.
+- El equipo inicial no incluye armadura: al crear un luchador, el servidor le concede una sola arma aleatoria de la selección inicial. No se asignan habilidades ni mascotas al crear. El diseño de armas y armaduras de la expansión se detalla en la sección «Equipo aleatorio v1».
 - La creación usa una semilla de 32 bytes generada exclusivamente en el servidor con `node:crypto.randomBytes`; no se aceptan semillas ni elecciones de atributos del cliente. La versión `fighter-creation-v1` deriva cada sorteo del bloque `SHA-256(seed || UTF-8(etiquetaDeDominio) || uint32BE(contador))`, empezando el contador en cero y aumentándolo si hay que rechazar un bloque. El digest se interpreta como entero sin signo big-endian de 256 bits. Para elegir uniformemente entre `N` opciones, se acepta solo un valor menor que `floor(2^256 / N) * N` y se usa su resto módulo `N`; los valores fuera de ese límite se descartan para evitar sesgo. Los dominios de perfil y arma inicial son distintos. El luchador conserva la semilla, versión y resultado para auditar o reproducir la creación. Los sorteos de progreso y desbloqueo también registran semilla, versión y resultado; sus entradas se separan por dominio. Los combates conservan sus snapshots y semilla de simulación. Una misma semilla, entrada y versión produce la misma salida.
 - En la progresión de la expansión, las estadísticas se interpretan así: vida (`health`, vitalidad), ataque (`attack`, fuerza), defensa (`defense`, agilidad) y velocidad (`speed`, velocidad). Cada nivel ganado resuelve exactamente una mejora independiente de las tiradas de desbloqueo: el servidor aumenta en **1 punto** una estadística elegible y el jugador no elige el resultado.
 - Los pesos iniciales del sorteo son vida **35**, ataque **30**, defensa **20** y velocidad **15** (100 en total). Son pesos relativos: si una estadística alcanza su tope, deja de ser elegible y los pesos restantes se normalizan entre las estadísticas que aún pueden crecer. Un sorteo usa distribución entera ponderada sin sesgo y una entrada aleatoria reproducible/versionada del servidor; el cliente no proporciona semilla, estadística ni magnitud.
@@ -298,10 +298,61 @@ Esta sección resuelve las reglas de producto de la etapa 10. Los porcentajes, r
 - No hay nivel máximo. Al procesar una recompensa, se consume en orden el umbral de cada nivel y se conserva todo el XP restante. Se resuelve una mejora por cada nivel cruzado, incluso cuando una recompensa gana varios niveles. Si una estadística ya llegó a su tope se excluye del sorteo; si todas llegaron, el nivel y el XP siguen avanzando sin aumento de estadísticas. Llegar a un tope nunca descarta XP ni impide procesar otros niveles o desbloqueos.
 - Ejemplos con el umbral de XP vigente: nivel 1 con 90 XP que recibe 25 XP termina en nivel 2 con 15 XP restantes y una mejora; nivel 1 con 0 XP que recibe 600 XP termina en nivel 5 con 50 XP restantes y procesa cuatro mejoras, una por cada nivel ganado. En el segundo caso no se garantiza que las cuatro mejoras recaigan en estadísticas distintas: cada sorteo vuelve a considerar los pesos y topes vigentes.
 - Comparación con el crecimiento fijo del MVP entre niveles 1 y 5: el MVP añade +20 vida, +2 ataque y +1 defensa; la expansión distribuye cuatro aumentos de +1 según sus pesos y topes, con un máximo total de cuatro puntos en ese tramo. Para un perfil equilibrado inicial (100 vida, 10 ataque, 4 defensa, 5 velocidad), los topes absolutos son 150, 30, 19 y 15, respectivamente. Para cualquier perfil, se calculan sumando sus topes relativos a sus valores base iniciales.
-- La creación concede exactamente un arma inicial aleatoria de la selección básica. No concede habilidades ni mascotas. En cada nivel ganado se realiza una tirada independiente de desbloqueo que puede no otorgar nada o conceder un arma, habilidad o mascota permitida para ese nivel. Las probabilidades, rarezas, catálogo y niveles mínimos son pendientes de balance y configuración, no se inventan en esta especificación.
-- El perfil y el arma inicial se sortean una sola vez al crear el luchador; no se permiten repeticiones ni cambios del resultado después de la creación. Cada desbloqueo se sortea una sola vez por evento de subida de nivel. Un reintento idempotente no repite tiradas ni recompensas. El catálogo no ofrece duplicados: si no queda una recompensa elegible que el luchador no posea, la tirada no concede objeto y no genera una compensación automática.
-- Las reglas de slot, compatibilidad, efectos, límites de equipo y disponibilidad por nivel deben ser explícitas y validadas por el servidor. Una habilidad o mascota no se activa solo por poseerla; sus reglas de uso y efectos se documentan y balancean antes de implementarlas.
+- La creación concede exactamente un arma inicial aleatoria de la selección básica. No concede armadura, habilidades ni mascotas. Cada nivel ganado produce una tirada independiente de desbloqueo de arma o armadura conforme a «Equipo aleatorio v1». Las habilidades y las mascotas pertenecen a los diseños posteriores 10.7 y 10.8; sus reglas de adquisición no se definen en este paso.
+- El perfil y el arma inicial se sortean una sola vez al crear el luchador; no se permiten repeticiones ni cambios del resultado después de la creación. Cada desbloqueo se sortea una sola vez por nivel ganado. Un reintento idempotente no repite tiradas ni recompensas. El catálogo de armas y armaduras no ofrece duplicados: si no queda un objeto elegible que el luchador no posea, la tirada no concede objeto y no genera una compensación automática.
+- Las reglas de espacio, propiedad, selección automática, efectos, límites y disponibilidad por nivel se describen en «Equipo aleatorio v1» y deberán validarse en el servidor. Poseer un objeto no permite elegirlo ni alterar el combate desde el cliente.
 - Las recompensas existentes de XP y ELO del MVP se mantienen salvo que una tarea de balance posterior las cambie explícitamente. Ningún desbloqueo aleatorio se acepta como entrada del cliente ni depende del resultado visual del frontend.
+
+#### Equipo aleatorio v1 (diseño 10.6.1)
+
+Este diseño es original para Fieras de la Arena. Usa solo las estadísticas existentes de vida, ataque, defensa y velocidad; no añade atributos ocultos ni copia nombres, cantidades, cifras, textos o efectos de otros juegos. Las cifras de las tablas y probabilidades marcadas como provisionales son ejemplos de diseño, no balance aprobado ni una afirmación de que las combinaciones se hayan simulado.
+
+**Propiedad y espacios**
+
+- La colección pertenece a cada luchador, no a la cuenta. Cada entrada identifica un objeto único e inmutable del catálogo versionado; poseerlo no significa que se use en todas las peleas.
+- Hay dos espacios de combate: un arma y una armadura. En cada combate el servidor sortea como máximo una pieza distinta de cada espacio, de entre las piezas que posee ese luchador. La selección queda fija durante ese combate; el luchador no elige ni cambia equipo entre turnos.
+- No se acumulan copias del mismo objeto. Si la tirada de desbloqueo no tiene objetos elegibles sin poseer, no concede nada ni entrega compensación.
+- El luchador nuevo recibe una sola arma de inicio y ninguna armadura. Las cuentas antiguas sin inventario siguen pudiendo combatir sin equipo; no se les sortean piezas retroactivas. Sin piezas, no se aplican modificadores de equipo y se usan sus estadísticas base en las reglas de combate versionadas vigentes.
+- La colección de habilidades y la de mascotas no son parte de este catálogo: las etapas 10.7 y 10.8 definen su propiedad, adquisición y participación automática por separado.
+- Casos revisados: una colección vacía deja ambos espacios en `null` y el combate usa la fórmula vigente; con colección parcial, cada espacio se sortea solo entre sus objetos poseídos; la colección completa no da copias ni compensaciones; un resultado con arma y armadura combina solo una pieza de cada espacio; el replay usa las definiciones snapshot y no consulta valores actuales del catálogo.
+
+**Catálogo inicial propuesto**
+
+Los identificadores son estables; las propiedades se copian al snapshot del combate. Las cuatro primeras armas componen la selección inicial, elegida uniformemente al crear al luchador. El resto y todas las armaduras se obtienen mediante progresión. El nivel mínimo es requisito para entrar en el sorteo de desbloqueo, no una elección del jugador.
+
+| ID | Objeto | Espacio / perfil | Nivel mínimo | Propiedades de combate provisionales |
+|---|---|---|---:|---|
+| `weapon-caliza-01` | Aguja de Caliza | Arma / ligera | 1 | ataque +1; iniciativa +2; perforación 0; crítico +0 puntos porcentuales |
+| `weapon-yunque-01` | Maza de Yunque | Arma / contundente | 1 | ataque +5; iniciativa −2; perforación 0; crítico +0 puntos porcentuales |
+| `weapon-estuario-01` | Lanza de Estuario | Arma / alcance | 1 | ataque +2; iniciativa 0; perforación 1; crítico +0 puntos porcentuales |
+| `weapon-bruma-01` | Cuchilla de Bruma | Arma / equilibrada | 1 | ataque +3; iniciativa +1; perforación 0; crítico +1 punto porcentual |
+| `weapon-polea-01` | Garfio de Polea | Arma / enganche | 3 | ataque +4; iniciativa 0; perforación 1; crítico +0 puntos porcentuales |
+| `weapon-campana-01` | Vara de Campana | Arma / ligera | 3 | ataque +2; iniciativa +2; perforación 0; crítico +2 puntos porcentuales |
+| `weapon-laja-01` | Disco de Laja | Arma / equilibrio | 4 | ataque +3; iniciativa +1; perforación 1; crítico +1 punto porcentual |
+| `weapon-torbellino-01` | Martillo de Torbellino | Arma / contundente | 5 | ataque +6; iniciativa −2; perforación 0; crítico −1 punto porcentual |
+| `armor-yute-01` | Manto de Yute | Armadura / ligera | 2 | defensa +1; iniciativa 0 |
+| `armor-cañas-01` | Petral de Cañas | Armadura / flexible | 3 | defensa +2; iniciativa 0 |
+| `armor-anillos-01` | Cota de Anillos | Armadura / reforzada | 4 | defensa +3; iniciativa −1 |
+| `armor-laja-01` | Coraza de Laja | Armadura / pesada | 6 | defensa +4; iniciativa −2 |
+
+El catálogo de esta primera versión contiene ocho armas y cuatro armaduras; no usa rarezas ni duplicados. Los niveles, nombres, propiedades y cantidades de la tabla son propuestas originales para revisión y no cifras finales. Las etiquetas de perfil sirven para lectura y no introducen reglas adicionales.
+
+**Obtención y selección**
+
+- Al crear una ficha se elige uniformemente una de las cuatro armas con nivel mínimo 1, usando un dominio aleatorio separado del perfil inicial. No se otorga armadura.
+- Por cada nivel cruzado se hace una tirada independiente de desbloqueo de equipo, distinta del aumento de atributo. Como ejemplo provisional, la probabilidad de desbloqueo es 20 % por nivel. Si tiene éxito, el servidor elige uniformemente un arma o armadura no poseída cuyo nivel mínimo no supere el nivel alcanzado. Si la tirada falla o no hay objetos elegibles, no hay premio de equipo.
+- En el combate, el servidor elige uniformemente una de las armas poseídas y, por separado, una de las armaduras poseídas. No hay elección manual, cambio durante la pelea ni acumulación de modificadores de varias piezas. Las tiradas son reproducibles y usan dominios separados para creación, desbloqueo y carga de combate.
+- Cada tirada de desbloqueo registra su nivel de origen, semilla/versiones, resultado (objeto o sin premio) y clave de recompensa idempotente; el origen de recompensa por luchador y nivel es único. El sorteo usa el dominio `equipment-unlock-v1:<nivel>`. La selección de carga deriva sus subflujos del seed guardado del combate mediante SHA-256, la etiqueta de dominio y un contador big-endian de 32 bits; usa rechazo uniforme para evitar sesgo.
+- La creación y la progresión conservan su idempotencia actual: repetir una solicitud no repite desbloqueos ni añade otra copia. Los rechazos previos al inicio de una pelea no otorgan objetos.
+
+**Modificadores y resolución de combate**
+
+- «Ataque» de un arma se suma a la estadística de ataque para esa pelea; «defensa» de armadura se suma a la defensa del objetivo. «Iniciativa» se suma a velocidad solo para ordenar turnos y el mínimo efectivo es 1. «Perforación» reduce en esa cantidad la defensa aportada por la armadura, sin reducir la estadística base de defensa por debajo de cero. Ningún modificador temporal cambia las estadísticas persistidas del luchador ni su crecimiento de nivel.
+- En una acción de ataque se determina primero el resultado de pifia/crítico con una tirada separada: la pifia provisional ocupa el 5 % inferior; el crítico usa a continuación una probabilidad base provisional del 5 %, ajustada por el modificador del arma y limitada provisionalmente al intervalo de 0 % a 15 %; el resto son golpes normales. Las bandas no se solapan. Una pifia consume la acción y causa cero daño; no es un fallo de precisión ni un bloqueo. Un crítico es un golpe que calcula daño y aplica después un multiplicador provisional de 1,5. Arma y armadura no convierten una pifia en crítico ni encadenan acciones adicionales.
+- Para un golpe normal o crítico, se calcula primero `floor((ataque + bonificación del arma) × porcentaje / 100)`, con porcentaje entero uniforme de 90 a 110 inclusive; se resta `defensa del rival + max(0, protección de armadura − perforación del arma)` y el daño mínimo del golpe es 1. La perforación solo reduce la protección del objeto, nunca la defensa base del luchador. Al crítico se le aplica luego el multiplicador provisional de 1,5, redondeado hacia abajo y con daño final mínimo de 1. Una pifia no usa esta fórmula.
+- El orden de resolución es: fijar snapshots y equipo; calcular iniciativa efectiva y ordenar turnos con el desempate reproducible actual; para cada acción, resolver pifia/crítico; si hubo golpe, sortear el porcentaje de daño, aplicar bonificación, protección y perforación, después el multiplicador crítico y finalmente daño/KO. Se mantienen los límites actuales de acciones y finalización del combate.
+- Cada evento de acción identifica si fue pifia, golpe normal o crítico y registra el daño. El snapshot persistido conserva para ambos luchadores el ID y versión de cada pieza sorteada (o `null` si el espacio está vacío), sus propiedades aplicadas, estadísticas previas a equipo, iniciativa efectiva y versiones de catálogo, sorteo de carga y reglas de combate. La semilla de combate deriva subflujos separados por luchador y espacio con la etiqueta `equipment-loadout-v1:<fighterId>:<slot>` y rechazo uniforme; no consume la secuencia aleatoria del motor de combate. La semilla y los dominios separados permiten reproducir selección y pelea; los combates históricos mantienen intactos sus snapshots.
+- No hay activaciones de habilidades, mascotas, contraataques encadenados, desarmes, alteraciones de control ni otros efectos por estado en esta etapa. Se diseñan en las etapas 10.7 y 10.8, sin modificar silenciosamente estas reglas de equipo.
 
 #### Dojos, invitaciones y límites de abuso
 
@@ -453,7 +504,7 @@ Representa a un personaje jugable. A diferencia del esquema del MVP, una cuenta 
 - `status`: `active` o `suspended`
 - `visibility`: `public` o `private`
 - semilla y versión de las reglas de creación aleatoria
-- inventario de armas, habilidades y mascotas obtenidas
+- inventario de armas, armaduras, habilidades y mascotas obtenidas
 - contadores de victorias, derrotas y empates
 - `referralCode` único
 - `createdAt`, `updatedAt`
@@ -474,10 +525,10 @@ Registro inmutable del resultado.
 - `_id`
 - `battleType`: `pvp` o `training`
 - `status`: `completed` (los errores anteriores a finalizar no deben quedar como victorias)
-- instantáneas de ambos luchadores: id, nombre, nivel, ELO y estadísticas usadas
-- semillas y versiones de reglas para los sorteos de progreso y desbloqueo que produzca la pelea
+- instantáneas de ambos luchadores: id, nombre, nivel, ELO, estadísticas anteriores al equipo, objetos sorteados con su ID/versión/propiedades o `null`, e iniciativa efectiva
+- semillas y versiones de reglas para los sorteos de progreso, desbloqueo de equipo y carga de combate que produzca la pelea
 - `winnerFighterId` opcional; empate si no hay ganador
-- `seed` del motor y `engineVersion`
+- `seed` del motor, `engineVersion`, versión de snapshot, catálogo de equipo, sorteo de carga y reglas de combate aplicadas
 - `snapshotVersion` opcional para distinguir el formato de snapshot; su ausencia identifica el formato legado vigente al crear el registro
 - `events` ordenados
 - resultado de XP y ELO de ambos
@@ -817,13 +868,18 @@ No fijar proveedor ni desplegar hasta que el usuario lo decida en el paso corres
 
 ### Valores de balance pendientes
 
-- Probabilidades, rarezas y niveles mínimos de armas, habilidades y mascotas; catálogo y efectos concretos.
+- Aprobar o ajustar los valores provisionales de armas y armaduras de «Equipo aleatorio v1» mediante pruebas reproducibles de balance antes de implementarlos.
+- Probabilidades, catálogos y efectos de habilidades y mascotas, que se diseñan en sus etapas respectivas.
 - Límites técnicos de frecuencia de creación y umbrales de detección de automatización.
 - Catálogo, hitos y cantidades de las recompensas cosméticas/sociales del dojo.
 
 ### Revisiones futuras permitidas
 
 Se puede ajustar balance, estética, nombre, estructura de recompensas y alcance. Todo cambio que afecte arquitectura, modelos, API o reglas debe actualizar este documento y las pruebas relacionadas antes de implementarse.
+
+### Propuestas futuras no priorizadas
+
+- **Evaluar elecciones manuales de recompensas al subir de nivel:** estudiar si una versión futura debería ofrecer alternativas de objetos o mejoras para que la persona elija, frente al sorteo automático definido para la primera versión. Es una propuesta pendiente de evaluación, sin ID, orden, dependencia ni autorización de implementación; no modifica el paso 10.6 ni la regla vigente de progresión automática.
 
 ---
 

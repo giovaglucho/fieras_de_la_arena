@@ -1,8 +1,8 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.6.1`
+**Paso activo:** `10.6.2`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Diseñar catálogo, propiedad, equipamiento y efectos
+**Título:** Implementar catálogo, desbloqueo y carga aleatoria
 
 ## Objetivo
 
@@ -10,36 +10,43 @@ Añadir variedad táctica a la simulación mediante objetos obtenidos por progre
 
 ## Tareas permitidas
 
-- Definir tipos y espacios de equipo.
-- Definir el tamaño inicial de un catálogo original.
-- Definir la obtención aleatoria al crear y subir de nivel.
-- Definir la colección permanente.
-- Definir el sorteo automático por combate.
-- Definir duplicados, modificadores, efectos especiales, golpe crítico y fallo crítico.
-- Definir límites y orden de resolución.
-- Revisar combinaciones, casos sin equipo, colección parcial/completa, duplicados y replay de combate.
+- Implementar definiciones versionadas del catálogo del lado del servidor.
+- Implementar la colección persistente de equipo.
+- Implementar oportunidades de desbloqueo ligadas a creación/progresión según el diseño de 10.6.1.
+- Implementar el sorteo reproducible de carga para combates.
+- Implementar en el motor únicamente los efectos de equipo permitidos por el diseño de 10.6.1.
+- Añadir y ejecutar las pruebas de catálogo inválido, propiedad, desbloqueo, pifia, crítico, efectos, semilla, transacción y snapshot legado.
 
 ## Fuera de alcance
 
-- Implementar el catálogo, los desbloqueos, la carga aleatoria o los efectos en el servidor (paso 10.6.2).
-- Implementar la colección o presentar equipamiento y resultados en la interfaz (paso 10.6.3).
-- Implementar tareas ajenas al diseño autorizado de 10.6.1.
+- Implementar la UI de colección y la presentación de carga/equipamiento en el resultado e historial (paso 10.6.3).
+- Implementar habilidades o mascotas (pasos 10.7 y 10.8).
+- Implementar tareas de cualquier otro paso de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Cada objeto tiene identidad y valores propios.
-- Queda claro qué se guarda, qué se sortea al combatir y qué snapshot se registra.
-- Crítico y pifia son resultados distintos.
-- Los ejemplos de efectos no son valores definitivos hasta aprobar balance.
+- Nadie puede obtener/equipar objetos enviando IDs arbitrarios.
+- No hay desbloqueos duplicados por reintento.
+- El equipo sorteado pertenece a la colección.
+- Sin objetos se mantiene un combate válido.
+- El versionado/snapshot permite reproducir peleas antiguas.
 
-## Pruebas y verificación
+## Pruebas
 
-- Revisar combinaciones, sin equipo, colección parcial/completa, duplicado y replay de combate.
+- Catálogo inválido.
+- Propiedad.
+- Desbloqueo.
+- Pifia.
+- Crítico.
+- Efectos.
+- Semilla.
+- Transacción.
+- Snapshot legado.
 
 ## Dependencia
 
-- Reglas de 10.1 y motor de 10.5.2.
+- 10.6.1.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.6.2 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar 10.6.3 ni ningún otro paso posterior.
