@@ -1,8 +1,8 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.6.2`
-**Estado:** completado; pendiente de revisión del usuario
-**Título:** Implementar catálogo, desbloqueo y carga aleatoria
+**Paso activo:** `10.6.3`
+**Estado:** autorizado; pendiente de implementación
+**Título:** Mostrar colección, desbloqueos y equipo del combate
 
 ## Objetivo
 
@@ -10,43 +10,38 @@ Añadir variedad táctica a la simulación mediante objetos obtenidos por progre
 
 ## Tareas permitidas
 
-- Implementar definiciones versionadas del catálogo del lado del servidor.
-- Implementar la colección persistente de equipo.
-- Implementar oportunidades de desbloqueo ligadas a creación/progresión según el diseño de 10.6.1.
-- Implementar el sorteo reproducible de carga para combates.
-- Implementar en el motor únicamente los efectos de equipo permitidos por el diseño de 10.6.1.
-- Añadir y ejecutar las pruebas de catálogo inválido, propiedad, desbloqueo, pifia, crítico, efectos, semilla, transacción y snapshot legado.
+- Implementar la UI de colección y la presentación de carga/equipamiento en el resultado e historial.
+- Distinguir la colección del luchador de la carga sorteada para cada combate.
+- Presentar eventos que expliquen los efectos del equipo sin ocultar el registro de combate.
+- Mantener legible el historial de combates anteriores.
+- Añadir y ejecutar las pruebas de colección vacía/llena, desbloqueo, pelea nueva e histórica, errores y accesibilidad.
 
 ## Fuera de alcance
 
-- Implementar la UI de colección y la presentación de carga/equipamiento en el resultado e historial (paso 10.6.3).
 - Implementar habilidades o mascotas (pasos 10.7 y 10.8).
+- Cambiar las reglas del catálogo, adquisición, desbloqueo, sorteo de carga o combate implementadas en 10.6.2.
+- Permitir que la UI altere el combate o el inventario.
 - Implementar tareas de cualquier otro paso de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Nadie puede obtener/equipar objetos enviando IDs arbitrarios.
-- No hay desbloqueos duplicados por reintento.
-- El equipo sorteado pertenece a la colección.
-- Sin objetos se mantiene un combate válido.
-- El versionado/snapshot permite reproducir peleas antiguas.
+- Colección y carga sorteada se distinguen.
+- Eventos explican efectos sin ocultar el registro de combate.
+- Historial anterior sigue legible.
+- La UI no permite alterar combate ni inventario.
 
 ## Pruebas
 
-- Catálogo inválido.
-- Propiedad.
+- Colección vacía/llena.
 - Desbloqueo.
-- Pifia.
-- Crítico.
-- Efectos.
-- Semilla.
-- Transacción.
-- Snapshot legado.
+- Pelea nueva e histórica.
+- Errores.
+- Accesibilidad.
 
 ## Dependencia
 
-- 10.6.1.
+- 10.6.2.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.6.3 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar ningún paso posterior.
