@@ -508,8 +508,8 @@ La inspiración en *El Bruto* se limita a ideas generales de diseño y al ciclo 
 #### 10.10.1 — Ejecutar pruebas de integración y regresión
 
 - **Alcance:** recorrido desde cuenta existente y nueva, varios luchadores, creación aleatoria, selección de rival, cupos diarios, pelea automática, progresión, desbloqueos, equipo, habilidades, mascotas, dojo e historial.
-- **Aceptación:** pruebas relevantes pasan; autorización y propiedad resisten IDs manipulados; concurrencia e idempotencia no duplican peleas, límites ni recompensas; los datos legados y replays sobreviven; interfaz y API coinciden.
-- **Pruebas:** suites focalizadas y completas de los scripts existentes; pruebas con fixtures antiguos y varios luchadores; no usar cuentas ni datos reales de producción.
+- **Aceptación:** pruebas relevantes pasan; autorización y propiedad resisten IDs manipulados; concurrencia e idempotencia no duplican peleas, límites ni recompensas; los datos legados y replays sobreviven; interfaz y API coinciden. Las rutas v1 que requieren un luchador único responden `409 MULTIPLE_FIGHTERS_REQUIRE_V2` cuando la cuenta autenticada posee varios, incluida la consulta singular de detalle de combate `GET /api/v1/battles/:id`.
+- **Pruebas:** suites focalizadas y completas de los scripts existentes; pruebas con fixtures antiguos y varios luchadores, verificando que todas las rutas v1 singulares rechacen de forma consistente las cuentas con varios luchadores (incluido `GET /api/v1/battles/:id`); no usar cuentas ni datos reales de producción.
 - **Dependencia:** 10.2 a 10.9.
 
 #### 10.10.2 — Medir balance, seguridad operativa y recuperación

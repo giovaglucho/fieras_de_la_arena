@@ -146,6 +146,8 @@ function getOutcome(winnerFighterId, fighterId) {
 }
 
 function createParticipantResult(fighter, xpGained, eloChange, requestId) {
+  const previousGrowthEventCount =
+    fighter.progression?.growthEvents?.length ?? 0;
   const growth = applyFighterProgression({
     level: fighter.level,
     xp: fighter.xp,
@@ -167,7 +169,9 @@ function createParticipantResult(fighter, xpGained, eloChange, requestId) {
     xp: growth.xp,
     levelsGained: growth.levelsGained,
     baseStats: growth.baseStats,
-    progression: growth.progression
+    progression: growth.progression,
+    growthEvents:
+      growth.progression?.growthEvents?.slice(previousGrowthEventCount) ?? []
   };
 }
 
@@ -305,7 +309,8 @@ async function resolveCombatInSession(request, session, challenge) {
       result: {
         xpGained: results[index].xpGained,
         eloChange: results[index].eloChange,
-        eloAfter: results[index].eloAfter
+        eloAfter: results[index].eloAfter,
+        growthEvents: results[index].growthEvents
       }
     })),
     winnerFighterId,

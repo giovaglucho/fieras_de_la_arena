@@ -134,6 +134,42 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
     ),
     true
   );
+  assert.ok(
+    firstBattle.participants.every(({ result }) => {
+      const [growthEvent] = result.growthEvents;
+      return (
+        result.growthEvents.length === 1 &&
+        growthEvent.version === "fighter-growth-v1" &&
+        growthEvent.level === 2 &&
+        growthEvent.amount === 1 &&
+        growthEvent.requestId === request.requestId &&
+        Buffer.isBuffer(growthEvent.seed) &&
+        growthEvent.seed.length === 32
+      );
+    })
+  );
+  assert.deepEqual(
+    repeatedBattle.participants.map(({ result }) =>
+      result.growthEvents.map((event) => ({
+        level: event.level,
+        seed: event.seed.toString("hex"),
+        version: event.version,
+        stat: event.stat,
+        amount: event.amount,
+        requestId: event.requestId
+      }))
+    ),
+    firstBattle.participants.map(({ result }) =>
+      result.growthEvents.map((event) => ({
+        level: event.level,
+        seed: event.seed.toString("hex"),
+        version: event.version,
+        stat: event.stat,
+        amount: event.amount,
+        requestId: event.requestId
+      }))
+    )
+  );
 });
 
 test("serializa solicitudes concurrentes con la misma clave idempotente", async () => {

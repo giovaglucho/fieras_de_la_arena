@@ -1,35 +1,40 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.5.2`
+**Paso activo:** `10.5.3`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Implementar crecimiento aleatorio seguro
+**Título:** Mostrar crecimiento y progreso
 
 ## Objetivo
 
-Sustituir el crecimiento fijo actual por una mejora aleatoria controlada, conservando progresión justa y auditable.
+Explicar la mejora otorgada y mostrar atributos actuales y anteriores sin recalcularlos en el cliente.
 
 ## Tareas permitidas
 
-- Sortear en el servidor al confirmar XP; actualizar estadísticas de forma atómica/idempotente; guardar información necesaria para explicar progresión; versionar aleatoriedad si afecta a una pelea.
-- Ejecutar las pruebas de semilla controlada, distribución, concurrencia, niveles múltiples, reintentos, fallo transaccional y regresión de luchadores antiguos.
+- Explicar la mejora otorgada.
+- Mostrar los atributos actuales y anteriores sin recalcularlos en el cliente.
+- Implementar los componentes, estilos, cliente API y pruebas de interfaz necesarios para este alcance.
+- Ejecutar pruebas de render de aumentos, progreso sin aumento si se define, niveles múltiples y estados de error.
 
 ## Fuera de alcance
 
-- Mostrar crecimiento y progreso en la interfaz (paso 10.5.3).
-- Iniciar otros pasos de la hoja de ruta o añadir funcionalidad ajena a 10.5.2.
+- Modificar reglas o lógica de progresión en el servidor.
+- Implementar tareas hermanas o posteriores de la hoja de ruta, incluida la etapa 10.6.
+- Añadir funcionalidad ajena a 10.5.3.
 
 ## Criterios de aceptación
 
-- Cliente no puede escoger ni inflar aumentos; reintentos no repiten mejoras; fallo de persistencia no deja nivel y atributos desincronizados; las mismas entradas/versiones producen el resultado esperado; los luchadores existentes mantienen base y nivel.
+- La persona puede entender qué aumentó y por qué.
+- La pantalla usa datos oficiales del servidor.
+- La subida múltiple y el error se representan sin duplicar recompensas.
 
 ## Pruebas
 
-- Semilla controlada, distribución, concurrencia, niveles múltiples, reintentos, fallo transaccional y regresión de luchadores antiguos.
+- Render de aumentos, progreso sin aumento si se define, niveles múltiples y estados de error.
 
 ## Dependencia
 
-- 10.5.1.
+- 10.5.2.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar 10.5.3 ni ningún otro paso posterior.
+Informar resultados y detenerse. No iniciar 10.6.1 ni ningún otro paso posterior.

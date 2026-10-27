@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import growthEventSchema from "./growthEventSchema.js";
 
 const fighterStatsSchema = new mongoose.Schema(
   {
@@ -29,7 +30,8 @@ const participantResultSchema = new mongoose.Schema(
   {
     xpGained: { type: Number, required: true, min: 0 },
     eloChange: { type: Number, required: true },
-    eloAfter: { type: Number, required: true, min: 0 }
+    eloAfter: { type: Number, required: true, min: 0 },
+    growthEvents: { type: [growthEventSchema], default: [] }
   },
   { _id: false }
 );
