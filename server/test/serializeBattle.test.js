@@ -2,8 +2,20 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import serializeBattle from "../src/utils/serializeBattle.js";
 
-function createBattle(progression) {
+function createBattle(progression, includeTechniques = true) {
   const fighterId = "fighter-own";
+  const techniques = {
+    version: "fighter-technique-loadout-v1",
+    catalogVersion: "fighter-techniques-v1",
+    passive: {
+      techniqueId: "tech-manto-polvo",
+      techniqueVersion: "technique-v1",
+      category: "passive",
+      minLevel: 1,
+      effect: { type: "damage_reduction", amount: 2 }
+    },
+    active: null
+  };
   const participantResult = {
     xpGained: 25,
     eloChange: 16,
@@ -36,7 +48,8 @@ function createBattle(progression) {
           name: "colmillo",
           level: 1,
           elo: 1000,
-          stats: { health: 100, attack: 10, defense: 4, speed: 5 }
+          stats: { health: 100, attack: 10, defense: 4, speed: 5 },
+          ...(includeTechniques ? { techniques } : {})
         },
         result: participantResult
       },
@@ -87,9 +100,29 @@ test("omite progreso en resúmenes y conserva compatibilidad con combates antigu
     statsAfter: { health: 100, attack: 11, defense: 4, speed: 5 }
   };
   const summary = serializeBattle(createBattle(progression));
-  const legacyDetail = serializeBattle(createBattle(null), true);
+  const legacyDetail = serializeBattle(createBattle(null, false), true);
 
   assert.equal(summary.participants[0].result.progression, undefined);
   assert.equal(summary.events, undefined);
   assert.equal(legacyDetail.participants[0].result.progression, undefined);
+  assert.equal(legacyDetail.participants[0].fighter.techniques, undefined);
+});
+
+test("serializa solo el snapshot de técnicas y no incorpora la colección privada", () => {
+  const serialized = serializeBattle(createBattle(null), true);
+
+  assert.deepEqual(serialized.participants[0].fighter.techniques, {
+    version: "fighter-technique-loadout-v1",
+    catalogVersion: "fighter-techniques-v1",
+    passive: {
+      techniqueId: "tech-manto-polvo",
+      techniqueVersion: "technique-v1",
+      category: "passive",
+      minLevel: 1,
+      effect: { type: "damage_reduction", amount: 2 }
+    },
+    active: null
+  });
+  assert.equal(JSON.stringify(serialized).includes("techniqueUnlocks"), false);
+  assert.equal(JSON.stringify(serialized).includes("seed"), false);
 });

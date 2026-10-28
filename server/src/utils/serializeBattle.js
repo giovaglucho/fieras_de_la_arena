@@ -49,6 +49,32 @@ function serializeEquipmentLoadout(equipment) {
   };
 }
 
+function serializeTechniqueSnapshot(technique) {
+  if (!technique) {
+    return null;
+  }
+
+  return {
+    techniqueId: technique.techniqueId,
+    techniqueVersion: technique.techniqueVersion,
+    category: technique.category,
+    minLevel: technique.minLevel,
+    effect:
+      typeof technique.effect.toObject === "function"
+        ? technique.effect.toObject()
+        : technique.effect
+  };
+}
+
+function serializeTechniqueLoadout(techniques) {
+  return {
+    version: techniques.version,
+    catalogVersion: techniques.catalogVersion,
+    passive: serializeTechniqueSnapshot(techniques.passive),
+    active: serializeTechniqueSnapshot(techniques.active)
+  };
+}
+
 export default function serializeBattle(battle, includeEvents = false) {
   const result = {
     id: battle._id.toString(),
@@ -69,6 +95,9 @@ export default function serializeBattle(battle, includeEvents = false) {
             : snapshot.stats,
         ...(snapshot.equipment
           ? { equipment: serializeEquipmentLoadout(snapshot.equipment) }
+          : {}),
+        ...(snapshot.techniques
+          ? { techniques: serializeTechniqueLoadout(snapshot.techniques) }
           : {}),
         ...(snapshot.initiative === undefined
           ? {}

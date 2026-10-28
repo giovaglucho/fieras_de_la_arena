@@ -328,7 +328,13 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   const activeFighterResponse = await getActiveFighter(cookie);
   assert.equal(activeFighterResponse.status, 200);
   const activeFighter = (await activeFighterResponse.json()).fighter;
-  assert.equal(Object.hasOwn(activeFighter, "techniques"), false);
+  assert.equal(activeFighter.techniques.length, 1);
+  assert.equal(
+    activeFighter.techniques[0].techniqueId,
+    storedFighter.techniques[0].techniqueId
+  );
+  assert.equal(activeFighter.techniques[0].name.length > 0, true);
+  assert.deepEqual(activeFighter.techniqueUnlocks, []);
   const initialWeapon = getEquipmentById(
     storedFighter.equipment[0].itemId,
     storedFighter.equipment[0].catalogVersion
@@ -469,7 +475,7 @@ test("los perfiles públicos exponen solo los campos de juego permitidos", async
   for (const profile of [publicByIdBody, publicByUsernameBody]) {
     assert.doesNotMatch(
       JSON.stringify(profile),
-      /email|password|session|referralCode|userId/i
+      /email|password|session|referralCode|userId|technique/i
     );
   }
 });
@@ -544,6 +550,11 @@ test("las rutas singulares no eligen un luchador arbitrario para cuentas con var
   const bodies = await Promise.all(responses.map((response) => response.json()));
 
   for (const [index, response] of responses.entries()) {
+    if (index === 5) {
+      assert.equal(response.status, 404, "a nonexistent battle remains not found");
+      assert.equal(bodies[index].error.code, "BATTLE_NOT_FOUND");
+      continue;
+    }
     assert.equal(response.status, 409, `request ${index} should reject ambiguous ownership`);
     assert.equal(bodies[index].error.code, "MULTIPLE_FIGHTERS_REQUIRE_V2");
   }

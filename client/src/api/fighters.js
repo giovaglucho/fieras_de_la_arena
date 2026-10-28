@@ -131,7 +131,65 @@ function readEquipmentCollection(fighter) {
   return { equipment, equipmentUnlocks }
 }
 
-function readManagedFighter(fighter, { includeEquipment = false } = {}) {
+function isValidTechnique(technique) {
+  return (
+    technique &&
+    typeof technique.techniqueId === 'string' &&
+    technique.techniqueId.length > 0 &&
+    typeof technique.catalogVersion === 'string' &&
+    technique.catalogVersion.length > 0 &&
+    typeof technique.techniqueVersion === 'string' &&
+    technique.techniqueVersion.length > 0 &&
+    typeof technique.name === 'string' &&
+    technique.name.length > 0 &&
+    ['passive', 'active'].includes(technique.category) &&
+    Number.isSafeInteger(technique.minLevel) &&
+    technique.minLevel >= 1 &&
+    technique.effect &&
+    ['damage_bonus', 'damage_reduction', 'heal'].includes(technique.effect.type) &&
+    Number.isSafeInteger(technique.effect.amount) &&
+    technique.effect.amount >= 0
+  )
+}
+
+function readTechniqueCollection(fighter) {
+  const { techniques, techniqueUnlocks } = fighter
+
+  if (
+    !Array.isArray(techniques) ||
+    !Array.isArray(techniqueUnlocks) ||
+    !techniques.every(isValidTechnique) ||
+    new Set(techniques.map(({ techniqueId }) => techniqueId)).size !== techniques.length ||
+    !techniqueUnlocks.every((unlock) =>
+      unlock &&
+      Number.isSafeInteger(unlock.level) &&
+      unlock.level >= 2 &&
+      typeof unlock.catalogVersion === 'string' &&
+      unlock.catalogVersion.length > 0 &&
+      (unlock.techniqueId === null
+        ? unlock.technique === null
+        : typeof unlock.techniqueId === 'string' &&
+          isValidTechnique(unlock.technique) &&
+          unlock.technique.techniqueId === unlock.techniqueId &&
+          unlock.technique.catalogVersion === unlock.catalogVersion)
+    ) ||
+    new Set(techniqueUnlocks.map(({ level }) => level)).size !== techniqueUnlocks.length ||
+    techniqueUnlocks.some((unlock) =>
+      unlock.techniqueId !== null &&
+      !techniques.some(({ techniqueId, catalogVersion, techniqueVersion }) =>
+        techniqueId === unlock.techniqueId &&
+        catalogVersion === unlock.catalogVersion &&
+        techniqueVersion === unlock.technique.techniqueVersion
+      )
+    )
+  ) {
+    throw new Error('El servidor devolvió una colección de técnicas inesperada. Inténtalo de nuevo.')
+  }
+
+  return { techniques, techniqueUnlocks }
+}
+
+function readManagedFighter(fighter, { includeCollection = false } = {}) {
   const stats = fighter?.baseStats
   const hasValidStats = stats &&
     ['health', 'attack', 'defense', 'speed'].every((key) => Number.isFinite(stats[key]))
@@ -156,8 +214,12 @@ function readManagedFighter(fighter, { includeEquipment = false } = {}) {
     throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
   }
 
-  return includeEquipment
-    ? { ...fighter, ...readEquipmentCollection(fighter) }
+  return includeCollection
+    ? {
+        ...fighter,
+        ...readEquipmentCollection(fighter),
+        ...readTechniqueCollection(fighter),
+      }
     : fighter
 }
 
@@ -220,7 +282,7 @@ export async function fetchActiveFighter() {
     return null
   }
 
-  return readManagedFighter(result?.fighter, { includeEquipment: true })
+  return readManagedFighter(result?.fighter, { includeCollection: true })
 }
 
 export async function selectActiveFighter(fighterId) {
@@ -230,7 +292,7 @@ export async function selectActiveFighter(fighterId) {
     body: JSON.stringify({ fighterId }),
   })
 
-  return readManagedFighter(result?.fighter, { includeEquipment: true })
+  return readManagedFighter(result?.fighter, { includeCollection: true })
 }
 
 export async function fetchPublicProfile(username) {

@@ -1,3 +1,5 @@
+import { describeTechniqueEffect, getTechniqueName } from './techniques.js'
+
 export function formatBattleEvent(event, fighterNames) {
   const fighterName = (fighterId) => fighterNames.get(fighterId) ?? 'luchador desconocido'
 
@@ -18,6 +20,15 @@ export function formatBattleEvent(event, fighterNames) {
         : `${fighterName(event.targetFighterId)} recibe ${event.amount} de daño y conserva ${event.remainingHealth} de vida.`
     case 'fighter_defeated':
       return `${fighterName(event.fighterId)} queda fuera de combate.`
+    case 'technique_activated': {
+      const action = Number.isSafeInteger(event.actionNumber)
+        ? ` durante la acción ${event.actionNumber}`
+        : ''
+      const target = event.targetFighterId
+        ? ` (objetivo: ${fighterName(event.targetFighterId)})`
+        : ''
+      return `${getTechniqueName(event.techniqueId)} se activa para ${fighterName(event.fighterId)}${action}${target}. ${describeTechniqueEffect(event.effect)}`
+    }
     case 'combat_finished':
       return event.winnerFighterId
         ? `${fighterName(event.winnerFighterId)} gana el combate.`

@@ -24,6 +24,17 @@ errorTestApp.get("/unexpected-error", () => {
   );
 });
 
+errorTestApp.get("/duplicate-key", () => {
+  throw Object.assign(
+    new Error('E11000 duplicate key value: { fighterId: "private-id" }'),
+    {
+      code: 11000,
+      keyPattern: { fighterId: 1, dateKey: 1 },
+      keyValue: { fighterId: "private-id", dateKey: "private-date" }
+    }
+  );
+});
+
 errorTestApp.use(errorHandler);
 
 const apiServer = createServer(apiApp);
@@ -202,4 +213,24 @@ test("oculta los detalles de errores internos", async () => {
     statusCode: 500
   });
   assert.doesNotMatch(logEntries[0], /usuario|clave|valor-privado|servidor\/db/);
+});
+
+test("registra los campos de un índice duplicado sin revelar sus valores", async () => {
+  const logEntries = [];
+  const originalConsoleError = console.error;
+  console.error = (entry) => logEntries.push(entry);
+
+  let response;
+  try {
+    response = await fetch(`${errorTestBaseUrl}/duplicate-key`);
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(response.status, 500);
+  assert.equal(logEntries.length, 1);
+  assert.deepEqual(JSON.parse(logEntries[0]).errors, [
+    { name: "Error", code: 11000, duplicateKeyFields: ["fighterId", "dateKey"] }
+  ]);
+  assert.doesNotMatch(logEntries[0], /private-id|private-date/);
 });

@@ -277,6 +277,8 @@ test("la API v2 lista solo rivales elegibles y devuelve cupos del luchador activ
   assert.equal("userId" in publicFighter, false);
   assert.equal("baseStats" in publicFighter, false);
   assert.equal("xp" in publicFighter, false);
+  assert.equal("techniques" in publicFighter, false);
+  assert.equal("techniqueUnlocks" in publicFighter, false);
   assert.equal("email" in publicFighter, false);
   assert.equal("passwordHash" in publicFighter, false);
 
@@ -564,7 +566,7 @@ test("idempotencia, límite diario e historial paginado funcionan en la API", as
   ]);
   assert.ok([firstResponse.status, concurrentResponse.status].every(
     (status) => status === 200 || status === 201
-  ));
+  ), JSON.stringify([firstBody.error, concurrentBody.error]));
   assert.ok(
     [firstResponse.status, concurrentResponse.status].includes(201)
   );

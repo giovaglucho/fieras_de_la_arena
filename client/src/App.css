@@ -2005,7 +2005,12 @@
 .equipment-collection__unlocks,
 .equipment-item,
 .battle-equipment,
-.battle-equipment__participant {
+.battle-equipment__participant,
+.technique-collection,
+.technique-collection__group,
+.technique-collection__unlocks,
+.battle-techniques,
+.battle-techniques__participant {
   display: grid;
   gap: 0.75rem;
 }
@@ -2015,7 +2020,12 @@
 .equipment-collection__unlocks > *,
 .equipment-item > *,
 .battle-equipment > *,
-.battle-equipment__participant > * {
+.battle-equipment__participant > *,
+.technique-collection > *,
+.technique-collection__group > *,
+.technique-collection__unlocks > *,
+.battle-techniques > *,
+.battle-techniques__participant > * {
   margin: 0;
 }
 
@@ -2024,18 +2034,28 @@
 .equipment-collection h3,
 .battle-equipment h2,
 .battle-equipment h3,
-.battle-equipment h4 {
+.battle-equipment h4,
+.technique-collection h2,
+.technique-collection h3,
+.technique-collection h4,
+.battle-techniques h2,
+.battle-techniques h3,
+.battle-techniques h4 {
   color: var(--color-paper);
   font-family: var(--font-display);
 }
 
 .equipment-collection h1,
-.battle-equipment h2 {
+.battle-equipment h2,
+.technique-collection h2,
+.battle-techniques h2 {
   font-size: 1.65rem;
 }
 
 .equipment-collection h2,
-.battle-equipment h3 {
+.battle-equipment h3,
+.technique-collection h3,
+.battle-techniques h3 {
   font-size: 1.2rem;
 }
 
@@ -2056,7 +2076,10 @@
 .equipment-collection__group,
 .equipment-collection__unlocks,
 .equipment-item,
-.battle-equipment__participant {
+.battle-equipment__participant,
+.technique-collection__group,
+.technique-collection__unlocks,
+.battle-techniques__participant {
   padding: 1rem;
   border: 1px solid rgb(245 232 208 / 12%);
   border-radius: 0.55rem;
@@ -2065,7 +2088,9 @@
 
 .equipment-collection__items,
 .equipment-collection__unlocks ol,
-.battle-equipment__slots {
+.battle-equipment__slots,
+.technique-collection__group ul,
+.technique-collection__unlocks ol {
   display: grid;
   gap: 0.65rem;
   margin: 0;
@@ -2078,6 +2103,30 @@
   list-style: decimal;
 }
 
+.technique-collection__unlocks ol {
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+.technique-collection__groups,
+.battle-techniques__participants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.technique-collection__group ul {
+  padding: 0;
+  list-style: none;
+}
+
+.technique-collection__group h4,
+.battle-techniques__participant h4 {
+  color: var(--color-copper-light);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
 .equipment-collection__empty,
 .equipment-collection__legacy,
 .equipment-collection__message,
@@ -2086,9 +2135,24 @@
 .battle-equipment > p,
 .battle-equipment__legacy,
 .battle-equipment__participant > p,
-.battle-equipment__empty-slot p {
+.battle-equipment__empty-slot p,
+.technique-collection > p,
+.technique-collection__group p,
+.technique-collection__unlocks > p,
+.battle-techniques > p,
+.battle-techniques__participant p {
   color: var(--color-muted);
   line-height: 1.5;
+}
+
+.battle-techniques__participant .battle-techniques__activated {
+  color: var(--color-copper-light);
+  font-weight: 700;
+}
+
+.battle-techniques__inactive,
+.battle-techniques__legacy {
+  color: var(--color-muted);
 }
 
 .equipment-collection__legacy,
@@ -2130,6 +2194,13 @@
   background: rgb(33 25 21 / 65%);
 }
 
+.battle-techniques {
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 12%);
+  border-radius: 0.55rem;
+  background: rgb(33 25 21 / 65%);
+}
+
 .battle-equipment__participants {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2155,7 +2226,9 @@
 
 @media (max-width: 640px) {
   .equipment-collection__groups,
-  .battle-equipment__participants {
+  .battle-equipment__participants,
+  .technique-collection__groups,
+  .battle-techniques__participants {
     grid-template-columns: 1fr;
   }
 }

@@ -113,6 +113,42 @@ function isValidBattleEquipment(fighter) {
   )
 }
 
+function isValidTechniqueSnapshot(technique, category) {
+  return (
+    technique &&
+    typeof technique.techniqueId === 'string' &&
+    technique.techniqueId.length > 0 &&
+    typeof technique.techniqueVersion === 'string' &&
+    technique.techniqueVersion.length > 0 &&
+    technique.category === category &&
+    Number.isSafeInteger(technique.minLevel) &&
+    technique.minLevel >= 1 &&
+    technique.effect &&
+    ['damage_bonus', 'damage_reduction', 'heal'].includes(technique.effect.type) &&
+    Number.isSafeInteger(technique.effect.amount) &&
+    technique.effect.amount >= 0
+  )
+}
+
+function isValidBattleTechniques(fighter) {
+  if (fighter.techniques === undefined) {
+    return true
+  }
+
+  const { techniques } = fighter
+  return (
+    techniques &&
+    typeof techniques.version === 'string' &&
+    techniques.version.length > 0 &&
+    typeof techniques.catalogVersion === 'string' &&
+    techniques.catalogVersion.length > 0 &&
+    (techniques.passive === null ||
+      isValidTechniqueSnapshot(techniques.passive, 'passive')) &&
+    (techniques.active === null ||
+      isValidTechniqueSnapshot(techniques.active, 'active'))
+  )
+}
+
 function isValidProgression(progression, fighter) {
   if (!progression || typeof progression !== 'object') {
     return false
@@ -162,6 +198,7 @@ function readBattle(result) {
         !Number.isFinite(fighter.level) ||
         !Number.isFinite(fighter.elo) ||
         !isValidBattleEquipment(fighter) ||
+        !isValidBattleTechniques(fighter) ||
         !Number.isFinite(participantResult?.xpGained) ||
         !Number.isFinite(participantResult?.eloChange) ||
         !Number.isFinite(participantResult?.eloAfter)
@@ -205,6 +242,7 @@ function readBattleSummary(battle) {
       Number.isFinite(fighter.level) &&
       Number.isFinite(fighter.elo) &&
       isValidBattleEquipment(fighter) &&
+      isValidBattleTechniques(fighter) &&
       Number.isFinite(result?.xpGained) &&
       Number.isFinite(result?.eloChange) &&
       Number.isFinite(result?.eloAfter)

@@ -22,8 +22,10 @@ import { fetchReferralOverview } from './api/referrals.js'
 import { useSession } from './context/SessionContext.jsx'
 import BattleAnimation from './components/BattleAnimation.jsx'
 import BattleEquipment from './components/BattleEquipment.jsx'
+import BattleTechniques from './components/BattleTechniques.jsx'
 import BattleProgression, { BattleResultError } from './components/BattleProgression.jsx'
 import { EquipmentCollectionPanel } from './components/EquipmentCollection.jsx'
+import TechniqueCollection from './components/TechniqueCollection.jsx'
 import { getBattleEquipmentSummary } from './equipment.js'
 import { formatBattleEvent } from './battleEvents.js'
 import FighterAppearancePreview from './components/FighterAppearancePreview.jsx'
@@ -1114,7 +1116,7 @@ function DashboardPage() {
           {logoutError && <p className="request-error" role="alert">{logoutError}</p>}
           {fighter && <Link className="button button--primary" to="/arena">Entrar a la Arena</Link>}
           {fighter && <Link className="button button--secondary" to="/history">Ver historial de combates</Link>}
-          {fighter && <Link className="button button--secondary" to="/collection">Ver colección de equipo</Link>}
+          {fighter && <Link className="button button--secondary" to="/collection">Ver colecciones del luchador</Link>}
           <Link className="button button--secondary" to="/students">Ver alumnos</Link>
           <button
             className="button button--secondary"
@@ -1672,7 +1674,7 @@ function BattleHistoryPage() {
         <div className="battle-history__navigation">
           <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
           <Link className="button button--secondary" to="/arena">Ir a la Arena</Link>
-          <Link className="button button--secondary" to="/collection">Ver colección de equipo</Link>
+          <Link className="button button--secondary" to="/collection">Ver colecciones del luchador</Link>
         </div>
         <p className="eyebrow">Tus combates guardados</p>
         <h1 id="battle-history-title">Historial de combates</h1>
@@ -1816,7 +1818,7 @@ function EquipmentCollectionPage() {
   return (
     <main className="session-layout">
       <Brand />
-      <section className="session-card equipment-collection-card" aria-label="Colección de equipo">
+      <section className="session-card equipment-collection-card" aria-label="Colecciones del luchador">
         <nav className="equipment-collection__navigation" aria-label="Navegación de colección">
           <Link className="button button--secondary" to="/dashboard">Volver al panel</Link>
           <Link className="button button--secondary" to="/history">Ver historial de combates</Link>
@@ -1827,6 +1829,7 @@ function EquipmentCollectionPage() {
           error={error}
           onRetry={() => setReloadVersion((version) => version + 1)}
         />
+        {status === 'ready' && <TechniqueCollection fighter={fighter} />}
       </section>
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
@@ -1917,7 +1920,7 @@ function BattleResultPage() {
         <article className="session-card battle-result-card" aria-labelledby="battle-result-title">
           <Link className="button button--secondary" to="/arena">Volver a la Arena</Link>
           <Link className="button button--secondary" to="/history">Ver historial de combates</Link>
-          <Link className="button button--secondary" to="/collection">Ver colección de equipo</Link>
+          <Link className="button button--secondary" to="/collection">Ver colecciones del luchador</Link>
           <p className="eyebrow">
             {battle.battleType === 'training' ? 'Combate de entrenamiento' : 'Combate PvP'}
           </p>
@@ -1955,6 +1958,7 @@ function BattleResultPage() {
           </dl>
 
           <BattleEquipment participants={battle.participants} />
+          <BattleTechniques participants={battle.participants} events={battle.events} />
 
           <BattleProgression
             progression={ownParticipant.result.progression}

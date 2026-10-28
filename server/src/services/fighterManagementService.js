@@ -10,11 +10,12 @@ import {
 } from "../game-engine/fighterCreation.js";
 import { createFighterGrowthState } from "../game-engine/fighterGrowth.js";
 import { getEquipmentById } from "../game-engine/equipmentCatalog.js";
+import { getTechniqueById } from "../game-engine/techniqueCatalog.js";
 
 const FIGHTER_FIELDS =
   "_id name level xp elo baseStats appearance wins losses draws status visibility createdAt";
-const FIGHTER_EQUIPMENT_FIELDS =
-  `${FIGHTER_FIELDS} equipment equipmentUnlocks`;
+const FIGHTER_COLLECTION_FIELDS =
+  `${FIGHTER_FIELDS} equipment equipmentUnlocks techniques techniqueUnlocks`;
 
 function serializeEquipmentItem({ itemId, catalogVersion }) {
   const item = getEquipmentById(itemId, catalogVersion);
@@ -28,10 +29,30 @@ function serializeEquipmentItem({ itemId, catalogVersion }) {
   };
 }
 
-function serializeManagedFighter(
+function serializeTechnique({ techniqueId, catalogVersion, techniqueVersion }) {
+  const technique = getTechniqueById(
+    techniqueId,
+    catalogVersion,
+    techniqueVersion
+  );
+  return {
+    techniqueId: technique.id,
+    catalogVersion,
+    techniqueVersion: technique.version,
+    name: technique.name,
+    category: technique.category,
+    minLevel: technique.minLevel,
+    effect: {
+      type: technique.effectType,
+      amount: technique.effectAmount
+    }
+  };
+}
+
+export function serializeManagedFighter(
   fighter,
   activeFighterId,
-  includeEquipment = false
+  includeCollection = false
 ) {
   const baseStats = fighter.baseStats?.toObject
     ? fighter.baseStats.toObject()
@@ -54,7 +75,7 @@ function serializeManagedFighter(
       fighter._id.equals(activeFighterId) &&
       (fighter.status === undefined || fighter.status === "active"),
     createdAt: fighter.createdAt,
-    ...(includeEquipment
+    ...(includeCollection
       ? {
           equipment: (fighter.equipment ?? []).map(serializeEquipmentItem),
           equipmentUnlocks: (fighter.equipmentUnlocks ?? []).map((unlock) => ({
@@ -65,7 +86,30 @@ function serializeManagedFighter(
               unlock.itemId === null || unlock.itemId === undefined
                 ? null
                 : serializeEquipmentItem(unlock)
-          }))
+          })),
+          techniques: (fighter.techniques ?? []).map(serializeTechnique),
+          techniqueUnlocks: (fighter.techniqueUnlocks ?? []).map((unlock) => {
+            const techniqueId = unlock.techniqueId ?? null
+            const ownedTechnique = techniqueId === null
+              ? null
+              : (fighter.techniques ?? []).find((technique) =>
+                  technique.techniqueId === techniqueId &&
+                  technique.catalogVersion === unlock.catalogVersion
+                )
+
+            if (techniqueId !== null && !ownedTechnique) {
+              throw new Error("El desbloqueo de técnica no coincide con la colección del luchador.");
+            }
+
+            return {
+              level: unlock.level,
+              techniqueId,
+              catalogVersion: unlock.catalogVersion,
+              technique: ownedTechnique
+                ? serializeTechnique(ownedTechnique)
+                : null
+            };
+          })
         }
       : {})
   };
@@ -148,7 +192,7 @@ export async function getActiveFighter(userId) {
       userId,
       $or: [{ status: "active" }, { status: { $exists: false } }]
     })
-      .select(FIGHTER_EQUIPMENT_FIELDS)
+      .select(FIGHTER_COLLECTION_FIELDS)
       .lean();
     return {
       fighter: fighter
@@ -158,7 +202,7 @@ export async function getActiveFighter(userId) {
   }
 
   const fighters = await Fighter.find({ userId })
-    .select(FIGHTER_EQUIPMENT_FIELDS)
+    .select(FIGHTER_COLLECTION_FIELDS)
     .limit(2)
     .lean();
   const legacyFighter =
@@ -184,7 +228,7 @@ export async function selectActiveFighter(userId, fighterId) {
         userId,
         $or: [{ status: "active" }, { status: { $exists: false } }]
       })
-        .select(FIGHTER_EQUIPMENT_FIELDS)
+        .select(FIGHTER_COLLECTION_FIELDS)
         .session(session)
         .lean();
       if (!selectedFighter) {

@@ -18,6 +18,9 @@ function getSafeErrorDetails(error) {
     ) {
       detail.code = code;
     }
+    if (code === 11000 && current.keyPattern && typeof current.keyPattern === "object") {
+      detail.duplicateKeyFields = Object.keys(current.keyPattern);
+    }
 
     details.push(detail);
     current = current.cause;
