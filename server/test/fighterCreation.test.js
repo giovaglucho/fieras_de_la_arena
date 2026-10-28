@@ -8,6 +8,7 @@ import {
   NEUTRAL_FIGHTER_APPEARANCE,
   validateFighterAppearance
 } from "../src/game-engine/fighterCreation.js";
+import { TECHNIQUE_CATALOG } from "../src/game-engine/techniqueCatalog.js";
 import { validateManagedFighterCreation } from "../src/validators/fighterManagement.js";
 
 const APPROVED_PROFILES = [
@@ -37,6 +38,16 @@ test("genera y conserva perfiles iniciales exclusivamente aprobados", () => {
     assert.deepEqual(created.baseStats, approved.baseStats);
     assert.equal(created.creation.version, FIGHTER_CREATION_VERSION);
     assert.deepEqual(created.creation.seed, seed);
+    assert.equal(created.techniques.length, 1);
+    assert.equal(
+      created.creation.initialTechniqueId,
+      created.techniques[0].techniqueId
+    );
+    assert.ok(
+      TECHNIQUE_CATALOG.some(
+        ({ id, initial }) => id === created.techniques[0].techniqueId && initial
+      )
+    );
   }
 });
 

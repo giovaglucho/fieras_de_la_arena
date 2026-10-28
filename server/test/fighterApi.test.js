@@ -307,6 +307,17 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   assert.equal(storedFighter.creation.version, "fighter-creation-v1");
   assert.equal(storedFighter.creation.seed.length, 32);
   assert.equal(storedFighter.creation.equipmentCatalogVersion, "equipment-v1");
+  assert.equal(storedFighter.creation.techniqueCatalogVersion, "fighter-techniques-v1");
+  assert.equal(storedFighter.techniques.length, 1);
+  assert.equal(
+    storedFighter.techniques[0].techniqueId,
+    storedFighter.creation.initialTechniqueId
+  );
+  assert.equal(
+    storedFighter.techniques[0].catalogVersion,
+    "fighter-techniques-v1"
+  );
+  assert.deepEqual(storedFighter.techniqueUnlocks, []);
   assert.equal(storedFighter.equipment.length, 1);
   assert.equal(
     storedFighter.equipment[0].itemId,
@@ -317,6 +328,7 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   const activeFighterResponse = await getActiveFighter(cookie);
   assert.equal(activeFighterResponse.status, 200);
   const activeFighter = (await activeFighterResponse.json()).fighter;
+  assert.equal(Object.hasOwn(activeFighter, "techniques"), false);
   const initialWeapon = getEquipmentById(
     storedFighter.equipment[0].itemId,
     storedFighter.equipment[0].catalogVersion

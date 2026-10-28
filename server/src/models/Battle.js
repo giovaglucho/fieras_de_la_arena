@@ -43,6 +43,39 @@ const loadoutSnapshotSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const techniqueEffectSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["damage_bonus", "damage_reduction", "heal"],
+      required: true
+    },
+    amount: { type: Number, required: true, min: 0 }
+  },
+  { _id: false }
+);
+
+const techniqueSnapshotSchema = new mongoose.Schema(
+  {
+    techniqueId: { type: String, required: true },
+    techniqueVersion: { type: String, required: true },
+    category: { type: String, enum: ["passive", "active"], required: true },
+    minLevel: { type: Number, required: true, min: 1 },
+    effect: { type: techniqueEffectSchema, required: true }
+  },
+  { _id: false }
+);
+
+const techniqueLoadoutSnapshotSchema = new mongoose.Schema(
+  {
+    version: { type: String, required: true },
+    catalogVersion: { type: String, required: true },
+    passive: { type: techniqueSnapshotSchema, default: null },
+    active: { type: techniqueSnapshotSchema, default: null }
+  },
+  { _id: false }
+);
+
 const fighterSnapshotSchema = new mongoose.Schema(
   {
     fighterId: {
@@ -55,6 +88,7 @@ const fighterSnapshotSchema = new mongoose.Schema(
     elo: { type: Number, required: true, min: 0 },
     stats: { type: fighterStatsSchema, required: true },
     equipment: { type: loadoutSnapshotSchema, default: undefined },
+    techniques: { type: techniqueLoadoutSnapshotSchema, default: undefined },
     initiative: { type: Number, min: 1 }
   },
   { _id: false }
@@ -147,6 +181,8 @@ const battleSchema = new mongoose.Schema(
     snapshotVersion: { type: String },
     equipmentCatalogVersion: { type: String },
     loadoutVersion: { type: String },
+    techniqueCatalogVersion: { type: String },
+    techniqueRulesVersion: { type: String },
     // Keep version-specific event payloads intact for replay and historical display.
     events: {
       type: [mongoose.Schema.Types.Mixed],

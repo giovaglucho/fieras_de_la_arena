@@ -245,6 +245,65 @@ test("guarda en el snapshot solo la carga sorteada de la colección de cada luch
   );
 });
 
+test("persiste técnicas versionadas en snapshots y desbloqueos de progresión", async () => {
+  const ownedTechnique = (techniqueId) => ({
+    techniqueId,
+    catalogVersion: "fighter-techniques-v1",
+    techniqueVersion: "technique-v1"
+  });
+  await createFighters([
+    {
+      xp: 95,
+      techniques: [ownedTechnique("tech-ojo-caliza")],
+      techniqueUnlocks: []
+    },
+    {
+      xp: 95,
+      techniques: [ownedTechnique("tech-ritmo-marea")],
+      techniqueUnlocks: []
+    }
+  ]);
+
+  const request = combatRequest("technique-snapshot");
+  const battle = await resolveCombat(request);
+  const retriedBattle = await resolveCombat(request);
+  const fighters = await Fighter.find({ _id: { $in: fighterIds } });
+
+  assert.equal(retriedBattle._id.toString(), battle._id.toString());
+  assert.deepEqual(retriedBattle.events, battle.events);
+  assert.equal(battle.snapshotVersion, "battle-snapshot-v3");
+  assert.equal(battle.techniqueCatalogVersion, "fighter-techniques-v1");
+  assert.equal(battle.techniqueRulesVersion, "fighter-technique-rules-v1");
+  assert.ok(
+    battle.participants.every(
+      ({ snapshot }) =>
+        snapshot.techniques.version === "fighter-technique-loadout-v1" &&
+        snapshot.techniques.catalogVersion === "fighter-techniques-v1"
+    )
+  );
+  assert.ok(
+    fighters.every(
+      (fighter) =>
+        fighter.techniqueUnlocks.length === 1 &&
+        fighter.techniqueUnlocks[0].level === 2 &&
+        fighter.techniqueUnlocks[0].version ===
+          "fighter-technique-unlock-v1" &&
+        Buffer.isBuffer(fighter.techniqueUnlocks[0].seed) &&
+        fighter.techniqueUnlocks[0].seed.length === 32
+    )
+  );
+  for (const fighter of fighters) {
+    const unlock = fighter.techniqueUnlocks[0];
+    if (unlock.techniqueId) {
+      assert.ok(
+        fighter.techniques.some(
+          ({ techniqueId }) => techniqueId === unlock.techniqueId
+        )
+      );
+    }
+  }
+});
+
 test("serializa solicitudes concurrentes con la misma clave idempotente", async () => {
   await createFighters([{ xp: 95 }, { xp: 95 }]);
   const request = combatRequest("concurrent");

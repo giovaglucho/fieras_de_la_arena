@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 import growthEventSchema from "./growthEventSchema.js";
+import {
+  TECHNIQUE_CATALOG_VERSION,
+  TECHNIQUE_UNLOCK_VERSION
+} from "../game-engine/techniqueCatalog.js";
 
 const baseStatsSchema = new mongoose.Schema(
   {
@@ -77,6 +81,13 @@ const creationSchema = new mongoose.Schema(
     equipmentCatalogVersion: {
       type: String,
       enum: ["equipment-v1"]
+    },
+    initialTechniqueId: {
+      type: String
+    },
+    techniqueCatalogVersion: {
+      type: String,
+      enum: [TECHNIQUE_CATALOG_VERSION]
     }
   },
   { _id: false }
@@ -115,6 +126,46 @@ const equipmentUnlockSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: ["equipment-v1"]
+    },
+    requestId: { type: String, required: true, minlength: 1, maxlength: 128 }
+  },
+  { _id: false }
+);
+
+const techniqueItemSchema = new mongoose.Schema(
+  {
+    techniqueId: { type: String, required: true },
+    catalogVersion: {
+      type: String,
+      required: true,
+      enum: [TECHNIQUE_CATALOG_VERSION]
+    },
+    techniqueVersion: { type: String, required: true }
+  },
+  { _id: false }
+);
+
+const techniqueUnlockSchema = new mongoose.Schema(
+  {
+    level: { type: Number, required: true, min: 2 },
+    seed: {
+      type: Buffer,
+      required: true,
+      validate: {
+        validator: (seed) => Buffer.isBuffer(seed) && seed.length === 32,
+        message: "La semilla de desbloqueo debe contener exactamente 32 bytes."
+      }
+    },
+    version: {
+      type: String,
+      required: true,
+      enum: [TECHNIQUE_UNLOCK_VERSION]
+    },
+    techniqueId: { type: String, default: null },
+    catalogVersion: {
+      type: String,
+      required: true,
+      enum: [TECHNIQUE_CATALOG_VERSION]
     },
     requestId: { type: String, required: true, minlength: 1, maxlength: 128 }
   },
@@ -203,6 +254,29 @@ const fighterSchema = new mongoose.Schema(
           return new Set(unlocks.map(({ level }) => level)).size === unlocks.length;
         },
         message: "Un nivel no puede producir más de un desbloqueo de equipo."
+      }
+    },
+    techniques: {
+      type: [techniqueItemSchema],
+      default: undefined,
+      validate: {
+        validator(techniques) {
+          return (
+            new Set(techniques.map(({ techniqueId }) => techniqueId)).size ===
+            techniques.length
+          );
+        },
+        message: "La colección de técnicas no puede contener duplicados."
+      }
+    },
+    techniqueUnlocks: {
+      type: [techniqueUnlockSchema],
+      default: undefined,
+      validate: {
+        validator(unlocks) {
+          return new Set(unlocks.map(({ level }) => level)).size === unlocks.length;
+        },
+        message: "Un nivel no puede producir más de un desbloqueo de técnica."
       }
     },
     wins: {

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createInitialEquipment } from "./equipmentCatalog.js";
+import { createInitialTechnique } from "./techniqueCatalog.js";
 
 export const FIGHTER_CREATION_VERSION = "fighter-creation-v1";
 
@@ -114,6 +115,7 @@ export function createInitialFighterData(seed = randomBytes(32)) {
     drawUniformIndex(seed, "fighter-profile", INITIAL_PROFILES.length)
   ];
   const initialEquipment = createInitialEquipment(seed);
+  const initialTechnique = createInitialTechnique(seed);
 
   return {
     baseStats: { ...profile.baseStats },
@@ -122,9 +124,13 @@ export function createInitialFighterData(seed = randomBytes(32)) {
       seed: Buffer.from(seed),
       profile: profile.id,
       initialWeaponId: initialEquipment.initialWeaponId,
-      equipmentCatalogVersion: initialEquipment.equipmentCatalogVersion
+      equipmentCatalogVersion: initialEquipment.equipmentCatalogVersion,
+      initialTechniqueId: initialTechnique.initialTechniqueId,
+      techniqueCatalogVersion: initialTechnique.techniqueCatalogVersion
     },
     equipment: initialEquipment.equipment,
-    equipmentUnlocks: []
+    equipmentUnlocks: [],
+    techniques: initialTechnique.techniques,
+    techniqueUnlocks: initialTechnique.techniqueUnlocks
   };
 }

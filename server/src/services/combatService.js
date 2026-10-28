@@ -13,6 +13,12 @@ import {
   unlockEquipmentForLevels
 } from "../game-engine/equipmentCatalog.js";
 import {
+  TECHNIQUE_CATALOG_VERSION,
+  TECHNIQUE_RULES_VERSION,
+  selectTechniquesForCombat,
+  unlockTechniquesForLevels
+} from "../game-engine/techniqueCatalog.js";
+import {
   calculateEloChanges,
   calculateXpReward
 } from "../game-engine/progression.js";
@@ -186,6 +192,20 @@ function createParticipantResult(
           inventory: fighter.equipment ?? [],
           unlocks: fighter.equipmentUnlocks ?? []
         };
+  const techniqueProgression =
+    growth.levelsGained > 0
+      ? unlockTechniquesForLevels({
+          fromLevel: fighter.level,
+          toLevel: growth.level,
+          inventory: fighter.techniques ?? [],
+          existingUnlocks: fighter.techniqueUnlocks ?? [],
+          requestId,
+          seedFactory: () => randomBytes(32)
+        })
+      : {
+          inventory: fighter.techniques ?? [],
+          unlocks: fighter.techniqueUnlocks ?? []
+        };
   const eloAfter = Math.max(0, fighter.elo + eloChange);
 
   return {
@@ -199,6 +219,8 @@ function createParticipantResult(
     progression: growth.progression,
     equipment: equipmentProgression.inventory,
     equipmentUnlocks: equipmentProgression.unlocks,
+    techniques: techniqueProgression.inventory,
+    techniqueUnlocks: techniqueProgression.unlocks,
     progressionSnapshot: {
       levelBefore: fighter.level,
       levelAfter: growth.level,
@@ -217,7 +239,7 @@ function createParticipantResult(
   };
 }
 
-function createSnapshot(fighter, seed) {
+function createSnapshot(fighter, seed, includeTechniques) {
   const stats = calculateFighterStats(
     fighter.level,
     typeof fighter.baseStats.toObject === "function"
@@ -230,7 +252,7 @@ function createSnapshot(fighter, seed) {
     seed: Buffer.from(seed, "utf8"),
     inventory: fighter.equipment ?? []
   });
-  return {
+  const snapshot = {
     fighterId: fighter._id.toString(),
     name: fighter.name,
     level: fighter.level,
@@ -239,6 +261,15 @@ function createSnapshot(fighter, seed) {
     equipment,
     initiative: getEffectiveInitiative(stats, equipment)
   };
+  if (includeTechniques) {
+    snapshot.techniques = selectTechniquesForCombat({
+      fighterId: snapshot.fighterId,
+      level: fighter.level,
+      seed,
+      inventory: fighter.techniques ?? []
+    });
+  }
+  return snapshot;
 }
 
 function createCounterUpdate(outcome) {
@@ -262,6 +293,8 @@ async function applyRewards(fighters, outcomes, results, session) {
       fields.progression = result.progression;
       fields.equipment = result.equipment;
       fields.equipmentUnlocks = result.equipmentUnlocks;
+      fields.techniques = result.techniques;
+      fields.techniqueUnlocks = result.techniqueUnlocks;
     }
 
     return {
@@ -319,7 +352,12 @@ async function resolveCombatInSession(request, session, challenge) {
     : requestedIds.map((fighterId) => fighterById.get(fighterId));
   const battleId = new mongoose.Types.ObjectId();
   const seed = randomUUID();
-  const snapshots = orderedFighters.map((fighter) => createSnapshot(fighter, seed));
+  const includeTechniques = orderedFighters.some((fighter) =>
+    Array.isArray(fighter.techniques)
+  );
+  const snapshots = orderedFighters.map((fighter) =>
+    createSnapshot(fighter, seed, includeTechniques)
+  );
   const combatResult = simulateCombat({ fighters: snapshots, seed });
   const winnerFighterId = combatResult.summary.winnerFighterId;
   const outcomes = orderedFighters.map((fighter) =>
@@ -371,9 +409,17 @@ async function resolveCombatInSession(request, session, challenge) {
     actionCount: combatResult.summary.actionCount,
     seed,
     engineVersion: combatResult.engineVersion,
-    snapshotVersion: "battle-snapshot-v2",
+    snapshotVersion: includeTechniques
+      ? "battle-snapshot-v3"
+      : "battle-snapshot-v2",
     equipmentCatalogVersion: EQUIPMENT_CATALOG_VERSION,
     loadoutVersion: EQUIPMENT_LOADOUT_VERSION,
+    ...(includeTechniques
+      ? {
+          techniqueCatalogVersion: TECHNIQUE_CATALOG_VERSION,
+          techniqueRulesVersion: TECHNIQUE_RULES_VERSION
+        }
+      : {}),
     events: combatResult.events
   });
   await completedBattle.save({ session });
