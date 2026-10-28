@@ -6,6 +6,7 @@ import Battle from "../src/models/Battle.js";
 import Fighter from "../src/models/Fighter.js";
 import { TRAINING_OPPONENT } from "../src/config/trainingOpponent.js";
 import { CombatServiceError, resolveCombat } from "../src/services/combatService.js";
+import { simulateCombat } from "../src/game-engine/simulateCombat.js";
 
 const runId = randomUUID().replaceAll("-", "");
 let fighterIds;
@@ -144,7 +145,13 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
         fighter.progression.growthEvents.length === 1 &&
       fighter.progression.growthEvents[0].requestId === request.requestId &&
       fighter.equipmentUnlocks.length === 1 &&
-      fighter.equipmentUnlocks[0].level === 2
+        fighter.equipmentUnlocks[0].level === 2 &&
+        fighter.petUnlocks.length === 1 &&
+        fighter.petUnlocks[0].level === 2 &&
+        fighter.petUnlocks[0].version === "fighter-pet-unlock-v1" &&
+        fighter.petUnlocks[0].requestId === request.requestId &&
+        Buffer.isBuffer(fighter.petUnlocks[0].seed) &&
+        fighter.petUnlocks[0].seed.length === 32
     ),
     true
   );
@@ -191,6 +198,25 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
         stat: event.stat,
         amount: event.amount,
         requestId: event.requestId
+      }))
+    )
+  );
+  assert.deepEqual(
+    (await Fighter.find({ _id: { $in: fighterIds } }).sort({ _id: 1 })).map(
+      (fighter) =>
+        fighter.petUnlocks.map((unlock) => ({
+          level: unlock.level,
+          seed: unlock.seed.toString("hex"),
+          speciesId: unlock.speciesId,
+          requestId: unlock.requestId
+        }))
+    ),
+    fighters.map((fighter) =>
+      fighter.petUnlocks.map((unlock) => ({
+        level: unlock.level,
+        seed: unlock.seed.toString("hex"),
+        speciesId: unlock.speciesId,
+        requestId: unlock.requestId
       }))
     )
   );
@@ -272,13 +298,13 @@ test("persiste técnicas versionadas en snapshots y desbloqueos de progresión",
   assert.equal(retriedBattle._id.toString(), battle._id.toString());
   assert.deepEqual(retriedBattle.events, battle.events);
   assert.equal(battle.snapshotVersion, "battle-snapshot-v3");
-  assert.equal(battle.techniqueCatalogVersion, "fighter-techniques-v1");
-  assert.equal(battle.techniqueRulesVersion, "fighter-technique-rules-v1");
+  assert.equal(battle.techniqueCatalogVersion, "fighter-techniques-v2");
+  assert.equal(battle.techniqueRulesVersion, "fighter-technique-rules-v2");
   assert.ok(
     battle.participants.every(
       ({ snapshot }) =>
-        snapshot.techniques.version === "fighter-technique-loadout-v1" &&
-        snapshot.techniques.catalogVersion === "fighter-techniques-v1"
+        snapshot.techniques.version === "fighter-technique-loadout-v2" &&
+        snapshot.techniques.catalogVersion === "fighter-techniques-v2"
     )
   );
   assert.ok(
@@ -287,7 +313,7 @@ test("persiste técnicas versionadas en snapshots y desbloqueos de progresión",
         fighter.techniqueUnlocks.length === 1 &&
         fighter.techniqueUnlocks[0].level === 2 &&
         fighter.techniqueUnlocks[0].version ===
-          "fighter-technique-unlock-v1" &&
+          "fighter-technique-unlock-v2" &&
         Buffer.isBuffer(fighter.techniqueUnlocks[0].seed) &&
         fighter.techniqueUnlocks[0].seed.length === 32
     )
@@ -302,6 +328,73 @@ test("persiste técnicas versionadas en snapshots y desbloqueos de progresión",
       );
     }
   }
+});
+
+test("persiste mascotas propias en snapshots completos y permite reproducir el combate", async () => {
+  const pet = {
+    petId: "a".repeat(24),
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    version: "pet-v1"
+  };
+  await createFighters([
+    {
+      pets: [pet],
+      petUnlocks: [
+        {
+          level: 1,
+          seed: Buffer.alloc(32, 7),
+          version: "fighter-pet-initial-v1",
+          petId: pet.petId,
+          speciesId: pet.speciesId,
+          catalogVersion: pet.catalogVersion,
+          requestId: "fighter-creation-v1"
+        }
+      ]
+    },
+    {}
+  ]);
+
+  const request = combatRequest("pet-replay");
+  const battle = await resolveCombat(request);
+  const repeatedBattle = await resolveCombat(request);
+  const replayInput = {
+    seed: battle.seed,
+    fighters: battle.participants.map(({ snapshot }) => {
+      const plain = snapshot.toObject();
+      return {
+        ...plain,
+        fighterId: plain.fighterId.toString(),
+        pets: plain.pets.map((snapshotPet) => ({
+          ...snapshotPet,
+          ownerFighterId: snapshotPet.ownerFighterId.toString()
+        }))
+      };
+    })
+  };
+  const replay = simulateCombat(replayInput);
+  const ownerSnapshot = battle.participants.find(({ snapshot }) =>
+    snapshot.fighterId.equals(fighterIds[0])
+  ).snapshot;
+  const owner = await Fighter.findById(fighterIds[0]);
+
+  assert.equal(repeatedBattle._id.toString(), battle._id.toString());
+  assert.equal(battle.snapshotVersion, "battle-snapshot-v4");
+  assert.equal(battle.petCatalogVersion, "fighter-pets-v1");
+  assert.equal(battle.petSnapshotVersion, "fighter-pet-snapshot-v1");
+  assert.equal(battle.petRulesVersion, "fighter-pet-rules-v1");
+  assert.equal(battle.engineVersion, "1.3.0");
+  assert.equal(ownerSnapshot.stats.health, 90);
+  assert.equal(ownerSnapshot.pets.length, 1);
+  assert.equal(
+    ownerSnapshot.pets[0].ownerFighterId.toString(),
+    fighterIds[0].toString()
+  );
+  assert.ok(battle.participants.every(({ snapshot }) => Array.isArray(snapshot.pets)));
+  assert.deepEqual(replay.events, battle.events);
+  assert.equal(replay.summary.actionCount, battle.actionCount);
+  assert.equal(owner.pets.length, 1);
+  assert.equal(owner.petUnlocks.length, 1);
 });
 
 test("serializa solicitudes concurrentes con la misma clave idempotente", async () => {

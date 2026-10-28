@@ -56,6 +56,9 @@ function serializeTechniqueSnapshot(technique) {
 
   return {
     techniqueId: technique.techniqueId,
+    ...(technique.catalogVersion
+      ? { catalogVersion: technique.catalogVersion }
+      : {}),
     techniqueVersion: technique.techniqueVersion,
     category: technique.category,
     minLevel: technique.minLevel,

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createInitialEquipment } from "./equipmentCatalog.js";
 import { createInitialTechnique } from "./techniqueCatalog.js";
+import { createInitialPetData } from "./petCatalog.js";
 
 export const FIGHTER_CREATION_VERSION = "fighter-creation-v1";
 
@@ -106,7 +107,10 @@ export function getFighterAppearance(appearance) {
   );
 }
 
-export function createInitialFighterData(seed = randomBytes(32)) {
+export function createInitialFighterData(
+  seed = randomBytes(32),
+  requestId = "fighter-creation-v1"
+) {
   if (!Buffer.isBuffer(seed) || seed.length !== 32) {
     throw new TypeError("La semilla de creación debe contener exactamente 32 bytes.");
   }
@@ -116,6 +120,7 @@ export function createInitialFighterData(seed = randomBytes(32)) {
   ];
   const initialEquipment = createInitialEquipment(seed);
   const initialTechnique = createInitialTechnique(seed);
+  const initialPets = createInitialPetData(seed, requestId);
 
   return {
     baseStats: { ...profile.baseStats },
@@ -131,6 +136,8 @@ export function createInitialFighterData(seed = randomBytes(32)) {
     equipment: initialEquipment.equipment,
     equipmentUnlocks: [],
     techniques: initialTechnique.techniques,
-    techniqueUnlocks: initialTechnique.techniqueUnlocks
+    techniqueUnlocks: initialTechnique.techniqueUnlocks,
+    pets: initialPets.pets,
+    petUnlocks: initialPets.petUnlocks
   };
 }

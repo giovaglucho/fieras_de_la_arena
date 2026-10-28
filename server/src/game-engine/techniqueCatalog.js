@@ -1,15 +1,35 @@
 import { createHash, randomBytes } from "node:crypto";
 
-export const TECHNIQUE_CATALOG_VERSION = "fighter-techniques-v1";
-export const TECHNIQUE_UNLOCK_VERSION = "fighter-technique-unlock-v1";
-export const TECHNIQUE_LOADOUT_VERSION = "fighter-technique-loadout-v1";
-export const TECHNIQUE_RULES_VERSION = "fighter-technique-rules-v1";
+export const LEGACY_TECHNIQUE_CATALOG_VERSION = "fighter-techniques-v1";
+export const TECHNIQUE_CATALOG_VERSION = "fighter-techniques-v2";
+export const TECHNIQUE_CATALOG_VERSIONS = Object.freeze([
+  LEGACY_TECHNIQUE_CATALOG_VERSION,
+  TECHNIQUE_CATALOG_VERSION
+]);
+export const LEGACY_TECHNIQUE_UNLOCK_VERSION = "fighter-technique-unlock-v1";
+export const TECHNIQUE_UNLOCK_VERSION = "fighter-technique-unlock-v2";
+export const TECHNIQUE_UNLOCK_VERSIONS = Object.freeze([
+  LEGACY_TECHNIQUE_UNLOCK_VERSION,
+  TECHNIQUE_UNLOCK_VERSION
+]);
+export const TECHNIQUE_LOADOUT_VERSION = "fighter-technique-loadout-v2";
+export const TECHNIQUE_LOADOUT_VERSIONS = Object.freeze([
+  "fighter-technique-loadout-v1",
+  TECHNIQUE_LOADOUT_VERSION
+]);
+export const TECHNIQUE_RULES_VERSION = "fighter-technique-rules-v2";
 export const TECHNIQUE_UNLOCK_CHANCE_PERCENT = 20;
+export const ANTI_PET_UNLOCK_SHARE_PERCENT = 15;
+export const ANTI_PET_UNLOCK_WEIGHTS = Object.freeze({
+  "tech-grito-condenados": 5,
+  "tech-red": 3,
+  "tech-hipnosis": 1
+});
 
 const UINT256_RANGE = 1n << 256n;
 const MAX_UINT32 = 0xffffffff;
 
-export const TECHNIQUE_CATALOG = Object.freeze([
+const LEGACY_TECHNIQUE_CATALOG = Object.freeze([
   Object.freeze({
     id: "tech-manto-polvo",
     name: "Manto de Polvo",
@@ -92,9 +112,51 @@ export const TECHNIQUE_CATALOG = Object.freeze([
   })
 ]);
 
+const ANTI_PET_TECHNIQUES = Object.freeze([
+  Object.freeze({
+    id: "tech-grito-condenados",
+    name: "Grito de los Condenados",
+    category: "active",
+    minLevel: 4,
+    initial: false,
+    version: "technique-pet-v1",
+    effectType: "pet_fear",
+    effectAmount: 1
+  }),
+  Object.freeze({
+    id: "tech-red",
+    name: "Red",
+    category: "active",
+    minLevel: 6,
+    initial: false,
+    version: "technique-pet-v1",
+    effectType: "pet_trap",
+    effectAmount: 1
+  }),
+  Object.freeze({
+    id: "tech-hipnosis",
+    name: "Hipnosis",
+    category: "active",
+    minLevel: 8,
+    initial: false,
+    version: "technique-pet-v1",
+    effectType: "pet_hypnosis",
+    effectAmount: 1
+  })
+]);
+
+export const TECHNIQUE_CATALOG = Object.freeze([
+  ...LEGACY_TECHNIQUE_CATALOG,
+  ...ANTI_PET_TECHNIQUES
+]);
+
+const LEGACY_CATALOG_BY_ID = new Map(
+  LEGACY_TECHNIQUE_CATALOG.map((technique) => [technique.id, technique])
+);
 const CATALOG_BY_ID = new Map(
   TECHNIQUE_CATALOG.map((technique) => [technique.id, technique])
 );
+const ANTI_PET_TECHNIQUE_IDS = new Set(Object.keys(ANTI_PET_UNLOCK_WEIGHTS));
 
 function drawUniformValue(seed, domain, divisor, startCounter = 0) {
   const acceptanceLimit = (UINT256_RANGE / divisor) * divisor;
@@ -145,7 +207,7 @@ function copyTechniqueInventory(inventory) {
     seen.add(technique.id);
     return {
       techniqueId: technique.id,
-      catalogVersion: TECHNIQUE_CATALOG_VERSION,
+      catalogVersion: entry.catalogVersion,
       techniqueVersion: technique.version
     };
   });
@@ -156,10 +218,13 @@ export function getTechniqueById(
   catalogVersion,
   techniqueVersion
 ) {
-  if (catalogVersion !== TECHNIQUE_CATALOG_VERSION) {
+  if (!TECHNIQUE_CATALOG_VERSIONS.includes(catalogVersion)) {
     throw new RangeError("La versión del catálogo de técnicas no está disponible.");
   }
-  const technique = CATALOG_BY_ID.get(techniqueId);
+  const technique =
+    catalogVersion === LEGACY_TECHNIQUE_CATALOG_VERSION
+      ? LEGACY_CATALOG_BY_ID.get(techniqueId)
+      : CATALOG_BY_ID.get(techniqueId);
   if (!technique || technique.version !== techniqueVersion) {
     throw new RangeError("La técnica no existe en la versión indicada.");
   }
@@ -245,13 +310,67 @@ export function unlockTechniquesForLevels({
       Number(chance.value) < TECHNIQUE_UNLOCK_CHANCE_PERCENT &&
       candidates.length > 0
     ) {
-      const { index } = drawUniformIndex(
-        seed,
-        domain,
-        candidates.length,
-        chance.nextCounter
+      const antiPetCandidates = candidates.filter(({ id }) =>
+        ANTI_PET_TECHNIQUE_IDS.has(id)
       );
-      const technique = candidates[index];
+      const normalCandidates = candidates.filter(
+        ({ id }) => !ANTI_PET_TECHNIQUE_IDS.has(id)
+      );
+      let candidatesToDraw = candidates;
+      let nextCounter = chance.nextCounter;
+
+      if (antiPetCandidates.length > 0 && normalCandidates.length > 0) {
+        const groupDraw = drawUniformValue(
+          seed,
+          domain,
+          100n,
+          chance.nextCounter
+        );
+        candidatesToDraw =
+          Number(groupDraw.value) < ANTI_PET_UNLOCK_SHARE_PERCENT
+            ? antiPetCandidates
+            : normalCandidates;
+        nextCounter = groupDraw.nextCounter;
+      } else if (antiPetCandidates.length > 0) {
+        candidatesToDraw = antiPetCandidates;
+      } else {
+        candidatesToDraw = normalCandidates;
+      }
+
+      let technique;
+      if (candidatesToDraw === antiPetCandidates) {
+        const weightedCandidates = antiPetCandidates.map((candidate) => ({
+          candidate,
+          weight: ANTI_PET_UNLOCK_WEIGHTS[candidate.id]
+        }));
+        const totalWeight = weightedCandidates.reduce(
+          (total, entry) => total + entry.weight,
+          0
+        );
+        const weightedDraw = drawUniformValue(
+          seed,
+          domain,
+          BigInt(totalWeight),
+          nextCounter
+        );
+        let selection = Number(weightedDraw.value);
+        for (const entry of weightedCandidates) {
+          selection -= entry.weight;
+          if (selection < 0) {
+            technique = entry.candidate;
+            break;
+          }
+        }
+      } else {
+        const { index } = drawUniformIndex(
+          seed,
+          domain,
+          candidatesToDraw.length,
+          nextCounter
+        );
+        technique = candidatesToDraw[index];
+      }
+
       techniqueId = technique.id;
       nextInventory.push({
         techniqueId,
@@ -290,31 +409,33 @@ export function selectTechniquesForCombat({
   }
 
   const eligible = copyTechniqueInventory(inventory)
-    .map((owned) =>
-      getTechniqueById(
+    .map((owned) => ({
+      technique: getTechniqueById(
         owned.techniqueId,
         owned.catalogVersion,
         owned.techniqueVersion
-      )
-    )
-    .filter((technique) => technique.minLevel <= level);
+      ),
+      catalogVersion: owned.catalogVersion
+    }))
+    .filter(({ technique }) => technique.minLevel <= level);
   const selectCategory = (category) => {
     const candidates = eligible.filter(
-      (technique) => technique.category === category
+      ({ technique }) => technique.category === category
     );
     if (candidates.length === 0) {
       return null;
     }
     const { index } = drawUniformIndex(
       Buffer.from(seed, "utf8"),
-      `fighter-technique-loadout-v1:${fighterId}:${category}`,
+      `${TECHNIQUE_LOADOUT_VERSION}:${fighterId}:${category}`,
       candidates.length
     );
-    const { id, version, minLevel, effectType, effectAmount } =
-      candidates[index];
+    const { technique, catalogVersion } = candidates[index];
+    const { id, version, minLevel, effectType, effectAmount } = technique;
     return {
       techniqueId: id,
       techniqueVersion: version,
+      catalogVersion,
       category,
       minLevel,
       effect: { type: effectType, amount: effectAmount }

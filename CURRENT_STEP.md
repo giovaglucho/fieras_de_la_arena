@@ -1,8 +1,8 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.8.2`
+**Paso activo:** `10.8.3`
 **Estado:** autorizado; pendiente de implementación
-**Título:** Persistir y resolver mascotas
+**Título:** Mostrar colección y participación de mascotas
 
 ## Objetivo
 
@@ -10,38 +10,33 @@ Permitir que los luchadores obtengan acompañantes originales que influyan de fo
 
 ## Tareas permitidas
 
-- Persistir y resolver mascotas en el servidor.
-- Validar la propiedad de las mascotas.
-- Hacer idempotente su adquisición.
-- Versionar y hacer reproducibles sus estadísticas y efectos.
-- Guardar snapshots históricos completos.
-- Mantener compatibilidad con luchadores existentes sin mascotas.
+- Mostrar qué mascotas posee el luchador.
+- Mostrar qué aportó su acompañante al combate.
+- Conservar una pantalla normal cuando el luchador no tiene mascotas.
+- Usar textos y recursos visuales propios.
 
 ## Fuera de alcance
 
-- Mostrar la colección o la participación de mascotas (10.8.3).
 - Implementar cualquier otro paso de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Propiedad validada en servidor.
-- Adquisición idempotente.
-- Estadísticas y efectos versionados y reproducibles.
-- Snapshots históricos completos.
-- Luchadores existentes funcionan sin mascotas.
+- Se muestra qué mascotas posee el luchador y qué aportó su acompañante al combate.
+- Sin mascotas se conserva una pantalla normal.
+- Los textos y recursos visuales son propios.
 
 ## Pruebas y verificación
 
-- Propietario/no propietario.
-- Desbloqueo.
-- Semilla.
-- Límites.
-- Combinación con habilidad/equipo.
-- Replay.
+- Vacío.
+- Colección.
+- Combate.
+- Historial.
+- Privacidad.
+- Accesibilidad.
 
 ## Dependencia
 
-- 10.8.1.
+- 10.8.2.
 
 ## Al terminar
 

@@ -1,9 +1,15 @@
 import mongoose from "mongoose";
 import growthEventSchema from "./growthEventSchema.js";
 import {
-  TECHNIQUE_CATALOG_VERSION,
-  TECHNIQUE_UNLOCK_VERSION
+  TECHNIQUE_UNLOCK_VERSIONS,
+  TECHNIQUE_CATALOG_VERSIONS
 } from "../game-engine/techniqueCatalog.js";
+import {
+  PET_CATALOG_VERSION,
+  PET_INITIAL_VERSION,
+  PET_UNLOCK_VERSION,
+  PET_VERSION
+} from "../game-engine/petCatalog.js";
 
 const baseStatsSchema = new mongoose.Schema(
   {
@@ -87,7 +93,7 @@ const creationSchema = new mongoose.Schema(
     },
     techniqueCatalogVersion: {
       type: String,
-      enum: [TECHNIQUE_CATALOG_VERSION]
+      enum: TECHNIQUE_CATALOG_VERSIONS
     }
   },
   { _id: false }
@@ -138,7 +144,7 @@ const techniqueItemSchema = new mongoose.Schema(
     catalogVersion: {
       type: String,
       required: true,
-      enum: [TECHNIQUE_CATALOG_VERSION]
+      enum: TECHNIQUE_CATALOG_VERSIONS
     },
     techniqueVersion: { type: String, required: true }
   },
@@ -159,13 +165,71 @@ const techniqueUnlockSchema = new mongoose.Schema(
     version: {
       type: String,
       required: true,
-      enum: [TECHNIQUE_UNLOCK_VERSION]
+      enum: TECHNIQUE_UNLOCK_VERSIONS
     },
     techniqueId: { type: String, default: null },
     catalogVersion: {
       type: String,
       required: true,
-      enum: [TECHNIQUE_CATALOG_VERSION]
+      enum: TECHNIQUE_CATALOG_VERSIONS
+    },
+    requestId: { type: String, required: true, minlength: 1, maxlength: 128 }
+  },
+  { _id: false }
+);
+
+const petItemSchema = new mongoose.Schema(
+  {
+    petId: {
+      type: String,
+      required: true,
+      match: /^[a-f\d]{24}$/i
+    },
+    speciesId: {
+      type: String,
+      required: true,
+      enum: ["perro", "lobo", "oso"]
+    },
+    catalogVersion: {
+      type: String,
+      required: true,
+      enum: [PET_CATALOG_VERSION]
+    },
+    version: {
+      type: String,
+      required: true,
+      enum: [PET_VERSION]
+    }
+  },
+  { _id: false }
+);
+
+const petUnlockSchema = new mongoose.Schema(
+  {
+    level: { type: Number, required: true, min: 1 },
+    seed: {
+      type: Buffer,
+      required: true,
+      validate: {
+        validator: (seed) => Buffer.isBuffer(seed) && seed.length === 32,
+        message: "La semilla de desbloqueo debe contener exactamente 32 bytes."
+      }
+    },
+    version: {
+      type: String,
+      required: true,
+      enum: [PET_INITIAL_VERSION, PET_UNLOCK_VERSION]
+    },
+    petId: { type: String, default: null, match: /^[a-f\d]{24}$/i },
+    speciesId: {
+      type: String,
+      default: null,
+      enum: ["perro", "lobo", "oso", null]
+    },
+    catalogVersion: {
+      type: String,
+      required: true,
+      enum: [PET_CATALOG_VERSION]
     },
     requestId: { type: String, required: true, minlength: 1, maxlength: 128 }
   },
@@ -269,6 +333,37 @@ const fighterSchema = new mongoose.Schema(
         message: "La colección de técnicas no puede contener duplicados."
       }
     },
+    pets: {
+      type: [petItemSchema],
+      default: undefined,
+      validate: {
+        validator(pets) {
+          const petIds = new Set(pets.map(({ petId }) => petId));
+          const dogs = pets.filter(({ speciesId }) => speciesId === "perro").length;
+          const hasWolf = pets.some(({ speciesId }) => speciesId === "lobo");
+          const hasBear = pets.some(({ speciesId }) => speciesId === "oso");
+          return (
+            petIds.size === pets.length &&
+            pets.length <= 4 &&
+            dogs <= 3 &&
+            !(hasWolf && hasBear) &&
+            pets.filter(({ speciesId }) => speciesId === "lobo").length <= 1 &&
+            pets.filter(({ speciesId }) => speciesId === "oso").length <= 1
+          );
+        },
+        message: "La colección supera los límites permitidos de mascotas."
+      }
+    },
+    petUnlocks: {
+      type: [petUnlockSchema],
+      default: undefined,
+      validate: {
+        validator(unlocks) {
+          return new Set(unlocks.map(({ level }) => level)).size === unlocks.length;
+        },
+        message: "Un nivel no puede producir más de un desbloqueo de mascota."
+      }
+    },
     techniqueUnlocks: {
       type: [techniqueUnlockSchema],
       default: undefined,
@@ -305,6 +400,39 @@ const fighterSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+fighterSchema.pre("validate", function validatePetAcquisitions() {
+  const pets = this.pets ?? [];
+  const unlocks = this.petUnlocks ?? [];
+  const petsById = new Map(pets.map((pet) => [pet.petId, pet]));
+
+  for (const unlock of unlocks) {
+    if (Boolean(unlock.petId) !== Boolean(unlock.speciesId)) {
+      this.invalidate(
+        "petUnlocks",
+        "Cada desbloqueo debe guardar tanto la mascota obtenida como la ausencia de premio."
+      );
+      return;
+    }
+    if (unlock.petId) {
+      const acquiredPet = petsById.get(unlock.petId);
+      if (!acquiredPet || acquiredPet.speciesId !== unlock.speciesId) {
+        this.invalidate(
+          "petUnlocks",
+          "El desbloqueo de mascota no coincide con la colección del luchador."
+        );
+        return;
+      }
+    }
+  }
+
+  if (pets.some((pet) => !unlocks.some((unlock) => unlock.petId === pet.petId))) {
+    this.invalidate(
+      "pets",
+      "Cada mascota poseída debe tener un registro de adquisición reproducible."
+    );
+  }
+});
 
 fighterSchema.index({ userId: 1 });
 fighterSchema.index({ userId: 1, createdAt: 1, _id: 1 });

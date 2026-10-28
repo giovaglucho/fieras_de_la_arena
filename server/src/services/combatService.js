@@ -19,6 +19,14 @@ import {
   unlockTechniquesForLevels
 } from "../game-engine/techniqueCatalog.js";
 import {
+  applyPetHealthPenalty,
+  createPetSnapshot,
+  PET_CATALOG_VERSION,
+  PET_RULES_VERSION,
+  PET_SNAPSHOT_VERSION,
+  unlockPetsForLevels
+} from "../game-engine/petCatalog.js";
+import {
   calculateEloChanges,
   calculateXpReward
 } from "../game-engine/progression.js";
@@ -206,6 +214,20 @@ function createParticipantResult(
           inventory: fighter.techniques ?? [],
           unlocks: fighter.techniqueUnlocks ?? []
         };
+  const petProgression =
+    growth.levelsGained > 0
+      ? unlockPetsForLevels({
+          fromLevel: fighter.level,
+          toLevel: growth.level,
+          inventory: fighter.pets ?? [],
+          existingUnlocks: fighter.petUnlocks ?? [],
+          requestId,
+          seedFactory: () => randomBytes(32)
+        })
+      : {
+          inventory: fighter.pets ?? [],
+          unlocks: fighter.petUnlocks ?? []
+        };
   const eloAfter = Math.max(0, fighter.elo + eloChange);
 
   return {
@@ -221,6 +243,8 @@ function createParticipantResult(
     equipmentUnlocks: equipmentProgression.unlocks,
     techniques: techniqueProgression.inventory,
     techniqueUnlocks: techniqueProgression.unlocks,
+    pets: petProgression.inventory,
+    petUnlocks: petProgression.unlocks,
     progressionSnapshot: {
       levelBefore: fighter.level,
       levelAfter: growth.level,
@@ -228,10 +252,13 @@ function createParticipantResult(
       xpAfter: growth.xp,
       levelsGained: growth.levelsGained,
       statsBefore: snapshot.stats,
-      statsAfter: calculateFighterStats(
-        growth.level,
-        growth.baseStats,
-        growth.progression
+      statsAfter: applyPetHealthPenalty(
+        calculateFighterStats(
+          growth.level,
+          growth.baseStats,
+          growth.progression
+        ),
+        petProgression.inventory
       )
     },
     growthEvents:
@@ -239,14 +266,18 @@ function createParticipantResult(
   };
 }
 
-function createSnapshot(fighter, seed, includeTechniques) {
-  const stats = calculateFighterStats(
+function createSnapshot(fighter, seed, includeTechniques, includePets) {
+  const baseStats = calculateFighterStats(
     fighter.level,
     typeof fighter.baseStats.toObject === "function"
       ? fighter.baseStats.toObject()
       : fighter.baseStats,
     fighter.progression
   );
+  const pets = createPetSnapshot(fighter._id.toString(), fighter.pets ?? []);
+  const stats = includePets
+    ? applyPetHealthPenalty(baseStats, fighter.pets ?? [])
+    : baseStats;
   const equipment = selectEquipmentLoadout({
     fighterId: fighter._id.toString(),
     seed: Buffer.from(seed, "utf8"),
@@ -268,6 +299,9 @@ function createSnapshot(fighter, seed, includeTechniques) {
       seed,
       inventory: fighter.techniques ?? []
     });
+  }
+  if (includePets) {
+    snapshot.pets = pets;
   }
   return snapshot;
 }
@@ -295,6 +329,8 @@ async function applyRewards(fighters, outcomes, results, session) {
       fields.equipmentUnlocks = result.equipmentUnlocks;
       fields.techniques = result.techniques;
       fields.techniqueUnlocks = result.techniqueUnlocks;
+      fields.pets = result.pets;
+      fields.petUnlocks = result.petUnlocks;
     }
 
     return {
@@ -355,8 +391,11 @@ async function resolveCombatInSession(request, session, challenge) {
   const includeTechniques = orderedFighters.some((fighter) =>
     Array.isArray(fighter.techniques)
   );
+  const includePets = orderedFighters.some((fighter) =>
+    Array.isArray(fighter.pets)
+  );
   const snapshots = orderedFighters.map((fighter) =>
-    createSnapshot(fighter, seed, includeTechniques)
+    createSnapshot(fighter, seed, includeTechniques, includePets)
   );
   const combatResult = simulateCombat({ fighters: snapshots, seed });
   const winnerFighterId = combatResult.summary.winnerFighterId;
@@ -409,15 +448,24 @@ async function resolveCombatInSession(request, session, challenge) {
     actionCount: combatResult.summary.actionCount,
     seed,
     engineVersion: combatResult.engineVersion,
-    snapshotVersion: includeTechniques
-      ? "battle-snapshot-v3"
-      : "battle-snapshot-v2",
+    snapshotVersion: includePets
+      ? "battle-snapshot-v4"
+      : includeTechniques
+        ? "battle-snapshot-v3"
+        : "battle-snapshot-v2",
     equipmentCatalogVersion: EQUIPMENT_CATALOG_VERSION,
     loadoutVersion: EQUIPMENT_LOADOUT_VERSION,
     ...(includeTechniques
       ? {
           techniqueCatalogVersion: TECHNIQUE_CATALOG_VERSION,
           techniqueRulesVersion: TECHNIQUE_RULES_VERSION
+        }
+      : {}),
+    ...(includePets
+      ? {
+          petCatalogVersion: PET_CATALOG_VERSION,
+          petSnapshotVersion: PET_SNAPSHOT_VERSION,
+          petRulesVersion: PET_RULES_VERSION
         }
       : {}),
     events: combatResult.events

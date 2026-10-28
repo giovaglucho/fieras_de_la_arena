@@ -108,6 +108,80 @@ test("una semilla, nivel y versiones repetidos reproducen el mismo desbloqueo", 
   assert.deepEqual(createUnlock(), createUnlock());
 });
 
+test("pondera el grupo antimascota con 15 por ciento y conserva 5:3:1 dentro del grupo", () => {
+  const normalInventory = TECHNIQUE_CATALOG.filter(
+    ({ id, initial }) =>
+      initial &&
+      !["tech-grito-condenados", "tech-red", "tech-hipnosis"].includes(id)
+  ).map(({ id, version }) => ({
+    techniqueId: id,
+    catalogVersion: TECHNIQUE_CATALOG_VERSION,
+    techniqueVersion: version
+  }));
+  const counts = {
+    normal: 0,
+    "tech-grito-condenados": 0,
+    "tech-red": 0,
+    "tech-hipnosis": 0
+  };
+  const sampleCount = 30_000;
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const result = unlockTechniquesForLevels({
+      fromLevel: 7,
+      toLevel: 8,
+      inventory: normalInventory,
+      requestId: `pet-counter-${index}`,
+      seedFactory: () => seedFor(index)
+    });
+    const techniqueId = result.unlocks[0].techniqueId;
+    if (techniqueId) {
+      if (Object.hasOwn(counts, techniqueId)) {
+        counts[techniqueId] += 1;
+      } else {
+        counts.normal += 1;
+      }
+    }
+  }
+
+  const antiPetCount =
+    counts["tech-grito-condenados"] +
+    counts["tech-red"] +
+    counts["tech-hipnosis"];
+  const successfulCount = antiPetCount + counts.normal;
+  assert.ok(Math.abs(antiPetCount / successfulCount - 0.15) < 0.025);
+  assert.ok(
+    Math.abs(counts["tech-grito-condenados"] / antiPetCount - 5 / 9) < 0.06
+  );
+  assert.ok(Math.abs(counts["tech-red"] / antiPetCount - 3 / 9) < 0.06);
+  assert.ok(
+    Math.abs(counts["tech-hipnosis"] / antiPetCount - 1 / 9) < 0.04
+  );
+});
+
+test("el grupo único con candidatas recibe todo el sorteo y excluye poseídas", () => {
+  const normalInventory = TECHNIQUE_CATALOG.filter(
+    ({ id }) =>
+      !["tech-grito-condenados", "tech-red", "tech-hipnosis"].includes(id)
+  ).map(({ id, version }) => ({
+    techniqueId: id,
+    catalogVersion: TECHNIQUE_CATALOG_VERSION,
+    techniqueVersion: version
+  }));
+  for (let index = 0; index < 100; index += 1) {
+    const result = unlockTechniquesForLevels({
+      fromLevel: 3,
+      toLevel: 4,
+      inventory: normalInventory,
+      requestId: `only-anti-pet-${index}`,
+      seedFactory: () => seedFor(index)
+    });
+    if (result.unlocks[0].techniqueId) {
+      assert.equal(result.unlocks[0].techniqueId, "tech-grito-condenados");
+    }
+  }
+});
+
 test("rechaza propiedad duplicada, catálogo ajeno y semillas de desbloqueo inválidas", () => {
   const initial = createInitialTechnique(seedFor(15));
   const duplicateInventory = [
@@ -179,7 +253,7 @@ test("selecciona solo técnicas poseídas y elegibles en slots separados y repro
   });
 
   assert.deepEqual(selection, repeated);
-  assert.equal(selection.version, "fighter-technique-loadout-v1");
+  assert.equal(selection.version, "fighter-technique-loadout-v2");
   assert.equal(selection.catalogVersion, TECHNIQUE_CATALOG_VERSION);
   assert.equal(selection.passive?.category, "passive");
   assert.equal(selection.active?.category, "active");

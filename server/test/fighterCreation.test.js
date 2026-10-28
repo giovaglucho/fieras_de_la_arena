@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import mongoose from "mongoose";
 import Fighter from "../src/models/Fighter.js";
 import {
   createInitialFighterData,
@@ -48,6 +49,9 @@ test("genera y conserva perfiles iniciales exclusivamente aprobados", () => {
         ({ id, initial }) => id === created.techniques[0].techniqueId && initial
       )
     );
+    assert.equal(created.petUnlocks.length, 1);
+    assert.equal(created.petUnlocks[0].level, 1);
+    assert.equal(created.petUnlocks[0].speciesId, created.pets[0]?.speciesId ?? null);
   }
 });
 
@@ -148,6 +152,14 @@ test("los payloads de creación aceptan apariencia pero nunca stats del cliente"
   );
   assert.equal(
     validateManagedFighterCreation({
+      name: "Luchador",
+      requestId: "request-5",
+      pets: []
+    }),
+    null
+  );
+  assert.equal(
+    validateManagedFighterCreation({
       ...creation,
       appearance: { ...creation.appearance, baseStats: {} }
     }),
@@ -156,10 +168,53 @@ test("los payloads de creación aceptan apariencia pero nunca stats del cliente"
   assert.equal(
     validateManagedFighterCreation({
       name: "Luchador",
-      requestId: "request-5",
+      requestId: "request-6",
       equipment: [{ itemId: "weapon-tomado-del-cliente" }]
     }),
     null
+  );
+});
+
+test("el modelo valida límites y unicidad de la colección de mascotas", async () => {
+  const fighter = (pets) =>
+    new Fighter({
+      userId: new mongoose.Types.ObjectId(),
+      name: "fiera-mascotas",
+      referralCode: "pet-validation",
+      pets,
+      petUnlocks: pets.map((entry, index) => ({
+        level: index + 1,
+        seed: Buffer.alloc(32, index),
+        version: index === 0
+          ? "fighter-pet-initial-v1"
+          : "fighter-pet-unlock-v1",
+        petId: entry.petId,
+        speciesId: entry.speciesId,
+        catalogVersion: entry.catalogVersion,
+        requestId: `pet-${index}`
+      }))
+    });
+  const validCollection = fighter(
+    ["perro", "perro", "perro", "lobo"].map((speciesId, index) => ({
+      petId: (index + 1).toString(16).padStart(24, "0"),
+      speciesId,
+      catalogVersion: "fighter-pets-v1",
+      version: "pet-v1"
+    }))
+  );
+  await validCollection.validate();
+
+  const invalidCollection = fighter(
+    ["perro", "perro", "perro", "perro"].map((speciesId, index) => ({
+      petId: (index + 1).toString(16).padStart(24, "0"),
+      speciesId,
+      catalogVersion: "fighter-pets-v1",
+      version: "pet-v1"
+    }))
+  );
+  await assert.rejects(
+    invalidCollection.validate(),
+    (error) => error.errors.pets.kind === "user defined"
   );
 });
 

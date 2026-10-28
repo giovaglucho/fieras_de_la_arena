@@ -304,7 +304,7 @@ export async function createOwnedFighter(
   }
 
   const fighterId = new mongoose.Types.ObjectId();
-  const initialData = createInitialFighterData();
+  const initialData = createInitialFighterData(undefined, requestId);
   const session = await mongoose.startSession();
   let createdFighter;
   try {
