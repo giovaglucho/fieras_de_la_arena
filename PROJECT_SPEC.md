@@ -288,8 +288,8 @@ Esta sección resuelve las reglas de producto de la etapa 10. Los porcentajes, r
   - **Vitalidad:** vida 115, ataque 10, defensa 3, velocidad 5.
   Ningún cliente puede elegir ni alterar el perfil. El análisis reproducible con el motor de combate `1.0.0`, 5.000 semillas determinísticas distintas por enfrentamiento y posiciones alternadas dio entre 50,2 % y 50,3 % de victorias equivalentes entre cada pareja de perfiles en los niveles 1, 3, 4 y 10. Las semillas de prueba siguen el patrón `10.3.1-independent-${level}-${index}`. El resultado describe el motor actual; debe repetirse si cambia su versión o las reglas de combate.
 - La persona elige la apariencia en catálogos cerrados, originales y puramente cosméticos. La paleta de tono ofrece `arena`, `arcilla`, `cobre`, `pizarra` y `marfil`; el cabello, `rapado`, `corto`, `trenzas`, `melena` y `cresta`; la vestimenta, `tunica-cruzada`, `manto-corto`, `faldon-tejido` y `chaleco-tejido`; los accesorios, `ninguno`, `cinta`, `collar-cuentas`, `brazaletes` y `pendientes`. Las cuatro elecciones se combinan libremente: hay 500 combinaciones válidas, cada una representable con recursos visuales originales. Ninguna opción estética modifica estadísticas, equipo ni reglas de combate. Para luchadores legados sin apariencia se usará la combinación neutral `arena`, `rapado`, `tunica-cruzada`, `ninguno`.
-- El equipo inicial no incluye armadura: al crear un luchador, el servidor le concede una sola arma aleatoria de la selección inicial y una técnica aleatoria del grupo inicial definido en «Técnicas automáticas v1». No se asignan mascotas al crear. Los luchadores existentes no reciben técnicas retroactivas. El diseño de armas y armaduras de la expansión se detalla en «Equipo aleatorio v1».
-- La creación usa una semilla de 32 bytes generada exclusivamente en el servidor con `node:crypto.randomBytes`; no se aceptan semillas ni elecciones de atributos del cliente. La versión `fighter-creation-v1` deriva cada sorteo del bloque `SHA-256(seed || UTF-8(etiquetaDeDominio) || uint32BE(contador))`, empezando el contador en cero y aumentándolo si hay que rechazar un bloque. El digest se interpreta como entero sin signo big-endian de 256 bits. Para elegir uniformemente entre `N` opciones, se acepta solo un valor menor que `floor(2^256 / N) * N` y se usa su resto módulo `N`; los valores fuera de ese límite se descartan para evitar sesgo. Los dominios de perfil y arma inicial son distintos; la selección de técnica inicial usa además el dominio independiente `fighter-technique-initial-v1` para no cambiar los resultados ya definidos de creación. El luchador conserva la semilla, versión y resultado para auditar o reproducir la creación. Los sorteos de progreso y desbloqueo también registran semilla, versión y resultado; sus entradas se separan por dominio. Los combates conservan sus snapshots y semilla de simulación. Una misma semilla, entrada y versión produce la misma salida.
+- El equipo inicial no incluye armadura: al crear un luchador, el servidor le concede una sola arma aleatoria de la selección inicial y una técnica aleatoria del grupo inicial definido en «Técnicas automáticas v1». También realiza la tirada de mascota inicial de «Mascotas v1». Los luchadores existentes no reciben técnicas ni mascotas retroactivas. El diseño de armas y armaduras de la expansión se detalla en «Equipo aleatorio v1».
+- La creación usa una semilla de 32 bytes generada exclusivamente en el servidor con `node:crypto.randomBytes`; no se aceptan semillas ni elecciones de atributos del cliente. La versión `fighter-creation-v1` deriva cada sorteo del bloque `SHA-256(seed || UTF-8(etiquetaDeDominio) || uint32BE(contador))`, empezando el contador en cero y aumentándolo si hay que rechazar un bloque. El digest se interpreta como entero sin signo big-endian de 256 bits. Para elegir uniformemente entre `N` opciones, se acepta solo un valor menor que `floor(2^256 / N) * N` y se usa su resto módulo `N`; los valores fuera de ese límite se descartan para evitar sesgo. Los dominios de perfil y arma inicial son distintos; las selecciones iniciales de técnica y mascota usan los dominios independientes `fighter-technique-initial-v1` y `fighter-pet-initial-v1`, sin cambiar resultados de otros dominios. El luchador conserva la semilla, versión y resultado para auditar o reproducir la creación. Los sorteos de progreso y desbloqueo también registran semilla, versión y resultado; sus entradas se separan por dominio. Los combates conservan sus snapshots y semilla de simulación. Una misma semilla, entrada y versión produce la misma salida.
 - En la progresión de la expansión, las estadísticas se interpretan así: vida (`health`, vitalidad), ataque (`attack`, fuerza), defensa (`defense`, agilidad) y velocidad (`speed`, velocidad). Cada nivel ganado resuelve exactamente una mejora independiente de las tiradas de desbloqueo: el servidor aumenta en **1 punto** una estadística elegible y el jugador no elige el resultado.
 - Los pesos iniciales del sorteo son vida **35**, ataque **30**, defensa **20** y velocidad **15** (100 en total). Son pesos relativos: si una estadística alcanza su tope, deja de ser elegible y los pesos restantes se normalizan entre las estadísticas que aún pueden crecer. Un sorteo usa distribución entera ponderada sin sesgo y una entrada aleatoria reproducible/versionada del servidor; el cliente no proporciona semilla, estadística ni magnitud.
 - La implementación `fighter-growth-v1` genera en el servidor una semilla independiente de 32 bytes por nivel ganado. Para el nivel destino deriva un entero con `SHA-256(seed || UTF-8("fighter-growth-v1:<nivel>") || uint32BE(contador))` y aplica rechazo uniforme antes de mapearlo a los pesos de las estadísticas elegibles. Cada evento persistido conserva el nivel, semilla, versión, atributo y magnitud (cero si todos los topes ya se alcanzaron) y la clave de la recompensa que lo produjo. Los nuevos luchadores inicializan el estado de progresión al crearse; al progresar por primera vez, los legados guardan como base efectiva sus estadísticas actuales calculadas con la regla fija anterior y mantienen intactos sus `baseStats`.
@@ -298,7 +298,7 @@ Esta sección resuelve las reglas de producto de la etapa 10. Los porcentajes, r
 - No hay nivel máximo. Al procesar una recompensa, se consume en orden el umbral de cada nivel y se conserva todo el XP restante. Se resuelve una mejora por cada nivel cruzado, incluso cuando una recompensa gana varios niveles. Si una estadística ya llegó a su tope se excluye del sorteo; si todas llegaron, el nivel y el XP siguen avanzando sin aumento de estadísticas. Llegar a un tope nunca descarta XP ni impide procesar otros niveles o desbloqueos.
 - Ejemplos con el umbral de XP vigente: nivel 1 con 90 XP que recibe 25 XP termina en nivel 2 con 15 XP restantes y una mejora; nivel 1 con 0 XP que recibe 600 XP termina en nivel 5 con 50 XP restantes y procesa cuatro mejoras, una por cada nivel ganado. En el segundo caso no se garantiza que las cuatro mejoras recaigan en estadísticas distintas: cada sorteo vuelve a considerar los pesos y topes vigentes.
 - Comparación con el crecimiento fijo del MVP entre niveles 1 y 5: el MVP añade +20 vida, +2 ataque y +1 defensa; la expansión distribuye cuatro aumentos de +1 según sus pesos y topes, con un máximo total de cuatro puntos en ese tramo. Para un perfil equilibrado inicial (100 vida, 10 ataque, 4 defensa, 5 velocidad), los topes absolutos son 150, 30, 19 y 15, respectivamente. Para cualquier perfil, se calculan sumando sus topes relativos a sus valores base iniciales.
-- La creación concede exactamente un arma inicial aleatoria de la selección básica y una técnica inicial aleatoria conforme a «Técnicas automáticas v1». No concede armadura ni mascota. Cada nivel ganado produce tiradas independientes de desbloqueo de equipo y de técnica, cada una conforme a su catálogo y dominio aleatorio propios.
+- La creación concede exactamente un arma inicial aleatoria de la selección básica y una técnica inicial aleatoria conforme a «Técnicas automáticas v1». No concede armadura y concede mascota solo según la tirada de «Mascotas v1». Cada nivel ganado produce tiradas independientes de desbloqueo de equipo, técnica y mascota, cada una conforme a su catálogo y dominio aleatorio propios.
 - El perfil y el arma inicial se sortean una sola vez al crear el luchador; no se permiten repeticiones ni cambios del resultado después de la creación. Cada desbloqueo se sortea una sola vez por nivel ganado. Un reintento idempotente no repite tiradas ni recompensas. El catálogo de armas y armaduras no ofrece duplicados: si no queda un objeto elegible que el luchador no posea, la tirada no concede objeto y no genera una compensación automática.
 - Las reglas de espacio, propiedad, selección automática, efectos, límites y disponibilidad por nivel se describen en «Equipo aleatorio v1» y deberán validarse en el servidor. Poseer un objeto no permite elegirlo ni alterar el combate desde el cliente.
 - Las recompensas existentes de XP y ELO del MVP se mantienen salvo que una tarea de balance posterior las cambie explícitamente. Ningún desbloqueo aleatorio se acepta como entrada del cliente ni depende del resultado visual del frontend.
@@ -385,7 +385,7 @@ Las técnicas son efectos originales, automáticos y temporales de combate. La c
 - La recuperación ocurre después del daño no letal y antes de la siguiente acción. No altera vida máxima ni estadísticas persistidas; una acción que deja la vida en cero termina el combate y no puede ser revertida. Ningún efecto añade turnos, reinicia la simulación, acumula cargas ni se extiende a otro impacto.
 - Cada activación se registra como evento ordenado con ID y versión de técnica, luchador propietario, acción que la disparó, objetivo si lo hay, cantidad aplicada y vidas anterior/posterior cuando corresponda. Los eventos de una técnica no cambian la forma ni el significado de los eventos de combate existentes. Las peleas antiguas sin snapshot de técnicas se siguen leyendo sin reinterpretarlas.
 - Las técnicas se resuelven después de fijar el equipo del snapshot. No reemplazan ni alteran arma o armadura, no multiplican efectos de equipo y no modifican iniciativa, crítico, pifia, defensa base, crecimiento ni recompensas. Su bono y reducción son valores planos y de un solo impacto.
-- No se define interacción funcional con mascotas en este paso. El punto de integración futuro queda limitado a la misma secuencia de acciones/eventos del combate; una mascota no activa, potencia, bloquea ni cambia el objetivo de una técnica, y una técnica no invoca ni modifica una mascota. Cualquier interacción requerirá las reglas aprobadas en 10.8, sin introducir cadenas ni efectos fuera de los límites anteriores.
+- Las ocho técnicas de la tabla anterior no modifican mascotas. Las interacciones de las técnicas antimascota «Red», «Grito de los Condenados» e «Hipnosis» se definen en «Mascotas v1»; se resuelven sin cadenas, copias, cambios permanentes de propiedad ni alteración de otras técnicas.
 - Las tablas y probabilidades son propuestas de balance, no resultados de simulación ni cifras finales aprobadas. El catálogo no usa rarezas ni duplicados y sus nombres y descripciones son originales de Fieras de la Arena.
 
 **Análisis de extremos**
@@ -402,6 +402,69 @@ Las técnicas son efectos originales, automáticos y temporales de combate. La c
 | Se alcanza el máximo de 30 acciones | El combate termina según las reglas vigentes; las técnicas no generan acciones extra ni prolongan el límite. |
 | Propietario y rival satisfacen umbrales en el mismo combate | Cada técnica solo puede activarse una vez; no hay interacción recursiva ni transferencia de activaciones. |
 | Repetición de petición o lectura de combate histórico | Se conserva el mismo resultado; no se vuelve a sortear la colección ni se reconstruye una técnica histórica desde el catálogo actual. |
+
+#### Mascotas v1 (diseño 10.8.1)
+
+Las mascotas son acompañantes originales que pertenecen a un luchador. Cada una de las tres especies es una sola especie, sin subtipos. Las mascotas no usan armas ni técnicas propias; no reciben bonificaciones de armas y sus golpes no activan técnicas ni efectos encadenados.
+
+**Catálogo y límites de colección**
+
+| Especie | Rareza | Vida | Fuerza | Agilidad | Velocidad | Golpes por activación | Penalización de vida máxima del dueño |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Perro | Común | 14 | 5 | 5 | 20 | 1–3 | 10 |
+| Lobo | Rara | 26 | 10 | 10 | 10 | 2–4 | 25 |
+| Oso | Muy rara | 110 | 20 | 5 | 5 | 1 | 40 |
+
+- Un luchador puede poseer hasta tres perros y, además, un lobo o un oso; nunca puede poseer ambos. El máximo es cuatro mascotas. Se permiten perros duplicados dentro del límite; lobo y oso son únicos.
+- La colección pertenece al luchador, no a la cuenta. Las mascotas no se eligen para cada pelea: todas las que posee comienzan activas y con su vida máxima. Las que quedan fuera de combate por derrota, red o grito no se pierden y regresan completas en el siguiente combate.
+- La mascota no cambia de dueño permanente. Una transferencia por Hipnosis cambia únicamente el bando durante ese combate. La penalización de vida continúa asociada al dueño original.
+
+**Obtención reproducible**
+
+- Al crear un luchador nuevo, hay un **8 %** de probabilidad de recibir un perro. No puede recibir lobo ni oso al crear. La tirada usa el dominio independiente `fighter-pet-initial-v1`; los luchadores existentes no reciben mascotas retroactivas.
+- Por cada nivel ganado se hace una tirada independiente de **12 %** para obtener una mascota, incluso si una recompensa hace ganar varios niveles. Si tiene éxito, se elige entre las especies que aún se pueden poseer con pesos perro **96**, lobo **3** y oso **1**. Los pesos de las especies no elegibles se excluyen y los restantes se normalizan. Si no queda ninguna especie elegible, no se concede mascota ni compensación. No se repite la tirada y no se permiten adquisiciones por encima de los límites.
+- El sorteo de cada nivel usa el dominio `fighter-pet-unlock-v1:<nivel>`, separado de crecimiento, equipo y técnicas. La semilla, versión, nivel, resultado o ausencia de premio y clave idempotente se conservan para reproducirlo; un reintento no vuelve a tirar.
+
+**Penalización de vida del dueño**
+
+- Cada mascota poseída resta de forma permanente mientras siga en la colección los puntos indicados en el catálogo: cada perro resta 10, el lobo 25 y el oso 40. Los costos se suman por separado; tres perros restan 30 antes de aplicar el piso.
+- Sea `H` la vida máxima efectiva del luchador antes del costo de mascotas y `C` la suma de sus costos. La vida máxima resultante es `max(ceil(H * 0.5), H - C)`. El piso de la mitad se redondea hacia arriba. El costo no modifica `baseStats` ni se resta una segunda vez al calcular la pelea; si la vida actual supera el nuevo máximo, se limita a ese máximo.
+- Derrotar, atrapar, ahuyentar o transferir temporalmente una mascota no devuelve ni cambia el costo. El costo solo depende de la colección persistente del dueño.
+
+**Contribución y resolución en combate**
+
+- Cada mascota activa ocupa su propio lugar en el orden de actuación, según su velocidad y con los desempates resueltos por la semilla de combate. Un turno de mascota cuenta como una acción hacia el máximo de 30 acciones; sus golpes múltiples no añaden acciones. Cada activación sortea uniformemente, de forma inclusiva, su cantidad de golpes del rango del catálogo.
+- La fuerza de cada mascota ocupa el lugar del ataque en la fórmula de daño vigente; se aplican el modificador aleatorio de daño y la defensa del objetivo conforme al motor. Las mascotas no tienen una estadística de defensa: un golpe no esquivado contra ellas usa defensa 0 y conserva el daño mínimo vigente de 1. Cada golpe dirigido a una mascota hace primero una tirada independiente de esquiva con probabilidad `2 % × agilidad` (perro y oso: 10 %; lobo: 20 %). Una esquiva evita por completo ese golpe; la agilidad no reduce también el daño. No se añaden bloqueos ni otras acciones de mascota.
+- Cada golpe del luchador rival elige con igual probabilidad entre el luchador objetivo y cada mascota activa de ese bando. Las mascotas fuera de combate o transferidas al otro bando no son objetivos de ese bando. Cada mascota ataca al luchador del bando contrario actual; no hay ataques entre mascotas.
+- Solo actúan o pueden ser seleccionadas las mascotas con vida mayor que cero y que no estén atrapadas o ahuyentadas. Al quedar derrotadas, atrapadas o ahuyentadas, dejan de actuar y de recibir ataques por el resto del combate. Las mascotas no prolongan la pelea: sigue vigente el límite de 30 acciones.
+- Las armas y mascotas son sistemas separados: no hay multiplicadores ni reglas especiales de arma contra una especie. Las armas resuelven sus ataques conforme al motor y pueden dirigir golpes a mascotas bajo la regla de selección de objetivos anterior.
+
+**Contrajuego antimascota**
+
+Las técnicas son automáticas, no elecciones manuales. Si una de estas técnicas está seleccionada para el combate, su efecto se resuelve al inicio, en orden de velocidad de su luchador; los empates se resuelven mediante la semilla. Cada efecto se activa como máximo una vez por combate. Si no hay mascotas objetivo elegibles, no produce efecto y no se repite.
+
+| Técnica | Efecto |
+|---|---|
+| Red | Atrapa una mascota activa del bando rival elegida uniformemente. Se ignora durante el resto del combate; no atrapa luchadores ni altera la colección. |
+| Grito de los Condenados | Ahuyenta a todas las mascotas activas del bando rival durante el resto del combate. |
+| Hipnosis | Transfiere todas las mascotas activas del bando rival al bando de quien la usa. Pueden atacar al antiguo dueño y este puede atacarlas. Cada mascota solo puede cambiar de bando una vez por combate. |
+
+- Los efectos se aplican en orden de velocidad; al resolver cada técnica, se consideran las mascotas que en ese momento están activas en el bando rival. Red y Grito no provocan pérdida permanente. Una mascota no se duplica ni puede volver a transferirse durante la misma pelea.
+- Al terminar el combate, las mascotas atrapadas o ahuyentadas regresan a su colección y las transferidas vuelven al bando de su dueño original; todas recuperan la vida máxima para la próxima pelea. Las técnicas no revierten la penalización de vida de sus dueños.
+- No se incluyen bomba, técnicas que potencien mascotas ni efectos de equipo específicos contra ellas en esta versión.
+
+**Casos límite definidos para verificación**
+
+| Caso | Resultado |
+|---|---|
+| Sin mascotas | Combate normal entre luchadores, sin objetivos ni acciones de mascota. |
+| Una mascota | Entra desde el comienzo, actúa según su velocidad y puede ser objetivo de cada golpe rival. |
+| Perros duplicados | Se permiten hasta tres; cada uno conserva su propia vida y acción. Sus costos se suman. |
+| Intento de obtener una especie bloqueada o superar cuatro mascotas | Se excluye la especie antes del sorteo ponderado; no se exceden los límites ni se repite una tirada fallida. |
+| Costos acumulados por encima del límite | La vida máxima del dueño no baja del 50 % de `H`, con redondeo hacia arriba. |
+| Esquiva con varios golpes | Cada golpe recibido por una mascota tiene su propia tirada reproducible; una esquiva no evita los golpes siguientes. |
+| Hipnosis combinada con derrota, red o grito | No se crean copias ni cambios persistentes; solo las mascotas activas cambian de bando, y los efectos posteriores siguen el orden de velocidad. |
+| Fin del combate | El estado de combate de las mascotas se reinicia; colección, dueño original y costo de vida se conservan. |
 
 #### Dojos, invitaciones y límites de abuso
 
@@ -918,7 +981,7 @@ No fijar proveedor ni desplegar hasta que el usuario lo decida en el paso corres
 ### Valores de balance pendientes
 
 - Aprobar o ajustar los valores provisionales de armas y armaduras de «Equipo aleatorio v1» mediante pruebas reproducibles de balance antes de implementarlos.
-- Probabilidades, catálogos y efectos de habilidades y mascotas, que se diseñan en sus etapas respectivas.
+- Los valores de «Mascotas v1» se aprobaron para implementación, pero todavía no se validaron mediante simulaciones de balance. Las habilidades ajenas a las contramedidas antimascota mantienen sus decisiones pendientes hasta sus etapas respectivas.
 - Límites técnicos de frecuencia de creación y umbrales de detección de automatización.
 - Catálogo, hitos y cantidades de las recompensas cosméticas/sociales del dojo.
 
