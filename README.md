@@ -183,19 +183,31 @@ Después de las pruebas, elimina esa variable de la terminal para volver a usar 
 Remove-Item Env:MONGODB_URI
 ```
 
-Las bases que aún conservan el esquema legado de propiedad deben migrarse antes de ejecutar la API con el esquema actual. Haz una copia de seguridad, detén el servidor y cualquier otro proceso que escriba en esa base, y ejecuta la migración solo en desarrollo o pruebas:
+Las bases que aún conservan el esquema legado de propiedad deben migrarse antes de crear varios luchadores por cuenta. El script ofrece un preflight de solo lectura y un modo de aplicación. En producción, el modo de aplicación exige confirmar el nombre exacto de la base, un respaldo verificado y declarar que las escrituras están pausadas. Primero ejecuta el preflight contra la base correcta; no compartas ni guardes la URI en Git:
 
 ```powershell
 Set-Location server
-$env:MIGRATION_WRITES_PAUSED = "true"
-try {
-  node --env-file=../.env scripts/migrateFighterOwnershipV1.js
-} finally {
-  Remove-Item Env:MIGRATION_WRITES_PAUSED -ErrorAction SilentlyContinue
-}
+$secureUri = Read-Host "URI MongoDB de destino" -AsSecureString
+$env:MONGODB_URI = [System.Net.NetworkCredential]::new("", $secureUri).Password
+$env:MIGRATION_TARGET_DATABASE = Read-Host "Nombre exacto de la base MongoDB"
+$env:NODE_ENV = "production"
+$env:MIGRATION_MODE = "preflight"
+node scripts/migrateFighterOwnershipV1.js
 ```
 
-La migración valida propiedad y actividades antes de retirar los índices únicos legados; si una actividad no puede asociarse sin ambigüedad, se detiene y revierte sus cambios. No la ejecutes en producción.
+Revisa el resultado `fighter.ownership_migration.preflight`. Si el comando falla por datos huérfanos, referencias inválidas o actividades diarias ambiguas, no intentes aplicar la migración ni modifiques esos documentos automáticamente.
+
+Para aplicar en Render: verifica que exista una copia recuperable, pausa el servicio web de Render y cualquier otro proceso que escriba en MongoDB, vuelve a ejecutar el comando anterior con `MIGRATION_MODE=apply` y estas confirmaciones explícitas:
+
+```powershell
+$env:MIGRATION_MODE = "apply"
+$env:MIGRATION_WRITES_PAUSED = "true"
+$env:MIGRATION_BACKUP_VERIFIED = "true"
+$env:MIGRATION_CONFIRMATION = "$($env:MIGRATION_TARGET_DATABASE):migrate-fighter-ownership-v1"
+node scripts/migrateFighterOwnershipV1.js
+```
+
+El comando revalida los datos antes de cambiar índices. Solo asocia actividades legadas cuando el dueño tiene exactamente un luchador; las actividades ya asociadas se conservan. Si hay una actividad sin luchador cuyo dueño tiene varias fichas, se detiene antes de escribir para evitar asignar cupos al personaje equivocado. Tras `fighter.ownership_migration.apply`, confirma los índices/cupos y la salud del servicio, reanuda Render y prueba crear una segunda ficha. No borres índices manualmente ni ejecutes el modo `apply` sin pausa y respaldo. Al terminar, limpia las variables de entorno de esa terminal.
 
 ## Despliegue de prueba gratuito
 
@@ -217,6 +229,6 @@ El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico y e
 - **El navegador no puede llamar a la API:** mantén el servidor activo en el puerto `3000`, usa el cliente iniciado por Vite y verifica que `CLIENT_URL` sea `http://localhost:5173`. Vite ya configura el proxy local para ese servidor.
 - **Un puerto está ocupado:** cierra el proceso de desarrollo anterior que aún lo use y vuelve a iniciar el comando correspondiente.
 - **`npm.cmd ci` falla:** comprueba la conexión a la red y la versión de Node.js; ejecútalo dentro de `client` o `server`, donde se encuentra el `package-lock.json`.
-- **Render responde `FIGHTER_OWNERSHIP_MIGRATION_REQUIRED` al crear otro luchador:** la base todavía puede tener el índice único legado `fighters.userId`. La expansión requiere una migración de índices y de actividades diarias, con respaldo verificado, escrituras pausadas y comprobaciones previas/posteriores. No elimines el índice manualmente ni ejecutes `migrateFighterOwnershipV1.js` en producción: ese script está limitado intencionalmente a desarrollo y pruebas. Detén nuevas creaciones y coordina una migración de producción aprobada antes de reintentar.
+- **Render responde `FIGHTER_OWNERSHIP_MIGRATION_REQUIRED` al crear otro luchador:** la base conserva el índice único legado `fighters.userId`. Sigue el preflight y el procedimiento de migración de la sección de pruebas; no elimines índices manualmente ni reintentes creación antes de completar la migración.
 
 Para las reglas del producto, la arquitectura y las decisiones del juego, consulta la especificación antes de modificar el proyecto.

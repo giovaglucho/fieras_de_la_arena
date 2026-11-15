@@ -119,7 +119,7 @@ async function restoreIndex(collection, index) {
   await collection.createIndex(index.key, options);
 }
 
-export async function migrateFighterOwnership(database) {
+export async function migrateFighterOwnership(database, { dryRun = false } = {}) {
   if (!database?.collection || !database?.listCollections) {
     throw new TypeError("Se requiere una conexión a la base de datos MongoDB.");
   }
@@ -167,12 +167,6 @@ export async function migrateFighterOwnership(database) {
     referralCodes.push(String(fighter.referralCode ?? ""));
   }
 
-  const duplicateOwner = [...fighterByUserId.entries()].find(([, owned]) => owned.length > 1);
-  if (duplicateOwner) {
-    throw new Error(
-      `La cuenta ${duplicateOwner[0]} ya tiene varios luchadores; resuelve el conflicto antes de migrar.`
-    );
-  }
   if (findDuplicate(normalizedNames) || normalizedNames.some((name) => !name)) {
     throw new Error("Hay nombres de luchador vacíos o duplicados tras normalizarlos.");
   }
@@ -252,6 +246,20 @@ export async function migrateFighterOwnership(database) {
   }
 
   const activitiesToConvert = activities.filter((activity) => activity.fighterId == null);
+  if (dryRun) {
+    return {
+      validated: true,
+      fighters: fighters.length,
+      activitiesToConvert: activitiesToConvert.length,
+      ownersWithMultipleFighters: [...fighterByUserId.values()].filter(
+        (owned) => owned.length > 1
+      ).length,
+      ownerIndexUnique: Boolean(ownerIndex?.unique),
+      legacyActivityIndexPresent: Boolean(legacyActivityIndex),
+      fighterActivityIndexPresent: Boolean(fighterActivityIndex)
+    };
+  }
+
   const convertedIds = [];
   let droppedOwnerIndex = null;
   let droppedLegacyActivityIndex = null;
@@ -374,19 +382,56 @@ async function runMigration() {
   if (!process.env.MONGODB_URI) {
     throw new Error("Falta configurar MONGODB_URI.");
   }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Esta migración no puede ejecutarse en producción.");
-  }
-  if (process.env.MIGRATION_WRITES_PAUSED !== "true") {
-    throw new Error("Detén las escrituras y define MIGRATION_WRITES_PAUSED=true.");
+  const mode = process.env.MIGRATION_MODE;
+  if (mode !== "preflight" && mode !== "apply") {
+    throw new Error("Define MIGRATION_MODE como preflight o apply.");
   }
 
   await mongoose.connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 5000
   });
   try {
-    const result = await migrateFighterOwnership(mongoose.connection.db);
-    console.info(JSON.stringify({ event: "fighter.ownership_migration.completed", ...result }));
+    const databaseName = mongoose.connection.name;
+    if (
+      !databaseName ||
+      process.env.MIGRATION_TARGET_DATABASE !== databaseName
+    ) {
+      throw new Error(
+        "MIGRATION_TARGET_DATABASE debe coincidir exactamente con la base seleccionada."
+      );
+    }
+
+    if (mode === "apply") {
+      if (process.env.MIGRATION_WRITES_PAUSED !== "true") {
+        throw new Error(
+          "Pausa las escrituras de la aplicación y define MIGRATION_WRITES_PAUSED=true."
+        );
+      }
+      if (process.env.NODE_ENV === "production") {
+        if (process.env.MIGRATION_BACKUP_VERIFIED !== "true") {
+          throw new Error(
+            "Verifica un respaldo recuperable y define MIGRATION_BACKUP_VERIFIED=true."
+          );
+        }
+        if (
+          process.env.MIGRATION_CONFIRMATION !==
+          `${databaseName}:migrate-fighter-ownership-v1`
+        ) {
+          throw new Error(
+            "MIGRATION_CONFIRMATION debe confirmar el nombre de la base y esta migración."
+          );
+        }
+      }
+    }
+
+    const result = await migrateFighterOwnership(mongoose.connection.db, {
+      dryRun: mode === "preflight"
+    });
+    console.info(JSON.stringify({
+      event: `fighter.ownership_migration.${mode}`,
+      database: databaseName,
+      ...result
+    }));
   } finally {
     await mongoose.disconnect();
   }
