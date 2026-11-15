@@ -78,6 +78,22 @@ function serializeTechniqueLoadout(techniques) {
   };
 }
 
+function serializePetSnapshot(pet) {
+  return {
+    petId: pet.petId,
+    speciesId: pet.speciesId,
+    catalogVersion: pet.catalogVersion,
+    version: pet.version,
+    name: pet.name,
+    rarity: pet.rarity,
+    stats: serializeStats(pet.stats),
+    effects:
+      typeof pet.effects.toObject === "function"
+        ? pet.effects.toObject()
+        : pet.effects
+  };
+}
+
 export default function serializeBattle(battle, includeEvents = false) {
   const result = {
     id: battle._id.toString(),
@@ -102,6 +118,9 @@ export default function serializeBattle(battle, includeEvents = false) {
         ...(snapshot.techniques
           ? { techniques: serializeTechniqueLoadout(snapshot.techniques) }
           : {}),
+        ...(snapshot.pets === undefined
+          ? {}
+          : { pets: snapshot.pets.map(serializePetSnapshot) }),
         ...(snapshot.initiative === undefined
           ? {}
           : { initiative: snapshot.initiative })

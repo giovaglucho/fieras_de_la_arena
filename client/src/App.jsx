@@ -23,6 +23,8 @@ import { useSession } from './context/SessionContext.jsx'
 import BattleAnimation from './components/BattleAnimation.jsx'
 import BattleEquipment from './components/BattleEquipment.jsx'
 import BattleTechniques from './components/BattleTechniques.jsx'
+import BattlePets from './components/BattlePets.jsx'
+import PetCollection from './components/PetCollection.jsx'
 import BattleProgression, { BattleResultError } from './components/BattleProgression.jsx'
 import { EquipmentCollectionPanel } from './components/EquipmentCollection.jsx'
 import TechniqueCollection from './components/TechniqueCollection.jsx'
@@ -1740,6 +1742,13 @@ function BattleHistoryPage() {
                       <span className="battle-history__equipment">
                         {getBattleEquipmentSummary(ownParticipant.fighter)}
                       </span>
+                      <span className="battle-history__pets">
+                        {ownParticipant.fighter.pets === undefined
+                          ? 'Mascotas no registradas en este combate'
+                          : ownParticipant.fighter.pets.length === 0
+                            ? 'Sin mascotas en este combate'
+                            : `Acompañantes: ${ownParticipant.fighter.pets.map(({ name }) => name).join(', ')}`}
+                      </span>
                       <time className="battle-history__date" dateTime={battle.createdAt}>
                         {new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 'short' })
                           .format(new Date(battle.createdAt))}
@@ -1829,7 +1838,12 @@ function EquipmentCollectionPage() {
           error={error}
           onRetry={() => setReloadVersion((version) => version + 1)}
         />
-        {status === 'ready' && <TechniqueCollection fighter={fighter} />}
+        {status === 'ready' && (
+          <>
+            <TechniqueCollection fighter={fighter} />
+            <PetCollection fighter={fighter} />
+          </>
+        )}
       </section>
       <p className="auth-footer">Fieras de la Arena <span>·</span> La batalla comienza contigo</p>
     </main>
@@ -1897,6 +1911,11 @@ function BattleResultPage() {
   const fighterNames = new Map(
     battle?.participants.map(({ fighter: participant }) => [participant.id, participant.name]) ?? [],
   )
+  const petNames = new Map(
+    battle?.participants.flatMap(({ fighter: participant }) =>
+      (participant.pets ?? []).map(({ petId, name }) => [petId, name]),
+    ) ?? [],
+  )
   const outcome = isDraw ? 'Empate' : isVictory ? '¡Victoria!' : 'Derrota'
   const outcomeStyle = isDraw ? 'draw' : isVictory ? 'win' : 'loss'
 
@@ -1959,6 +1978,7 @@ function BattleResultPage() {
 
           <BattleEquipment participants={battle.participants} />
           <BattleTechniques participants={battle.participants} events={battle.events} />
+          <BattlePets participants={battle.participants} events={battle.events} />
 
           <BattleProgression
             progression={ownParticipant.result.progression}
@@ -1971,7 +1991,7 @@ function BattleResultPage() {
             <ol>
               {battle.events.map((event, index) => (
                 <li key={`${event.type}-${index}`}>
-                  {formatBattleEvent(event, fighterNames)}
+                  {formatBattleEvent(event, fighterNames, petNames)}
                 </li>
               ))}
             </ol>

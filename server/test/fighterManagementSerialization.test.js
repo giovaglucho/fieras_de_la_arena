@@ -3,6 +3,12 @@ import { test } from "node:test";
 import { serializeManagedFighter } from "../src/services/fighterManagementService.js";
 
 function createFighter() {
+  const pet = {
+    petId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    version: "pet-v1"
+  };
   return {
     _id: { toString: () => "fighter-id" },
     name: "colmillo",
@@ -46,6 +52,27 @@ function createFighter() {
         catalogVersion: "fighter-techniques-v1",
         requestId: "private-miss-key"
       }
+    ],
+    pets: [pet],
+    petUnlocks: [
+      {
+        level: 1,
+        seed: Buffer.alloc(32, 3),
+        version: "fighter-pet-initial-v1",
+        petId: pet.petId,
+        speciesId: pet.speciesId,
+        catalogVersion: pet.catalogVersion,
+        requestId: "private-pet-key"
+      },
+      {
+        level: 2,
+        seed: Buffer.alloc(32, 4),
+        version: "fighter-pet-unlock-v1",
+        petId: null,
+        speciesId: null,
+        catalogVersion: pet.catalogVersion,
+        requestId: "private-pet-miss-key"
+      }
     ]
   };
 }
@@ -72,6 +99,30 @@ test("serializa la colección propia y omite secretos de desbloqueo", () => {
     ]
   );
   assert.doesNotMatch(JSON.stringify(fighter), /seed|requestId|private-reward-key/i);
+  assert.doesNotMatch(JSON.stringify(fighter), /private-pet-key|private-pet-miss-key/i);
+  assert.deepEqual(fighter.pets[0], {
+    petId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    version: "pet-v1",
+    name: "Perro",
+    rarity: "comun",
+    stats: { health: 14, strength: 5, agility: 5, speed: 20 },
+    effects: {
+      attacksPerAction: { min: 1, max: 3 },
+      evasionChancePercent: 10,
+      ownerHealthPenalty: 10
+    }
+  });
+  assert.deepEqual(fighter.petUnlocks.map(({ level, petId, speciesId, pet }) => ({
+    level,
+    petId,
+    speciesId,
+    petName: pet?.name ?? null
+  })), [
+    { level: 1, petId: "aaaaaaaaaaaaaaaaaaaaaaaa", speciesId: "perro", petName: "Perro" },
+    { level: 2, petId: null, speciesId: null, petName: null }
+  ]);
 });
 
 test("las respuestas sin permiso de colección no incluyen técnicas", () => {
@@ -79,6 +130,18 @@ test("las respuestas sin permiso de colección no incluyen técnicas", () => {
 
   assert.equal(Object.hasOwn(fighter, "techniques"), false);
   assert.equal(Object.hasOwn(fighter, "techniqueUnlocks"), false);
+  assert.equal(Object.hasOwn(fighter, "pets"), false);
+  assert.equal(Object.hasOwn(fighter, "petUnlocks"), false);
+});
+
+test("rechaza un desbloqueo de mascota que no coincide con la colección guardada", () => {
+  const fighter = createFighter();
+  fighter.petUnlocks[0].speciesId = "lobo";
+
+  assert.throws(
+    () => serializeManagedFighter(fighter, null, true),
+    /desbloqueo de mascota no coincide con la colección/
+  );
 });
 
 test("rechaza un desbloqueo que no coincide con la colección guardada", () => {

@@ -149,6 +149,58 @@ function isValidBattleTechniques(fighter) {
   )
 }
 
+function isValidBattlePet(pet) {
+  return (
+    pet &&
+    typeof pet.petId === 'string' &&
+    /^[a-f\d]{24}$/i.test(pet.petId) &&
+    ['perro', 'lobo', 'oso'].includes(pet.speciesId) &&
+    typeof pet.catalogVersion === 'string' &&
+    pet.catalogVersion.length > 0 &&
+    typeof pet.version === 'string' &&
+    pet.version.length > 0 &&
+    typeof pet.name === 'string' &&
+    pet.name.length > 0 &&
+    ['comun', 'rara', 'muy_rara'].includes(pet.rarity) &&
+    isValidPetStats(pet.stats) &&
+    pet.effects &&
+    Number.isSafeInteger(pet.effects.attacksPerAction?.min) &&
+    pet.effects.attacksPerAction.min >= 1 &&
+    Number.isSafeInteger(pet.effects.attacksPerAction?.max) &&
+    pet.effects.attacksPerAction.max >= pet.effects.attacksPerAction.min &&
+    Number.isSafeInteger(pet.effects.evasionChancePercent) &&
+    pet.effects.evasionChancePercent >= 0 &&
+    pet.effects.evasionChancePercent <= 100 &&
+    Number.isSafeInteger(pet.effects.ownerHealthPenalty) &&
+    pet.effects.ownerHealthPenalty >= 0
+  )
+}
+
+function isValidPetStats(stats) {
+  return (
+    stats &&
+    typeof stats === 'object' &&
+    ['health', 'strength', 'agility', 'speed'].every((key) =>
+      Number.isSafeInteger(stats[key]) && stats[key] >= 0
+    )
+  )
+}
+
+function isValidBattlePets(fighter) {
+  if (fighter.pets === undefined) {
+    return true
+  }
+
+  const petIds = new Set()
+  return Array.isArray(fighter.pets) && fighter.pets.every((pet) => {
+    if (!isValidBattlePet(pet) || petIds.has(pet.petId)) {
+      return false
+    }
+    petIds.add(pet.petId)
+    return true
+  })
+}
+
 function isValidProgression(progression, fighter) {
   if (!progression || typeof progression !== 'object') {
     return false
@@ -199,6 +251,7 @@ function readBattle(result) {
         !Number.isFinite(fighter.elo) ||
         !isValidBattleEquipment(fighter) ||
         !isValidBattleTechniques(fighter) ||
+        !isValidBattlePets(fighter) ||
         !Number.isFinite(participantResult?.xpGained) ||
         !Number.isFinite(participantResult?.eloChange) ||
         !Number.isFinite(participantResult?.eloAfter)
@@ -243,6 +296,7 @@ function readBattleSummary(battle) {
       Number.isFinite(fighter.elo) &&
       isValidBattleEquipment(fighter) &&
       isValidBattleTechniques(fighter) &&
+      isValidBattlePets(fighter) &&
       Number.isFinite(result?.xpGained) &&
       Number.isFinite(result?.eloChange) &&
       Number.isFinite(result?.eloAfter)

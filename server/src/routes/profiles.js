@@ -21,11 +21,11 @@ router.get("/:username", async (request, response, next) => {
 
     const fighter = await findSingleFighterForUser(
       user._id,
-      "_id name level xp elo baseStats wins losses draws",
+      "_id name level xp elo baseStats wins losses draws visibility",
       user.activeFighterId
     );
 
-    if (!fighter) {
+    if (!fighter || fighter.visibility === "private") {
       return next(
         new ApiError(404, "PROFILE_NOT_FOUND", "No se encontró el perfil del luchador.")
       );

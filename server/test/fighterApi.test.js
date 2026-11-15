@@ -325,6 +325,23 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   );
   assert.equal(storedFighter.equipment[0].catalogVersion, "equipment-v1");
   assert.deepEqual(storedFighter.equipmentUnlocks, []);
+  const petId = randomUUID().replaceAll("-", "").slice(0, 24);
+  storedFighter.pets = [{
+    petId,
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    version: "pet-v1"
+  }];
+  storedFighter.petUnlocks = [{
+    level: 1,
+    seed: Buffer.alloc(32, 7),
+    version: "fighter-pet-initial-v1",
+    petId,
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    requestId: "private-pet-request"
+  }];
+  await storedFighter.save();
   const activeFighterResponse = await getActiveFighter(cookie);
   assert.equal(activeFighterResponse.status, 200);
   const activeFighter = (await activeFighterResponse.json()).fighter;
@@ -335,6 +352,16 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
   );
   assert.equal(activeFighter.techniques[0].name.length > 0, true);
   assert.deepEqual(activeFighter.techniqueUnlocks, []);
+  assert.deepEqual(activeFighter.pets.map(({ petId: ownedPetId, name }) => ({
+    petId: ownedPetId,
+    name
+  })), [{ petId, name: "Perro" }]);
+  assert.deepEqual(activeFighter.petUnlocks.map(({ level, petId: unlockedPetId, pet }) => ({
+    level,
+    petId: unlockedPetId,
+    name: pet?.name ?? null
+  })), [{ level: 1, petId, name: "Perro" }]);
+  assert.doesNotMatch(JSON.stringify(activeFighter), /seed|requestId|private-pet-request/i);
   const initialWeapon = getEquipmentById(
     storedFighter.equipment[0].itemId,
     storedFighter.equipment[0].catalogVersion
@@ -476,6 +503,31 @@ test("los perfiles públicos exponen solo los campos de juego permitidos", async
     assert.doesNotMatch(
       JSON.stringify(profile),
       /email|password|session|referralCode|userId|technique/i
+    );
+  }
+});
+
+test("los luchadores privados no se exponen por perfil ni por identificador público", async () => {
+  const fighter = await Fighter.findOne({ userId: userIds[0] });
+  await Fighter.updateOne(
+    { _id: fighter._id },
+    { $set: { visibility: "private" } }
+  );
+
+  try {
+    const publicById = await fetch(`${baseUrl}/api/v1/fighters/${fighter._id}`);
+    const publicByUsername = await fetch(
+      `${baseUrl}/api/v1/profiles/fighter_${runId.slice(0, 12)}`
+    );
+
+    for (const response of [publicById, publicByUsername]) {
+      assert.equal(response.status, 404);
+      assert.equal((await response.json()).error.code, "PROFILE_NOT_FOUND");
+    }
+  } finally {
+    await Fighter.updateOne(
+      { _id: fighter._id },
+      { $set: { visibility: "public" } }
     );
   }
 });

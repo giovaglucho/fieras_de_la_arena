@@ -126,3 +126,44 @@ test("serializa solo el snapshot de técnicas y no incorpora la colección priva
   assert.equal(JSON.stringify(serialized).includes("techniqueUnlocks"), false);
   assert.equal(JSON.stringify(serialized).includes("seed"), false);
 });
+
+test("expone snapshots de mascotas en detalle e historial sin datos de propiedad internos", () => {
+  const battle = createBattle(null);
+  battle.participants[0].snapshot.pets = [{
+    petId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    ownerFighterId: { toString: () => "fighter-own" },
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    version: "pet-v1",
+    name: "Perro",
+    rarity: "comun",
+    stats: { health: 14, strength: 5, agility: 5, speed: 20 },
+    effects: {
+      attacksPerAction: { min: 1, max: 3 },
+      evasionChancePercent: 10,
+      ownerHealthPenalty: 10
+    }
+  }];
+
+  const detail = serializeBattle(battle, true);
+  const summary = serializeBattle(battle);
+  const expectedPet = {
+    petId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    speciesId: "perro",
+    catalogVersion: "fighter-pets-v1",
+    version: "pet-v1",
+    name: "Perro",
+    rarity: "comun",
+    stats: { health: 14, strength: 5, agility: 5, speed: 20 },
+    effects: {
+      attacksPerAction: { min: 1, max: 3 },
+      evasionChancePercent: 10,
+      ownerHealthPenalty: 10
+    }
+  };
+
+  assert.deepEqual(detail.participants[0].fighter.pets, [expectedPet]);
+  assert.deepEqual(summary.participants[0].fighter.pets, [expectedPet]);
+  assert.doesNotMatch(JSON.stringify(detail), /ownerFighterId/);
+  assert.equal(summary.participants[1].fighter.pets, undefined);
+});

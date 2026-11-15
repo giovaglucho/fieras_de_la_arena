@@ -1,7 +1,7 @@
 # Paso activo de desarrollo
 
 **Paso activo:** `10.8.3`
-**Estado:** autorizado; pendiente de implementación
+**Estado:** implementado; pruebas automatizadas aprobadas; QA de aceptación pendiente antes de integrar la rama
 **Título:** Mostrar colección y participación de mascotas
 
 ## Objetivo

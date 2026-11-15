@@ -11,11 +11,12 @@ import {
 import { createFighterGrowthState } from "../game-engine/fighterGrowth.js";
 import { getEquipmentById } from "../game-engine/equipmentCatalog.js";
 import { getTechniqueById } from "../game-engine/techniqueCatalog.js";
+import { getPetById } from "../game-engine/petCatalog.js";
 
 const FIGHTER_FIELDS =
   "_id name level xp elo baseStats appearance wins losses draws status visibility createdAt";
 const FIGHTER_COLLECTION_FIELDS =
-  `${FIGHTER_FIELDS} equipment equipmentUnlocks techniques techniqueUnlocks`;
+  `${FIGHTER_FIELDS} equipment equipmentUnlocks techniques techniqueUnlocks pets petUnlocks`;
 
 function serializeEquipmentItem({ itemId, catalogVersion }) {
   const item = getEquipmentById(itemId, catalogVersion);
@@ -45,6 +46,24 @@ function serializeTechnique({ techniqueId, catalogVersion, techniqueVersion }) {
     effect: {
       type: technique.effectType,
       amount: technique.effectAmount
+    }
+  };
+}
+
+function serializePet({ petId, speciesId, catalogVersion, version }) {
+  const pet = getPetById(speciesId, catalogVersion, version);
+  return {
+    petId,
+    speciesId: pet.id,
+    catalogVersion,
+    version,
+    name: pet.name,
+    rarity: pet.rarity,
+    stats: { ...pet.stats },
+    effects: {
+      attacksPerAction: { ...pet.attacksPerAction },
+      evasionChancePercent: pet.evasionChancePercent,
+      ownerHealthPenalty: pet.ownerHealthPenalty
     }
   };
 }
@@ -108,6 +127,27 @@ export function serializeManagedFighter(
               technique: ownedTechnique
                 ? serializeTechnique(ownedTechnique)
                 : null
+            };
+          }),
+          pets: (fighter.pets ?? []).map(serializePet),
+          petUnlocks: (fighter.petUnlocks ?? []).map((unlock) => {
+            const petId = unlock.petId ?? null;
+            const ownedPet = petId === null
+              ? null
+              : (fighter.pets ?? []).find((pet) => pet.petId === petId);
+
+            if (
+              petId !== null &&
+              (!ownedPet || ownedPet.speciesId !== unlock.speciesId)
+            ) {
+              throw new Error("El desbloqueo de mascota no coincide con la colección del luchador.");
+            }
+
+            return {
+              level: unlock.level,
+              petId,
+              speciesId: unlock.speciesId ?? null,
+              pet: ownedPet ? serializePet(ownedPet) : null
             };
           })
         }

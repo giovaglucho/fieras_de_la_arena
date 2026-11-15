@@ -13,6 +13,8 @@ let EquipmentCollectionPanel
 let TechniqueCollection
 let BattleEquipment
 let BattleTechniques
+let BattlePetsFromVite
+let PetCollectionFromVite
 let fetchActiveFighter
 let fetchBattle
 let fetchOwnedBattleHistory
@@ -32,6 +34,10 @@ before(async () => {
     await vite.ssrLoadModule('/src/components/BattleEquipment.jsx'))
   ;({ default: BattleTechniques } =
     await vite.ssrLoadModule('/src/components/BattleTechniques.jsx'))
+  ;({ default: BattlePetsFromVite } =
+    await vite.ssrLoadModule('/src/components/BattlePets.jsx'))
+  ;({ default: PetCollectionFromVite } =
+    await vite.ssrLoadModule('/src/components/PetCollection.jsx'))
   ;({ fetchActiveFighter } = await vite.ssrLoadModule('/src/api/fighters.js'))
   ;({ fetchBattle, fetchOwnedBattleHistory } =
     await vite.ssrLoadModule('/src/api/arena.js'))
@@ -57,6 +63,21 @@ const armor = {
   slot: 'armor',
   minLevel: 2,
   modifiers: { defense: 1, initiative: 0 },
+}
+
+const pet = {
+  petId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+  speciesId: 'perro',
+  catalogVersion: 'fighter-pets-v1',
+  version: 'pet-v1',
+  name: 'Perro',
+  rarity: 'comun',
+  stats: { health: 14, strength: 5, agility: 5, speed: 20 },
+  effects: {
+    attacksPerAction: { min: 1, max: 3 },
+    evasionChancePercent: 10,
+    ownerHealthPenalty: 10,
+  },
 }
 
 function createFighter(overrides = {}) {
@@ -91,6 +112,8 @@ function createFighter(overrides = {}) {
     ],
     techniques: [],
     techniqueUnlocks: [],
+    pets: [],
+    petUnlocks: [],
     ...overrides,
   }
 }
@@ -182,6 +205,101 @@ test('presenta una colección vacía como distinta de una carga histórica', () 
   assert.doesNotMatch(markup, /Equipo no registrado en este combate/)
   assert.match(markup, /aria-labelledby="equipment-collection-title"/)
   assert.doesNotMatch(markup, /<(button|input|select)\b/)
+})
+
+test('presenta mascotas, efectos y tiradas sin premios en la colección', () => {
+  const fighter = createFighter({
+    pets: [pet],
+    petUnlocks: [
+      { level: 1, petId: pet.petId, speciesId: pet.speciesId, pet },
+      { level: 2, petId: null, speciesId: null, pet: null },
+    ],
+  })
+  const markup = renderToStaticMarkup(createElement(PetCollectionFromVite, { fighter }))
+
+  assert.match(markup, /Colección de mascotas/)
+  assert.match(markup, /Perro/)
+  assert.match(markup, /Común/)
+  assert.match(markup, /Ataca entre 1 y 3 veces/)
+  assert.match(markup, /esquiva 10%/)
+  assert.match(markup, /reduce 10 puntos de vida máxima/)
+  assert.match(markup, /Se unió Perro/)
+  assert.match(markup, /Esta tirada no otorgó una mascota/)
+  assert.match(markup, /aria-labelledby="pet-collection-title"/)
+  assert.doesNotMatch(markup, /<(button|input|select)\b/)
+})
+
+test('conserva una sección de combate normal sin mascotas y reconoce historial antiguo', () => {
+  const emptyBattle = createBattle()
+  const emptyMarkup = renderToStaticMarkup(createElement(BattlePetsFromVite, {
+    participants: emptyBattle.participants.map(({ fighter }) => ({ fighter: { ...fighter, pets: [] } })),
+    events: emptyBattle.events,
+  }))
+  const legacyMarkup = renderToStaticMarkup(createElement(BattlePetsFromVite, {
+    participants: emptyBattle.participants,
+    events: emptyBattle.events,
+  }))
+
+  assert.match(emptyMarkup, /Sin mascotas en este combate/)
+  assert.match(legacyMarkup, /se guardó antes de registrar mascotas/)
+})
+
+test('resume la participación del acompañante y formatea sus eventos', () => {
+  const battle = createBattle()
+  battle.participants[0].fighter.pets = [pet]
+  battle.events.splice(1, 0,
+    {
+      type: 'pet_attack',
+      attackerPetId: pet.petId,
+      teamFighterId: 'fighter-own',
+      targetFighterId: 'fighter-opponent',
+    },
+    {
+      type: 'damage',
+      attackerPetId: pet.petId,
+      targetFighterId: 'fighter-opponent',
+      amount: 7,
+      remainingHealth: 93,
+    },
+  )
+
+  const markup = renderToStaticMarkup(createElement(BattlePetsFromVite, {
+    participants: battle.participants,
+    events: battle.events,
+  }))
+  const fighterNames = new Map([
+    ['fighter-own', 'colmillo'],
+    ['fighter-opponent', 'rival'],
+  ])
+  const petNames = new Map([[pet.petId, pet.name]])
+
+  assert.match(markup, /realizó 1 ataque e infligió 7 de daño/)
+  assert.match(
+    formatBattleEvent(battle.events[1], fighterNames, petNames),
+    /Perro de colmillo ataca a rival/,
+  )
+  assert.match(
+    formatBattleEvent(battle.events[2], fighterNames, petNames),
+    /Perro inflige 7 de daño a rival/,
+  )
+  assert.match(formatBattleEvent({
+    type: 'pet_targeted_attack',
+    attackerFighterId: 'fighter-opponent',
+    targetPetId: pet.petId,
+    evaded: true,
+  }, fighterNames, petNames), /rival ataca a Perro, pero la mascota esquiva/)
+  assert.match(formatBattleEvent({
+    type: 'pet_damage',
+    targetPetId: pet.petId,
+    amount: 4,
+    remainingHealth: 10,
+  }, fighterNames, petNames), /Perro recibe 4 de daño y conserva 10 de vida/)
+  assert.match(formatBattleEvent({
+    type: 'pet_defeated',
+    petId: pet.petId,
+    ownerFighterId: 'fighter-own',
+  }, fighterNames, petNames), /Perro de colmillo queda fuera de combate/)
+  assert.doesNotMatch(markup, /Evento no compatible/)
 })
 
 test('muestra objetos, efectos y tiradas de desbloqueo confirmadas', () => {
@@ -339,6 +457,8 @@ test('valida la colección activa y rechaza objetos mal formados', async (contex
   assert.equal(fighter.equipmentUnlocks[0].item.name, armor.name)
   assert.deepEqual(fighter.techniques, [])
   assert.deepEqual(fighter.techniqueUnlocks, [])
+  assert.deepEqual(fighter.pets, [])
+  assert.deepEqual(fighter.petUnlocks, [])
 
   mockFetch(context, {
     fighter: createFighter({
@@ -353,6 +473,13 @@ test('valida la colección activa y rechaza objetos mal formados', async (contex
     }),
   })
   await assert.rejects(fetchActiveFighter(), /colección de técnicas inesperada/i)
+
+  mockFetch(context, {
+    fighter: createFighter({
+      pets: [{ ...pet, stats: { ...pet.stats, health: '14' } }],
+    }),
+  })
+  await assert.rejects(fetchActiveFighter(), /colección de mascotas inesperada/i)
 })
 
 test('lee snapshots nuevos y mantiene válidos los combates históricos sin equipo', async (context) => {
@@ -386,6 +513,25 @@ test('lee snapshots nuevos y mantiene válidos los combates históricos sin equi
   const legacyBattle = await fetchBattle('old-battle')
   assert.equal(legacyBattle.participants[0].fighter.equipment, undefined)
   assert.equal(legacyBattle.participants[0].fighter.techniques, undefined)
+})
+
+test('lee snapshots e historial con mascotas y conserva snapshots antiguos sin ellas', async (context) => {
+  const battleWithPets = createBattle()
+  battleWithPets.participants[0].fighter.pets = [pet]
+  mockFetch(context, { battle: battleWithPets })
+  const loadedBattle = await fetchBattle('battle-id')
+  assert.deepEqual(loadedBattle.participants[0].fighter.pets, [pet])
+
+  mockFetch(context, {
+    battles: [battleWithPets],
+    pagination: { page: 1, limit: 20, totalItems: 1, totalPages: 1 },
+  })
+  const history = await fetchOwnedBattleHistory(1)
+  assert.deepEqual(history.battles[0].participants[0].fighter.pets, [pet])
+
+  mockFetch(context, { battle: createBattle() })
+  const legacyBattle = await fetchBattle('old-battle')
+  assert.equal(legacyBattle.participants[0].fighter.pets, undefined)
 })
 
 test('valida snapshots de habilidades opcionales y rechaza datos mal formados', async (context) => {

@@ -1,7 +1,8 @@
 import { describeTechniqueEffect, getTechniqueName } from './techniques.js'
 
-export function formatBattleEvent(event, fighterNames) {
+export function formatBattleEvent(event, fighterNames, petNames = new Map()) {
   const fighterName = (fighterId) => fighterNames.get(fighterId) ?? 'luchador desconocido'
+  const petName = (petId) => petNames.get(petId) ?? 'la mascota'
 
   switch (event.type) {
     case 'combat_started':
@@ -16,8 +17,24 @@ export function formatBattleEvent(event, fighterNames) {
       return `Acción ${event.actionNumber}: ${fighterName(event.attackerFighterId)} ataca a ${fighterName(event.targetFighterId)}.`
     case 'damage':
       return event.amount === 0
-        ? `${fighterName(event.targetFighterId)} no recibe daño y conserva ${event.remainingHealth} de vida.`
-        : `${fighterName(event.targetFighterId)} recibe ${event.amount} de daño y conserva ${event.remainingHealth} de vida.`
+        ? event.attackerPetId
+          ? `${petName(event.attackerPetId)} no inflige daño a ${fighterName(event.targetFighterId)}.`
+          : `${fighterName(event.targetFighterId)} no recibe daño y conserva ${event.remainingHealth} de vida.`
+        : event.attackerPetId
+          ? `${petName(event.attackerPetId)} inflige ${event.amount} de daño a ${fighterName(event.targetFighterId)}, que conserva ${event.remainingHealth} de vida.`
+          : `${fighterName(event.targetFighterId)} recibe ${event.amount} de daño y conserva ${event.remainingHealth} de vida.`
+    case 'pet_attack':
+      return `${petName(event.attackerPetId)} de ${fighterName(event.teamFighterId)} ataca a ${fighterName(event.targetFighterId)}.`
+    case 'pet_targeted_attack':
+      return event.evaded
+        ? `${fighterName(event.attackerFighterId)} ataca a ${petName(event.targetPetId)}, pero la mascota esquiva el golpe.`
+        : `${fighterName(event.attackerFighterId)} dirige su ataque contra ${petName(event.targetPetId)}.`
+    case 'pet_damage':
+      return event.amount === 0
+        ? `${petName(event.targetPetId)} no recibe daño.`
+        : `${petName(event.targetPetId)} recibe ${event.amount} de daño y conserva ${event.remainingHealth} de vida.`
+    case 'pet_defeated':
+      return `${petName(event.petId)} de ${fighterName(event.ownerFighterId)} queda fuera de combate.`
     case 'fighter_defeated':
       return `${fighterName(event.fighterId)} queda fuera de combate.`
     case 'technique_activated': {

@@ -57,9 +57,9 @@ router.get("/:id", async (request, response, next) => {
 
   try {
     const fighter = await Fighter.findById(request.params.id)
-      .select("_id userId name level xp elo baseStats appearance wins losses draws");
+      .select("_id userId name level xp elo baseStats appearance wins losses draws visibility");
 
-    if (!fighter) {
+    if (!fighter || fighter.visibility === "private") {
       return next(
         new ApiError(404, "PROFILE_NOT_FOUND", "No se encontró el perfil del luchador.")
       );

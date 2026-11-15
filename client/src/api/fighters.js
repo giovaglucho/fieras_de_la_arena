@@ -189,6 +189,79 @@ function readTechniqueCollection(fighter) {
   return { techniques, techniqueUnlocks }
 }
 
+function isValidPet(pet) {
+  return (
+    pet &&
+    typeof pet.petId === 'string' &&
+    /^[a-f\d]{24}$/i.test(pet.petId) &&
+    ['perro', 'lobo', 'oso'].includes(pet.speciesId) &&
+    typeof pet.catalogVersion === 'string' &&
+    pet.catalogVersion.length > 0 &&
+    typeof pet.version === 'string' &&
+    pet.version.length > 0 &&
+    typeof pet.name === 'string' &&
+    pet.name.length > 0 &&
+    ['comun', 'rara', 'muy_rara'].includes(pet.rarity) &&
+    pet.stats &&
+    ['health', 'strength', 'agility', 'speed'].every((key) =>
+      Number.isSafeInteger(pet.stats[key]) && pet.stats[key] >= 0
+    ) &&
+    pet.effects &&
+    Number.isSafeInteger(pet.effects.attacksPerAction?.min) &&
+    pet.effects.attacksPerAction.min >= 1 &&
+    Number.isSafeInteger(pet.effects.attacksPerAction?.max) &&
+    pet.effects.attacksPerAction.max >= pet.effects.attacksPerAction.min &&
+    Number.isSafeInteger(pet.effects.evasionChancePercent) &&
+    pet.effects.evasionChancePercent >= 0 &&
+    pet.effects.evasionChancePercent <= 100 &&
+    Number.isSafeInteger(pet.effects.ownerHealthPenalty) &&
+    pet.effects.ownerHealthPenalty >= 0
+  )
+}
+
+function readPetCollection(fighter) {
+  const { pets, petUnlocks } = fighter
+  const petIds = new Set()
+
+  if (
+    !Array.isArray(pets) ||
+    !Array.isArray(petUnlocks) ||
+    !pets.every((pet) => {
+      if (!isValidPet(pet) || petIds.has(pet.petId)) {
+        return false
+      }
+      petIds.add(pet.petId)
+      return true
+    }) ||
+    !petUnlocks.every((unlock) => {
+      if (
+        !unlock ||
+        !Number.isSafeInteger(unlock.level) ||
+        unlock.level < 1 ||
+        (unlock.petId !== null && typeof unlock.petId !== 'string') ||
+        (unlock.speciesId !== null &&
+          !['perro', 'lobo', 'oso'].includes(unlock.speciesId))
+      ) {
+        return false
+      }
+      if (unlock.petId === null) {
+        return unlock.speciesId === null && unlock.pet === null
+      }
+      return (
+        isValidPet(unlock.pet) &&
+        unlock.pet.petId === unlock.petId &&
+        unlock.pet.speciesId === unlock.speciesId &&
+        petIds.has(unlock.petId)
+      )
+    }) ||
+    new Set(petUnlocks.map(({ level }) => level)).size !== petUnlocks.length
+  ) {
+    throw new Error('El servidor devolvió una colección de mascotas inesperada. Inténtalo de nuevo.')
+  }
+
+  return { pets, petUnlocks }
+}
+
 function readManagedFighter(fighter, { includeCollection = false } = {}) {
   const stats = fighter?.baseStats
   const hasValidStats = stats &&
@@ -219,6 +292,7 @@ function readManagedFighter(fighter, { includeCollection = false } = {}) {
         ...fighter,
         ...readEquipmentCollection(fighter),
         ...readTechniqueCollection(fighter),
+        ...readPetCollection(fighter),
       }
     : fighter
 }

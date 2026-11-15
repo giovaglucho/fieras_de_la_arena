@@ -2232,3 +2232,153 @@
     grid-template-columns: 1fr;
   }
 }
+
+.pet-collection,
+.pet-collection__unlocks,
+.pet-card,
+.battle-pets,
+.battle-pets__participant {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pet-collection > *,
+.pet-collection__unlocks > *,
+.pet-card > *,
+.battle-pets > *,
+.battle-pets__participant > * {
+  margin: 0;
+}
+
+.pet-collection h2,
+.pet-collection h3,
+.battle-pets h2,
+.battle-pets h3,
+.pet-card h3 {
+  color: var(--color-paper);
+  font-family: var(--font-display);
+}
+
+.pet-collection h2,
+.battle-pets h2 {
+  font-size: 1.65rem;
+}
+
+.pet-collection h3,
+.battle-pets h3,
+.pet-card h3 {
+  font-size: 1.2rem;
+}
+
+.pet-collection__unlocks,
+.pet-card,
+.battle-pets__participant {
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 12%);
+  border-radius: 0.55rem;
+  background: rgb(33 25 21 / 65%);
+}
+
+.pet-collection__items,
+.pet-collection__unlocks ol,
+.battle-pets__participant ul {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pet-collection__unlocks ol {
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+.pet-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.pet-card__mark {
+  display: grid;
+  width: 2.75rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid var(--color-copper-light);
+  border-radius: 50%;
+  color: var(--color-paper);
+  background: rgb(153 91 47 / 35%);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.pet-card--rara .pet-card__mark {
+  border-color: #9fb6da;
+  background: rgb(81 107 146 / 35%);
+}
+
+.pet-card--muy_rara .pet-card__mark {
+  border-color: #c7a6df;
+  background: rgb(113 79 140 / 35%);
+}
+
+.pet-card__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.pet-card__stats div {
+  padding: 0.5rem;
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 5%);
+}
+
+.pet-card__stats dt {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.pet-card__stats dd {
+  margin: 0.2rem 0 0;
+  color: var(--color-paper);
+  font-weight: 700;
+}
+
+.pet-card__effect,
+.pet-collection > p,
+.pet-collection__unlocks > p,
+.battle-pets > p,
+.battle-pets__legacy,
+.battle-pets__participant p,
+.battle-pets__participant li,
+.battle-history__pets {
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.battle-pets {
+  padding: 1rem;
+  border: 1px solid rgb(245 232 208 / 12%);
+  border-radius: 0.55rem;
+  background: rgb(33 25 21 / 65%);
+}
+
+.battle-pets__participants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .battle-pets__participants {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-card__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
