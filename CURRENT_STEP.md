@@ -19,11 +19,22 @@ Permitir que los luchadores obtengan acompañantes originales que influyan de fo
 
 - Implementar cualquier otro paso de la hoja de ruta.
 
+## Correcciones puntuales de QA autorizadas
+
+En esta iteración se autoriza además corregir únicamente estas incidencias reportadas en el QA:
+
+- Evitar que el panel use rutas v1 singulares cuando la cuenta posee varios luchadores; debe mostrar los datos del luchador activo seleccionado usando la API v2.
+- Servir un favicon válido para que `/favicon.ico` no responda 404.
+
+No ampliar estos arreglos a otras inconsistencias de API o interfaz.
+
 ## Criterios de aceptación
 
 - Se muestra qué mascotas posee el luchador y qué aportó su acompañante al combate.
 - Sin mascotas se conserva una pantalla normal.
 - Los textos y recursos visuales son propios.
+- Una cuenta con varios luchadores puede cargar el panel del luchador activo sin errores 409.
+- La solicitud de `/favicon.ico` responde correctamente con un recurso válido.
 
 ## Pruebas y verificación
 
@@ -33,6 +44,8 @@ Permitir que los luchadores obtengan acompañantes originales que influyan de fo
 - Historial.
 - Privacidad.
 - Accesibilidad.
+- Panel con varios luchadores.
+- Recurso favicon.
 
 ## Dependencia
 

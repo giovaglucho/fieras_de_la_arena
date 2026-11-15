@@ -7,6 +7,7 @@ import Fighter from "../src/models/Fighter.js";
 import { TRAINING_OPPONENT } from "../src/config/trainingOpponent.js";
 import { CombatServiceError, resolveCombat } from "../src/services/combatService.js";
 import { simulateCombat } from "../src/game-engine/simulateCombat.js";
+import { applyPetHealthPenalty } from "../src/game-engine/petCatalog.js";
 
 const runId = randomUUID().replaceAll("-", "");
 let fighterIds;
@@ -160,6 +161,13 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
       const [growthEvent] = result.growthEvents;
       const expectedStats = result.progression.statsBefore.toObject();
       expectedStats[growthEvent.stat] += growthEvent.amount;
+      const fighter = fighters.find(({ _id }) =>
+        _id.equals(snapshot.fighterId)
+      );
+      const expectedStatsAfter = applyPetHealthPenalty(
+        expectedStats,
+        fighter.pets
+      );
       return (
         result.growthEvents.length === 1 &&
         growthEvent.version === "fighter-growth-v1" &&
@@ -173,8 +181,9 @@ test("repetir una solicitud devuelve la misma pelea sin aplicar recompensas otra
         result.progression.levelsGained === 1 &&
         result.progression.xpBefore === 95 &&
         result.progression.statsBefore.health === snapshot.stats.health &&
-        Object.keys(expectedStats).every(
-          (stat) => result.progression.statsAfter[stat] === expectedStats[stat]
+        Object.keys(expectedStatsAfter).every(
+          (stat) =>
+            result.progression.statsAfter[stat] === expectedStatsAfter[stat]
         )
       );
     })

@@ -439,8 +439,11 @@ export async function fetchBattleHistory(page = 1, limit = 20) {
   return readBattleHistory(await arenaRequest(`/history?${query}`))
 }
 
-export async function fetchOwnedBattleHistory(page = 1, limit = 20) {
+export async function fetchOwnedBattleHistory(page = 1, limit = 20, fighterId) {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (fighterId !== undefined) {
+    query.set('fighterId', fighterId)
+  }
   return readOwnedBattleHistory(await apiRequest(`${ARENA_V2_URL}/history?${query}`))
 }
 

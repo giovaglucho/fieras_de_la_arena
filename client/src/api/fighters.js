@@ -266,6 +266,11 @@ function readManagedFighter(fighter, { includeCollection = false } = {}) {
   const stats = fighter?.baseStats
   const hasValidStats = stats &&
     ['health', 'attack', 'defense', 'speed'].every((key) => Number.isFinite(stats[key]))
+  const effectiveStats = fighter?.stats
+  const hasValidEffectiveStats = effectiveStats &&
+    ['health', 'attack', 'defense', 'speed'].every((key) =>
+      Number.isFinite(effectiveStats[key])
+    )
 
   if (
     !fighter ||
@@ -282,7 +287,11 @@ function readManagedFighter(fighter, { includeCollection = false } = {}) {
     typeof fighter.isActive !== 'boolean' ||
     typeof fighter.createdAt !== 'string' ||
     !Number.isFinite(Date.parse(fighter.createdAt)) ||
-    !hasValidStats
+    !hasValidStats ||
+    (includeCollection &&
+      (!hasValidEffectiveStats ||
+        !Number.isSafeInteger(fighter.xpToNextLevel) ||
+        fighter.xpToNextLevel < 1))
   ) {
     throw new Error('El servidor devolvió una respuesta inesperada. Inténtalo de nuevo.')
   }

@@ -394,6 +394,41 @@ test("historial v2 y detalle reconocen cualquier luchador propio sin revelar com
     engineVersion: "combat-v1",
     events: [{ type: "combat_started" }]
   });
+  const activeFighterBattle = await Battle.create({
+    battleType: "pvp",
+    status: "completed",
+    participants: [
+      {
+        snapshot: {
+          fighterId: secondFighter._id,
+          name: secondFighter.name,
+          level: 1,
+          elo: 1000,
+          stats
+        },
+        result: { xpGained: 25, eloChange: 16, eloAfter: 1016 }
+      },
+      {
+        snapshot: {
+          fighterId: target._id,
+          name: target.name,
+          level: 1,
+          elo: 1000,
+          stats
+        },
+        result: { xpGained: 10, eloChange: -16, eloAfter: 984 }
+      }
+    ],
+    winnerFighterId: secondFighter._id,
+    requesterFighterId: secondFighter._id,
+    requestId: `history-active-${runId}`,
+    challengeDateKey: new Date().toISOString().slice(0, 10),
+    challengePairKey: [secondFighter._id.toString(), target._id.toString()].sort().join(":"),
+    actionCount: 2,
+    seed: "history-active-seed",
+    engineVersion: "combat-v1",
+    events: [{ type: "combat_started" }]
+  });
 
   const attemptsResponse = await fetch(`${baseUrl}/api/v2/arena/attempts`, {
     headers: { Cookie: cookie }
@@ -405,9 +440,40 @@ test("historial v2 y detalle reconocen cualquier luchador propio sin revelar com
   });
   const history = await historyResponse.json();
   assert.equal(historyResponse.status, 200);
-  assert.deepEqual(history.battles.map(({ id }) => id), [battle._id.toString()]);
-  assert.equal(history.battles[0].ownFighterId, fighter._id.toString());
+  assert.equal(history.battles.length, 2);
+  assert.deepEqual(
+    new Set(history.battles.map(({ id }) => id)),
+    new Set([battle._id.toString(), activeFighterBattle._id.toString()])
+  );
+  assert.equal(history.battles.find(({ id }) => id === battle._id.toString()).ownFighterId, fighter._id.toString());
   assert.equal("events" in history.battles[0], false);
+
+  const selectedHistoryResponse = await fetch(
+    `${baseUrl}/api/v2/arena/history?page=1&limit=5&fighterId=${secondFighter._id}`,
+    { headers: { Cookie: cookie } }
+  );
+  const selectedHistory = await selectedHistoryResponse.json();
+  assert.equal(selectedHistoryResponse.status, 200);
+  assert.deepEqual(selectedHistory.battles.map(({ id, ownFighterId }) => ({
+    id,
+    ownFighterId
+  })), [{
+    id: activeFighterBattle._id.toString(),
+    ownFighterId: secondFighter._id.toString()
+  }]);
+
+  const malformedHistoryResponse = await fetch(
+    `${baseUrl}/api/v2/arena/history?fighterId=not-an-id`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(malformedHistoryResponse.status, 400);
+
+  const unownedHistoryResponse = await fetch(
+    `${baseUrl}/api/v2/arena/history?fighterId=${target._id}`,
+    { headers: { Cookie: cookie } }
+  );
+  assert.equal(unownedHistoryResponse.status, 404);
+  assert.equal((await unownedHistoryResponse.json()).error.code, "FIGHTER_NOT_FOUND");
 
   const detailResponse = await fetch(`${baseUrl}/api/v1/battles/${battle._id}`, {
     headers: { Cookie: cookie }

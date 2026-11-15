@@ -59,6 +59,16 @@ app.get("/api/v1/health", (request, response) => {
 });
 
 if (isProduction) {
+  app.get("/favicon.ico", (request, response, next) => {
+    response.sendFile(
+      resolve(clientBuildPath, "favicon.svg"),
+      (error) => {
+        if (error) {
+          next(error);
+        }
+      }
+    );
+  });
   app.use(express.static(clientBuildPath));
   app.get("/{*path}", (request, response, next) => {
     if (

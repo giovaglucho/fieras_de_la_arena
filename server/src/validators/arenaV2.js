@@ -51,3 +51,22 @@ export function validateOpponentQuery(query) {
     maxLevel
   };
 }
+
+export function validateOwnedHistoryQuery(query) {
+  const allowedFields = new Set(["page", "limit", "fighterId"]);
+  if (Object.keys(query).some((field) => !allowedFields.has(field))) {
+    return null;
+  }
+
+  const pagination = validatePagination(query);
+  const fighterId = query.fighterId;
+  if (
+    !pagination ||
+    (fighterId !== undefined &&
+      (typeof fighterId !== "string" || !/^[a-f\d]{24}$/i.test(fighterId)))
+  ) {
+    return null;
+  }
+
+  return { ...pagination, fighterId };
+}

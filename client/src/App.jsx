@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
-  fetchArenaAttempts,
   fetchArenaChallengeAttempts,
   fetchArenaOpponents,
   fetchBattle,
-  fetchBattleHistory,
   fetchOwnedBattleHistory,
   startDirectedChallenge,
 } from './api/arena.js'
 import {
   createFighter,
   fetchActiveFighter,
-  fetchMyFighter,
   fetchOwnedFighters,
   fetchPublicProfile,
   selectActiveFighter,
@@ -771,35 +768,16 @@ function DashboardPage() {
             return
           }
 
-          const [profileResult, attemptsResult, historyResult] = await Promise.allSettled([
-            collection.pagination.totalItems === 1
-              ? fetchMyFighter()
-              : Promise.resolve(null),
-            fetchArenaAttempts(),
-            fetchBattleHistory(1, 5),
+          const [attemptsResult, historyResult] = await Promise.allSettled([
+            fetchArenaChallengeAttempts(),
+            fetchOwnedBattleHistory(1, 5, selectedFighter.id),
           ])
 
           if (!isCurrent) {
             return
           }
 
-          const fighter = collection.pagination.totalItems === 1
-            ? profileResult.status === 'fulfilled'
-              ? profileResult.value
-              : null
-            : {
-                ...selectedFighter,
-                username: user.username,
-                stats: selectedFighter.baseStats,
-              }
-
-          if (!fighter || fighter.id !== selectedFighter.id) {
-            throw new Error(
-              profileResult.status === 'rejected'
-                ? profileResult.reason.message
-                : 'La selección activa cambió. Actualiza el panel e inténtalo de nuevo.'
-            )
-          }
+          const fighter = { ...selectedFighter, username: user.username }
 
           const history = historyResult.status === 'fulfilled'
             ? historyResult.value
@@ -823,12 +801,16 @@ function DashboardPage() {
             fighters: collection.fighters,
             pagination: collection.pagination,
             fighter,
-            attempts: attemptsResult.status === 'fulfilled'
+            attempts:
+              attemptsResult.status === 'fulfilled' &&
+              attemptsResult.value.fighterId === fighter.id
               ? attemptsResult.value
               : null,
             attemptsError: attemptsResult.status === 'rejected'
               ? attemptsResult.reason.message
-              : '',
+              : attemptsResult.value.fighterId !== fighter.id
+                ? 'La selección activa cambió. Actualiza el panel e inténtalo de nuevo.'
+                : '',
             historyError: historyResult.status === 'rejected'
               ? historyResult.reason.message
               : '',

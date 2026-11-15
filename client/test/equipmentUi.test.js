@@ -91,6 +91,8 @@ function createFighter(overrides = {}) {
     losses: 0,
     draws: 0,
     baseStats: { health: 100, attack: 10, defense: 4, speed: 5 },
+    stats: { health: 100, attack: 10, defense: 4, speed: 5 },
+    xpToNextLevel: 150,
     status: 'active',
     visibility: 'public',
     isActive: true,

@@ -132,6 +132,20 @@ test("las respuestas sin permiso de colección no incluyen técnicas", () => {
   assert.equal(Object.hasOwn(fighter, "techniqueUnlocks"), false);
   assert.equal(Object.hasOwn(fighter, "pets"), false);
   assert.equal(Object.hasOwn(fighter, "petUnlocks"), false);
+  assert.equal(Object.hasOwn(fighter, "stats"), false);
+  assert.equal(Object.hasOwn(fighter, "xpToNextLevel"), false);
+});
+
+test("incluye estadísticas efectivas y umbral de XP en la ficha activa", () => {
+  const fighter = serializeManagedFighter(createFighter(), null, true);
+
+  assert.deepEqual(fighter.stats, {
+    health: 110,
+    attack: 11,
+    defense: 4,
+    speed: 5
+  });
+  assert.equal(fighter.xpToNextLevel, 150);
 });
 
 test("rechaza un desbloqueo de mascota que no coincide con la colección guardada", () => {

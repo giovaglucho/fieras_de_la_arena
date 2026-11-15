@@ -215,8 +215,20 @@ export async function getArenaAttempts(userId, now = new Date()) {
   return { fighterId: fighter._id.toString(), ...attempts };
 }
 
-export async function listOwnedArenaHistory(userId, pagination) {
-  const ownedFighters = await Fighter.find({ userId }).select("_id").lean();
+export async function listOwnedArenaHistory(userId, pagination, fighterId) {
+  const ownedFighters = await Fighter.find({
+    userId,
+    ...(fighterId ? { _id: fighterId } : {})
+  })
+    .select("_id")
+    .lean();
+  if (fighterId && ownedFighters.length === 0) {
+    throw new ApiError(
+      404,
+      "FIGHTER_NOT_FOUND",
+      "No se encontró el luchador solicitado."
+    );
+  }
   const ownedFighterIds = ownedFighters.map(({ _id }) => _id);
   const [battles, totalItems] = ownedFighterIds.length
     ? await Promise.all([

@@ -12,11 +12,13 @@ import { createFighterGrowthState } from "../game-engine/fighterGrowth.js";
 import { getEquipmentById } from "../game-engine/equipmentCatalog.js";
 import { getTechniqueById } from "../game-engine/techniqueCatalog.js";
 import { getPetById } from "../game-engine/petCatalog.js";
+import { calculateFighterStats } from "../game-engine/fighterStats.js";
+import { getXpRequiredForNextLevel } from "../game-engine/progression.js";
 
 const FIGHTER_FIELDS =
   "_id name level xp elo baseStats appearance wins losses draws status visibility createdAt";
 const FIGHTER_COLLECTION_FIELDS =
-  `${FIGHTER_FIELDS} equipment equipmentUnlocks techniques techniqueUnlocks pets petUnlocks`;
+  `${FIGHTER_FIELDS} progression equipment equipmentUnlocks techniques techniqueUnlocks pets petUnlocks`;
 
 function serializeEquipmentItem({ itemId, catalogVersion }) {
   const item = getEquipmentById(itemId, catalogVersion);
@@ -96,6 +98,12 @@ export function serializeManagedFighter(
     createdAt: fighter.createdAt,
     ...(includeCollection
       ? {
+          stats: calculateFighterStats(
+            fighter.level,
+            baseStats,
+            fighter.progression
+          ),
+          xpToNextLevel: getXpRequiredForNextLevel(fighter.level),
           equipment: (fighter.equipment ?? []).map(serializeEquipmentItem),
           equipmentUnlocks: (fighter.equipmentUnlocks ?? []).map((unlock) => ({
             level: unlock.level,

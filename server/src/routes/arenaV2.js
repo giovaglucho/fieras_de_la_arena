@@ -14,8 +14,10 @@ import {
   listArenaOpponents,
   listOwnedArenaHistory
 } from "../services/arenaQueryService.js";
-import { validateHistoryPagination } from "../validators/arena.js";
-import { validateOpponentQuery } from "../validators/arenaV2.js";
+import {
+  validateOpponentQuery,
+  validateOwnedHistoryQuery
+} from "../validators/arenaV2.js";
 import { validateChallengeRequest } from "../validators/challenge.js";
 import serializeBattle from "../utils/serializeBattle.js";
 
@@ -67,8 +69,8 @@ router.get(
   requireAuth,
   sensitiveReadRateLimit,
   async (request, response, next) => {
-    const pagination = validateHistoryPagination(request.query);
-    if (!pagination) {
+    const query = validateOwnedHistoryQuery(request.query);
+    if (!query) {
       return next(
         new ApiError(
           400,
@@ -81,7 +83,11 @@ router.get(
     try {
       return response
         .status(200)
-        .json(await listOwnedArenaHistory(request.user._id, pagination));
+        .json(await listOwnedArenaHistory(
+          request.user._id,
+          query,
+          query.fighterId
+        ));
     } catch (error) {
       return next(error);
     }
