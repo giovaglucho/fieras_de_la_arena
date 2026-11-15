@@ -28,6 +28,10 @@ En esta iteración se autoriza además corregir únicamente estas incidencias re
 
 No ampliar estos arreglos a otras inconsistencias de API o interfaz.
 
+## Incidencia de despliegue autorizada
+
+Se autoriza diagnosticar y corregir el error 500 al crear un segundo luchador en Render. El cambio puede hacer explícito el error de índice legado; no autoriza ejecutar migraciones ni alterar datos o índices de producción.
+
 ## Criterios de aceptación
 
 - Se muestra qué mascotas posee el luchador y qué aportó su acompañante al combate.
@@ -35,6 +39,7 @@ No ampliar estos arreglos a otras inconsistencias de API o interfaz.
 - Los textos y recursos visuales son propios.
 - Una cuenta con varios luchadores puede cargar el panel del luchador activo sin errores 409.
 - La solicitud de `/favicon.ico` responde correctamente con un recurso válido.
+- Un índice único legado de `fighters.userId` no se presenta como un error 500 genérico al crear un segundo luchador.
 
 ## Pruebas y verificación
 

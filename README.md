@@ -217,5 +217,6 @@ El plan gratuito de Render suspende el servicio tras 15 minutos sin tráfico y e
 - **El navegador no puede llamar a la API:** mantén el servidor activo en el puerto `3000`, usa el cliente iniciado por Vite y verifica que `CLIENT_URL` sea `http://localhost:5173`. Vite ya configura el proxy local para ese servidor.
 - **Un puerto está ocupado:** cierra el proceso de desarrollo anterior que aún lo use y vuelve a iniciar el comando correspondiente.
 - **`npm.cmd ci` falla:** comprueba la conexión a la red y la versión de Node.js; ejecútalo dentro de `client` o `server`, donde se encuentra el `package-lock.json`.
+- **Render responde `FIGHTER_OWNERSHIP_MIGRATION_REQUIRED` al crear otro luchador:** la base todavía puede tener el índice único legado `fighters.userId`. La expansión requiere una migración de índices y de actividades diarias, con respaldo verificado, escrituras pausadas y comprobaciones previas/posteriores. No elimines el índice manualmente ni ejecutes `migrateFighterOwnershipV1.js` en producción: ese script está limitado intencionalmente a desarrollo y pruebas. Detén nuevas creaciones y coordina una migración de producción aprobada antes de reintentar.
 
 Para las reglas del producto, la arquitectura y las decisiones del juego, consulta la especificación antes de modificar el proyecto.

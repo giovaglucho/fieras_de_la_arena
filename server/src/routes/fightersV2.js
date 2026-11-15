@@ -18,6 +18,7 @@ import {
   validateFighterSelection,
   validateManagedFighterCreation
 } from "../validators/fighterManagement.js";
+import { getDuplicateKeyFields } from "../utils/duplicateKeyFields.js";
 
 const router = Router();
 
@@ -108,8 +109,17 @@ router.post(
           new ApiError(409, "FIGHTER_NAME_TAKEN", error.message)
         );
       }
-      if (error?.code === 11000) {
-        const duplicateFields = error.keyPattern ?? error.keyValue ?? {};
+      const duplicateFields = getDuplicateKeyFields(error);
+      if (duplicateFields) {
+        if (Object.hasOwn(duplicateFields, "userId")) {
+          return next(
+            new ApiError(
+              503,
+              "FIGHTER_OWNERSHIP_MIGRATION_REQUIRED",
+              "La base de datos aún tiene una restricción que impide crear varios luchadores por cuenta. Debe completarse la migración de propiedad antes de reintentar."
+            )
+          );
+        }
         if (Object.hasOwn(duplicateFields, "referralCode")) {
           return next(
             new ApiError(
