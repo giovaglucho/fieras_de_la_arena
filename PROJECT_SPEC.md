@@ -178,13 +178,13 @@ Cada luchador tiene:
 - Contadores de victorias y derrotas. **No hay empates ni ELO.**
 - Código de invitación único.
 
-Significado de las estadísticas (las fórmulas exactas están en la especificación del motor, paso 11.0.2):
+Significado de las estadísticas (las fórmulas exactas están en la especificación del motor, sección 4.10):
 
 | Estadística | Qué hace |
 |---|---|
 | Vida | Determina la vida máxima. |
 | Fuerza | Escala el daño de los golpes. |
-| Agilidad | Aumenta la esquiva y la probabilidad de combo. |
+| Agilidad | Aumenta la esquiva, la probabilidad de combo, de contraataque y de reversión. |
 | Velocidad | Reduce el tempo: el luchador actúa con más frecuencia. |
 
 **Vida máxima.** Es `max(1, floor(45 + 5 × puntosVida × multiplicadorVida + 3 × nivel))`. `multiplicadorVida` vale 1 y lo modifican únicamente habilidades y mascotas (11.0.3). Una función única del servidor calcula todas las estadísticas derivadas; no se guardan copias calculadas.
@@ -232,13 +232,13 @@ Existen para que la arena nunca esté vacía. Se crean con la misma función de 
 
 ### 4.4 Motor de combate
 
-El combate se ejecuta íntegramente en el servidor; el cliente solicita el combate y presenta el resultado guardado. El motor es una función de dominio pura, sin Express, React ni MongoDB. El detalle (iniciativa, tiradas y fórmulas) se fija en el paso 11.0.2; esta sección fija el contrato:
+El combate se ejecuta íntegramente en el servidor; el cliente solicita el combate y presenta el resultado guardado. El motor es una función de dominio pura, sin Express, React ni MongoDB. El detalle (iniciativa, tiradas, fórmulas y eventos) está en 4.10; esta sección fija el contrato:
 
 1. Se crea una instantánea de ambos luchadores con estadísticas, inventario y versión de las reglas.
 2. El servidor genera una semilla y se ejecuta una simulación reproducible: misma entrada, semilla y versión producen el mismo resultado y los mismos eventos.
 3. El orden de actuación se determina por una iniciativa en la que el menor valor actúa primero; los empates se resuelven con la semilla.
-4. El combate termina cuando un combatiente principal llega a vida 0. **No existen empates.** Existe un tope de seguridad de turnos definido en 11.0.2 que garantiza la finalización con un ganador determinado de forma documentada.
-5. El motor produce una secuencia de eventos legible, enumerada en 11.0.2.
+4. El combate termina cuando un combatiente principal llega a vida 0. **No existen empates.** Existe un tope de seguridad de turnos definido en 4.10.6 que garantiza la finalización con un ganador determinado de forma documentada.
+5. El motor produce una secuencia de eventos legible, enumerada en 4.10.9.
 6. El resultado, la semilla, la versión del motor y las recompensas se guardan antes de responder con éxito.
 
 La versión inicial del motor es `2.0.0`. Nunca se confía en un resultado, daño, victoria o experiencia calculados por el navegador.
@@ -577,7 +577,230 @@ Se adaptan **sistemas y estructura de fórmulas** (iniciativa por tempo, esquiva
 
 Aprobado en 11.0.1 y escrito en 4.1–4.7, 6 y 7: estadísticas y presupuesto de creación, fórmula de vida, límite de 3 luchadores, curva y reglas de XP, subida de nivel por elección, arena de 6 rivales, cupo diario, clasificaciones sin ELO, modelo de datos y contrato de la API única bajo `/api/v1`.
 
-Pendiente: tiradas y fórmulas del motor y forma exacta de los eventos (11.0.2); catálogos de armas, habilidades, mascotas y refuerzos, sus pesos y tiers (11.0.3); y el cierre de balance de todos los valores marcados como provisionales (11.8.1).
+Aprobado en 11.0.2 y escrito en 4.10: iniciativa y tempo, tiradas, fórmula de daño, KO, tope de turnos, armas en combate, dominios aleatorios y eventos del motor 2.0.0.
+
+Pendiente: catálogos de armas, habilidades, mascotas y refuerzos, sus pesos y tiers (11.0.3); y el cierre de balance de todos los valores marcados como provisionales (11.8.1).
+
+### 4.10 Especificación del motor 2.0 (paso 11.0.2)
+
+Versión del motor: `2.0.0`. Esta sección completa el contrato de 4.4. Todas las constantes se llaman `K_…` y son los valores de partida; se pueden ajustar solo en 11.8.1 y cambiar una constante exige subir `engineVersion`. Los valores de catálogo (armas, habilidades, mascotas) los fija 11.0.3; el motor solo lee los **campos** que aquí se nombran.
+
+#### 4.10.1 Entrada, salida y aritmética
+
+- Firma: `runBattle({ a, b, seed, engineVersion })` → `{ winnerSide, loserSide, endReason, turns, finalHp, events }`. `a` es el iniciador y `b` el rival; los lados se llaman `"A"` y `"B"`. El motor no lee catálogos ni base de datos: todo viene en las instantáneas.
+- **Aritmética entera.** Todas las probabilidades son **puntos base** (`bp`, 10 000 = 100 %). Toda multiplicación porcentual es `floor(x × m / 10000)`. Nunca se usan decimales; el redondeo es siempre hacia abajo. `clamp(x, lo, hi)` limita `x` al intervalo.
+- **Instantánea de combatiente** (la crea el servidor con la función única de estadísticas derivadas y se guarda en `Battle`):
+
+| Campo | Significado |
+|---|---|
+| `fighterId`, `name`, `level` | Identificación. |
+| `maxHp` | Vida máxima de 4.1, ya con `multiplicadorVida`. |
+| `strength`, `agility`, `speed` | Puntos de estadística **tras** potenciadores de habilidad (enteros ≥ 0). |
+| `weapons[]` | Armas poseídas, ordenadas por `weaponId` asc. Campos de arma: `weaponId`, `type`, `damageMin`, `damageMax` (enteros, 1 ≤ min ≤ max), `tempoBp`, `critBp`, `comboBp`, `blockBp`, `dodgePenaltyBp`, `disarmBp`, `drawWeight` (entero ≥ 1), `throwable` (booleano), `throwDamageBp`. Los valores por tier los fija 11.0.3. |
+| `mods` | Suma por campo de las pasivas: `dodgeBp`, `reversalBp`, `blockBp`, `counterBp`, `critBp`, `comboBp`, `disarmBp`, `damageReductionBp`, `damageBp`, `tempoBp`, `petNegateBp` (enteros, pueden ser negativos). |
+| `supers[]` | Súper habilidades, ordenadas por `skillId` asc: `skillId`, `uses` (≥ 1), `effect` ∈ {`heal`, `burst`, `haste`, `stun`} y sus parámetros (4.10.8). |
+| `pet` | `null` o `{ petId, damageMin, damageMax, tempo }` (enteros ≥ 1). Es un atacante auxiliar: **no tiene vida y no puede ser atacado**. El costo de vida para el dueño ya está en `maxHp`. |
+
+Los refuerzos (11.2.6) se modelan como otro atacante auxiliar con las mismas reglas que `pet`; 11.2.6 solo define sus campos y cuándo llegan, y no modifica ninguna regla de esta sección.
+
+#### 4.10.2 Dominios aleatorios
+
+`seed` son 32 bytes generados con `node:crypto.randomBytes` y guardados en hexadecimal. Cada dominio tiene un contador propio que empieza en 0 y solo avanza al consumir.
+
+- Bloque: `SHA-256(seed ‖ UTF-8(dominio) ‖ uint32BE(contador))`. El valor es `uint32BE` de los 4 primeros bytes del bloque.
+- `uniformInt(dominio, n)` con `n ≥ 1`: si `n = 1` devuelve 0 **sin consumir**. Si no, `límite = floor(2³² / n) × n`; mientras el valor ≥ `límite`, el contador avanza y se repite; devuelve `valor mod n` y avanza el contador.
+- `rangeInt(dominio, min, max)` = `min + uniformInt(dominio, max − min + 1)`.
+- `roll(dominio, bp)`: si `bp ≤ 0` es falso y si `bp ≥ 10000` es verdadero, ambos **sin consumir**; si no, `uniformInt(dominio, 10000) < bp`.
+- `weighted(dominio, lista)`: `r = uniformInt(dominio, suma de pesos)` y se recorre la lista en orden restando pesos hasta que `r < peso`.
+
+| Dominio | Usos |
+|---|---|
+| `battle-v2:init` | Orden de desempate inicial. |
+| `battle-v2:weapon` | Sorteo y cambio de arma. |
+| `battle-v2:action` | Tirada y elección de súper, tirada de lanzamiento. |
+| `battle-v2:attack` | Esquiva, reversión, bloqueo, crítico, daño base, desarme, combo, contraataque y anulación de mascota, en el orden de 4.10.5. |
+| `battle-v2:tiebreak` | Desempate final del tope de turnos. |
+
+Los sorteos de subida de nivel y creación usan sus propios dominios (4.1, 4.5) y no se mezclan con estos.
+
+#### 4.10.3 Tempo e iniciativa
+
+- **Tempo base** de un luchador: `tempo = max(K_TEMPO_MIN, floor(floor(K_TEMPO_NUM / (1000 + 100 × speed)) × (10000 + clamp(mods.tempoBp, −3000, 3000)) / 10000))` con `K_TEMPO_NUM = 1 000 000` y `K_TEMPO_MIN = 250`. Menor tempo = actúa con más frecuencia.
+- **Tempo de acción** = `max(K_ACTION_MIN, floor(floor(tempo × tempoBp_arma / 10000) × tempoBp_prisa / 10000))` con `K_ACTION_MIN = 100`. `tempoBp_arma` es 10000 sin arma. `tempoBp_prisa` es 10000 salvo bajo el efecto `haste`. Cambiar de arma y saltar turno por aturdimiento usan el tempo base (con prisa si corresponde). Un atacante auxiliar usa siempre su `pet.tempo`.
+- **Actores:** `A`, `B`, y su mascota si existe. Cada actor tiene `nextAct`, **inicializado a su tempo base** (`pet.tempo` para mascotas).
+- **Orden.** En cada paso actúa el actor con menor `nextAct`. Los empates se resuelven por `tieRank`, sorteado una vez al inicio: la lista `[A, B, mascotaA, mascotaB]` (omitiendo los inexistentes) se baraja con Fisher–Yates desde el final: para `i = n−1` hasta 1, `j = uniformInt("battle-v2:init", i + 1)` e intercambiar posiciones `i` y `j`. La posición final es el `tieRank` (menor actúa primero). Tras actuar, `nextAct += tempo de acción`.
+- El contador `turn` empieza en 1 y sube con cada acción de cualquier actor (incluidos turnos saltados y de mascotas).
+
+| Caso | Resultado |
+|---|---|
+| Tempos 714 (velocidad 4) y 833 (velocidad 2) | Orden: A714, B833, A1428, B1666, A2142, B2499. |
+| Ambos con tempo 800 | Empate en 800: actúa primero el de menor `tieRank`, y ese orden se repite cada ronda en cada empate. |
+| Velocidad 20: `1 000 000 / 3000 = 333` | Tempo 333. Velocidad 100: `1 000 000 / 11 000 = 90` → se limita a 250. |
+| Arma rápida `tempoBp 8000`, tempo 714 | Acción 571. Arma pesada `13000`: 928. |
+| `mods.tempoBp = −5000` | Se limita a −3000: tempo 714 → 499. |
+
+#### 4.10.4 Turno de un luchador principal
+
+Pasos en orden; el primero que consume el turno lo termina. `side` es quien actúa y `foe` su rival.
+
+1. `turn_start`. Si `stunned`: `turn_skipped`, se borra `stunned`, `nextAct += tempo base` y el turno termina.
+2. **Arma** (4.10.7). Si el actor necesita sacar arma (`needsDraw`) o supera la tirada de cambio, saca/cambia arma y el turno termina.
+3. **Súper.** Si tiene súper elegibles, `roll("battle-v2:action", K_SUPER_BP)` con `K_SUPER_BP = 2000`. Si sale, se elige entre los elegibles con `uniformInt("battle-v2:action", cantidad)` (orden por `skillId` asc) y se aplica (4.10.8). El turno termina.
+4. **Lanzamiento.** Si el arma en mano es `throwable`, `roll("battle-v2:action", K_THROW_BP)` con `K_THROW_BP = 2500`. Si sale, se resuelve un ataque `throw` (4.10.5); el arma se pierde (`needsDraw = true` si aún quedan armas disponibles). El turno termina.
+5. **Ataque cuerpo a cuerpo** (`melee`) contra el principal rival, seguido de combo si corresponde.
+
+Después de cada acción, `nextAct += tempo de acción` (con el arma que se usó **al iniciar** la acción), `tempoBp_prisa` se consume un uso si estaba activo y se comprueba el KO (4.10.6).
+
+**Turno de un atacante auxiliar:** `turn_start`; resuelve un ataque `pet` contra el principal rival (4.10.5); `nextAct += pet.tempo`.
+
+#### 4.10.5 Resolución de un ataque
+
+Cada ataque recibe un `attackId` (entero que empieza en 0 y sube de uno en uno). Tipos: `melee`, `combo`, `counter`, `burst`, `throw`, `pet`. Se emite un evento `attack` con el tipo y luego se recorren los pasos; cada paso marcado «sí» consume sus sorteos en `battle-v2:attack` en este orden:
+
+| # | Paso | melee | combo | counter | burst | throw | pet |
+|---|---|---|---|---|---|---|---|
+| 1 | Esquiva | sí | sí | sí | no | sí | sí |
+| 2 | Reversión | sí | no | no | no | no | no |
+| 3 | Bloqueo | sí | sí | sí | no | no | no |
+| 4 | Anulación de mascota | no | no | no | no | no | sí |
+| 5 | Crítico | sí | sí | sí | sí | sí | no |
+| 6 | Daño | sí | sí | sí | sí | sí | sí |
+| 7 | Desarme | sí | sí | no | no | no | no |
+| 8 | Combo | sí | sí | no | no | no | no |
+| 9 | Contraataque | sí | sí | no | no | no | no |
+
+Fórmulas (`atk` = quien ataca, `def` = quien defiende; `arma` = el arma en mano o «sin arma»):
+
+- **Esquiva:** `dodgeBp = clamp(K_DODGE_BASE + K_DODGE_STEP × (def.agility − atk.agility) + def.mods.dodgeBp − atk.arma.dodgePenaltyBp, 0, K_DODGE_CAP)` con `K_DODGE_BASE = 500`, `K_DODGE_STEP = 350`, `K_DODGE_CAP = 7500`. Para `pet`, `atk.agility` es la del dueño. Éxito: evento `dodge` y se salta al paso 9 (solo si el tipo lo permite); si no, el ataque termina.
+- **Reversión:** `reversalBp = clamp(K_REV_BASE + K_REV_STEP × def.agility + def.mods.reversalBp, 0, K_REV_CAP)` con `K_REV_BASE = 100`, `K_REV_STEP = 80`, `K_REV_CAP = 2000`. Éxito: evento `reversal`; el daño (pasos 5 y 6) se calcula con las estadísticas, arma y crítico **del atacante** y lo recibe **el atacante** (con su propia reducción de daño, sin bloqueo posible). Termina el ataque: sin desarme, sin combo y sin contraataque.
+- **Bloqueo:** `blockBp = clamp(K_BLOCK_BASE + K_BLOCK_STEP × (def.strength − atk.strength) + def.mods.blockBp + def.arma.blockBp, 0, K_BLOCK_CAP)` con `K_BLOCK_BASE = 400`, `K_BLOCK_STEP = 250`, `K_BLOCK_CAP = 6000`. Éxito: evento `block`; el daño se multiplica por `K_BLOCK_KEEP_BP = 3000`.
+- **Anulación de mascota:** éxito con `clamp(def.mods.petNegateBp, 0, 10000)`: evento `pet_negated` y el ataque termina sin daño.
+- **Crítico:** `critBp = clamp(K_CRIT_BASE + atk.arma.critBp + atk.mods.critBp, 0, K_CRIT_CAP)` con `K_CRIT_BASE = 500`, `K_CRIT_CAP = 5000`. Éxito: evento `crit` y el daño se multiplica por `K_CRIT_MULT_BP = 20000`.
+- **Daño.** Se aplica en este orden, con `floor` en cada paso:
+  1. `base = rangeInt(damageMin, damageMax)` del arma; sin arma `K_UNARMED_MIN = 2` y `K_UNARMED_MAX = 4`. Un ataque `pet` usa `pet.damageMin..damageMax` como `base` y omite los pasos 2 a 6 (no hay escalado, crítico ni bloqueo); solo aplica el paso 7 y el 8.
+  2. `escalado = floor(base × (100 + K_STR_STEP × atk.strength) / 100)` con `K_STR_STEP = 15`.
+  3. `× (10000 + atk.mods.damageBp) / 10000` (el factor se limita a ≥ 0).
+  4. Si el tipo es `throw`: `× arma.throwDamageBp / 10000`. Si es `burst`: `× burst.damageBp / 10000`.
+  5. Si hubo crítico: `× 20000 / 10000`.
+  6. Si hubo bloqueo: `× 3000 / 10000`.
+  7. `× (10000 − clamp(def.mods.damageReductionBp, 0, K_REDUCTION_CAP)) / 10000` con `K_REDUCTION_CAP = 6000`.
+  8. `daño = max(1, resultado)`. Un daño mínimo de 1 se aplica siempre que el ataque llegue a este paso.
+  Se resta de la vida del receptor (mínimo 0) y se emite `damage`.
+- **Desarme:** solo si el golpe llegó al daño **sin bloqueo** y el defensor tiene arma en mano. `disarmBp = clamp(K_DISARM_BASE + K_DISARM_STEP × (atk.strength − def.strength) + atk.mods.disarmBp + atk.arma.disarmBp, 0, K_DISARM_CAP)` con `K_DISARM_BASE = 200`, `K_DISARM_STEP = 100`, `K_DISARM_CAP = 3000`. Éxito: evento `disarm`; el arma queda **perdida** para el resto del combate (nadie más puede usarla) y el defensor pasa a `needsDraw` si le quedan armas disponibles.
+- **Combo:** solo si el golpe llegó al daño sin bloqueo ni reversión, el defensor sigue vivo y el atacante es un luchador principal. `comboBp = clamp(K_COMBO_BASE + K_COMBO_STEP × atk.agility + atk.mods.comboBp + atk.arma.comboBp, 0, K_COMBO_CAP)` con `K_COMBO_BASE = 300`, `K_COMBO_STEP = 250`, `K_COMBO_CAP = 5000`. Éxito: evento `combo` y un nuevo ataque `combo` inmediato, sin coste de tempo. Máximo `K_COMBO_MAX = 3` combos por turno (el ataque inicial más hasta 3 combos); cada combo vuelve a tirar esquiva y los pasos de su columna. Si el combo falla, esquiva o es bloqueado, la cadena termina.
+- **Contraataque:** se tira tras una **esquiva o un bloqueo exitosos** de un ataque `melee` o `combo` (no tras reversión). `counterBp = clamp(K_COUNTER_BASE + K_COUNTER_STEP × def.agility + def.mods.counterBp, 0, K_COUNTER_CAP)` con `K_COUNTER_BASE = 300`, `K_COUNTER_STEP = 120`, `K_COUNTER_CAP = 3000`. Éxito: evento `counter` y un ataque `counter` del defensor contra el atacante, con su arma en mano, sin coste de tempo. Un contraataque no puede ser revertido, no genera combo, desarme ni otro contraataque. Si el atacante original llega a 0, el combate termina de inmediato (4.10.6).
+
+Si el defensor está a 0 tras el daño, se emite `damage`, no se tiran pasos posteriores y el combate termina.
+
+**Casos límite**
+
+| Caso | Resultado |
+|---|---|
+| Agilidad defensor 4 vs atacante 2 | `500 + 700 = 1200` bp de esquiva. |
+| Agilidad defensor 2 vs atacante 5 | `500 − 1050 = −550` → 0: no se consume sorteo. |
+| Diferencia de agilidad 30 | `500 + 10 500` → limitado a 7500. |
+| Fuerza defensor 3 vs atacante 4, sin arma defensiva | Bloqueo `400 − 250 = 150`; con `arma.blockBp = 500` es 650. |
+| Daño: base 6, fuerza 4, sin otros efectos | `6 × 160 / 100 = 9,6` → 9. |
+| El anterior con crítico | `9 × 20000 / 10000 = 18`. |
+| El anterior con crítico, bloqueo y reducción de 2500 bp | `18 → 5 (floor(5,4)) → 3 (floor(3,75))`. |
+| Base 1, fuerza 2, reducción 6000 | `floor(1 × 130 / 100) = 1` → `floor(1 × 4000 / 10000) = 0` → se sube a 1. |
+| `damageReductionBp = 9000` | Se limita a 6000. |
+| Ataque `pet`, base 3, reducción 2000 | `3 × 8000 / 10000 = 2,4` → 2. Sin crítico ni bloqueo. |
+| Reversión con crítico del atacante, base 6, fuerza 4 | El atacante recibe 18 (menos su propia reducción). Sin combo. |
+| Tres combos seguidos exitosos | Se emiten tres `combo` y la cadena termina aunque otro sorteo de combo saldría favorable. |
+| Combo contra defensor ya en 0 | No hay combo: el combate terminó antes. |
+| `comboBp` 300 + 250 × 2 = 800 | Probabilidad 8 %. Con agilidad 30: 7800 → 5000. |
+| Esquiva de un ataque `burst` | Imposible: `burst` no tira esquiva. |
+
+#### 4.10.6 KO y tope de seguridad
+
+- **KO.** Cuando la vida de un luchador principal llega a 0 por cualquier fuente, el combate termina en ese instante: no se resuelven combos, contraataques ni acciones pendientes. Como cada daño se resuelve en secuencia, solo uno de los dos puede llegar a 0 primero; no hay doble KO. Se emite `battle_end` con `endReason = "ko"` y gana el otro.
+- **Tope.** Si tras completar una acción se han ejecutado `K_MAX_TURNS = 300` turnos (el contador `turn`) sin KO, se emite `turn_cap` y se decide el ganador, en este orden, hasta que uno gane: (1) mayor fracción de vida, comparando `hpA × maxHpB` con `hpB × maxHpA`; (2) mayor vida absoluta; (3) mayor nivel; (4) `uniformInt("battle-v2:tiebreak", 2)`: 0 gana `A`, 1 gana `B`. `endReason = "turn_cap"`. La vida de los luchadores no se modifica.
+
+| Caso | Resultado |
+|---|---|
+| A 20/60 y B 15/40 | `20 × 40 = 800` frente a `15 × 60 = 900`: gana B. |
+| A 30/60 y B 20/40 | `30 × 40 = 1200 = 20 × 60`: empate en 1.º; vida absoluta 30 > 20: gana A. |
+| A 30/60 y B 30/60 con mismo nivel | Empate en 1.º, 2.º y 3.º: lo decide el sorteo de `battle-v2:tiebreak`. |
+| Se llega a 300 turnos justo cuando un golpe deja a 0 | Gana el KO: el KO se comprueba antes que el tope. |
+
+#### 4.10.7 Armas en combate
+
+- **Estado por luchador:** `weaponId` en mano (o ninguno), conjunto de armas **perdidas** (desarmadas o lanzadas) y `needsDraw`.
+- **Reserva de sorteo:** las armas de `weapons[]` no perdidas, con peso `drawWeight`, más la opción **sin arma** con peso `K_UNARMED_WEIGHT = 10` al final. Se sortea con `weighted("battle-v2:weapon", reserva)`.
+- **Inicio:** antes del primer turno, `A` y luego `B` sacan arma sin coste de turno (evento `weapon_draw` con `reason = "start"`). Si la reserva de armas está vacía, no se sortea y no hay evento.
+- **Cambio:** al inicio de cada turno de un principal, si la reserva de armas no está vacía: si `needsDraw`, saca arma obligatoriamente (`reason = "rearm"`); si no, `roll("battle-v2:weapon", K_SWITCH_BP)` con `K_SWITCH_BP = 2000` y, si sale, sortea (`reason = "switch"`). Si el resultado es **igual** a lo que ya tiene en mano, no hay evento ni coste y el turno continúa. Si cambia, emite `weapon_draw`, consume el turno con tempo base y se borra `needsDraw`.
+- **Sin armas:** si el luchador no tiene armas o todas están perdidas, pelea sin arma y no se tira ni sortea nada.
+- **Lanzamiento:** ver 4.10.4 (paso 4) y 4.10.5. Un arma lanzada con éxito o fallo (esquivada) queda perdida igualmente. Solo se lanza el arma en mano.
+
+| Caso | Resultado |
+|---|---|
+| Luchador sin armas | Sin eventos de arma ni sorteos de `battle-v2:weapon`. |
+| Un arma, `drawWeight` 30, sin arma 10 | Al inicio: 75 % arma, 25 % sin arma (`r < 30`). |
+| Con el arma en mano sale `switch` y el sorteo repite la misma | No hay evento ni se pierde el turno. |
+| Desarmado con una arma restante | `needsDraw`: en su siguiente turno saca obligatoriamente; si el sorteo da «sin arma», emite `weapon_draw` con `weaponId = null`. |
+| Todas las armas perdidas | Pelea sin arma hasta el final. |
+| Lanza el arma arrojadiza y el rival esquiva | El arma está perdida de todos modos. |
+
+#### 4.10.8 Súper habilidades
+
+`uses` se copia al iniciar y baja en 1 por cada activación. Un súper es **elegible** si tiene usos y cumple su condición:
+
+| Efecto | Parámetros | Condición | Resolución |
+|---|---|---|---|
+| `heal` | `healBp` | `hp × 2 ≤ maxHp` | Cura `min(floor(maxHp × healBp / 10000), maxHp − hp)`; evento `heal`. |
+| `burst` | `damageBp` | siempre | Ataque `burst` contra el rival (sin esquiva, reversión ni bloqueo). |
+| `haste` | `hasteBp`, `turns` | no tener prisa activa | Los próximos `turns` turnos propios usan `tempoBp_prisa = hasteBp`. |
+| `stun` | ninguno | rival no aturdido | El rival principal pierde su siguiente turno (`stunned = true`). |
+
+El evento `super_used` se emite siempre antes del efecto. `burst` consume el turno como un ataque y usa el tempo de acción del arma en mano; los demás efectos usan el tempo base.
+
+| Caso | Resultado |
+|---|---|
+| `maxHp 63`, `healBp 3000`, hp 25 | Cura `floor(18,9) = 18` → hp 43. |
+| `maxHp 63`, hp 31 | Elegible (`62 ≤ 63`). Con hp 32 (`64 > 63`) no lo es. |
+| `maxHp 63`, hp 31, `healBp 6500` | `floor(40,95) = 40`, pero solo faltan 32: cura 32 y `amount = 32`. |
+| Dos súper elegibles | Se elige con `uniformInt(2)`: 0 el de menor `skillId`, 1 el otro. |
+| Sin súper elegibles | No se tira `K_SUPER_BP` (no se consume sorteo). |
+
+#### 4.10.9 Eventos
+
+Todos los eventos llevan `seq` (entero desde 0, consecutivo) y `type`. El orden de emisión es el de ejecución. Los campos `side` son `"A"` o `"B"`; `turn` es el contador de 4.10.3; `t` es el `nextAct` del actor al empezar.
+
+| `type` | Campos adicionales | Cuándo |
+|---|---|---|
+| `battle_start` | `engineVersion`, `tieOrder` (lista de actores en orden de `tieRank`, p. ej. `["A","B","A:pet"]`), `sides` (`{ side, fighterId, maxHp, hp, tempo }` para A y B) | Una vez, primero. |
+| `weapon_draw` | `side`, `weaponId` (o `null` sin arma), `reason` (`start`, `switch`, `rearm`), `turn` (0 si `start`) | 4.10.7. |
+| `turn_start` | `turn`, `t`, `side`, `actor` (`"main"` o `"pet"`) | Inicio de cada acción. |
+| `turn_skipped` | `turn`, `side`, `reason` (`stunned`) | Turno perdido. |
+| `super_used` | `side`, `skillId`, `effect`, `usesLeft` | Antes del efecto. |
+| `heal` | `side`, `amount`, `hp` | Efecto `heal`. |
+| `status` | `side`, `status` (`haste` o `stun`), `turns` (1 para `stun`) | Efectos `haste` y `stun`; `side` es quien lo recibe. |
+| `attack` | `attackId`, `kind`, `side` (atacante), `target`, `weaponId` (o `null`) | Inicio de cada ataque. |
+| `dodge` | `attackId`, `side` (defensor) | Esquiva exitosa. |
+| `reversal` | `attackId`, `side` (defensor) | Reversión exitosa. |
+| `block` | `attackId`, `side` (defensor) | Bloqueo exitoso. |
+| `pet_negated` | `attackId`, `side` (defensor) | Anulación de mascota. |
+| `crit` | `attackId`, `side` (quien causa el daño) | Crítico exitoso. |
+| `damage` | `attackId`, `side` (receptor), `amount`, `hp` (vida restante), `source` (`attack` o `reversal`), `critical`, `blocked` | Siempre que hay daño. |
+| `disarm` | `attackId`, `side` (desarmado), `weaponId` | Desarme. |
+| `combo` | `attackId` (del golpe que lo dispara), `side`, `index` (1 a 3) | Antes del nuevo ataque. |
+| `counter` | `attackId` (del ataque esquivado o bloqueado), `side` (quien contraataca) | Antes del nuevo ataque. |
+| `turn_cap` | `turns`, `hp` (`{ A, B }`) | Al alcanzar el tope. |
+| `battle_end` | `winnerSide`, `loserSide`, `endReason` (`ko` o `turn_cap`), `turns`, `hp` (`{ A, B }`) | Una vez, último. |
+
+Orden dentro de un ataque: `attack`, luego (según tipo y resultado) `dodge` **o** `reversal` **o** `block`; `pet_negated`; `crit`; `damage`; `disarm`; `combo` o `counter`. Un `combo` o `counter` va seguido de su propio `attack`. `damage` con `source = "reversal"` lleva el `side` del atacante original.
+
+**Ejemplo de secuencia** (A velocidad 4, tempo 714; B velocidad 2; A sin arma, fuerza 4, base de daño 3, esquiva 1200 que no sale): `battle_start`, `turn_start` (turn 1, t 714, A), `attack` (id 0, melee, A→B), `damage` (amount `floor(3 × 160 / 100) = 4`, B), `turn_start` (turn 2, t 833, B)…
+
+#### 4.10.10 Orden global de resolución
+
+1. Validar entrada y `engineVersion`; inicializar vida, estados y contadores.
+2. `battle_start`; sorteo de `tieRank`; sorteo inicial de armas (A, luego B).
+3. Repetir: elegir actor (4.10.3), ejecutar su turno (4.10.4), comprobar KO y tope (4.10.6).
+4. `battle_end`. Devolver resultado y eventos. El servidor calcula XP y recompensas fuera del motor con 4.5.
+
+**Reproducibilidad:** misma instantánea, `seed` y `engineVersion` producen exactamente los mismos eventos. El motor no usa `Math.random`, relojes ni orden de iteración no definido.
 
 ---
 
@@ -1065,7 +1288,7 @@ No fijar proveedor ni desplegar hasta que el usuario lo decida en el paso corres
 
 ### Valores de balance pendientes
 
-- Los catálogos de armas, habilidades, mascotas y refuerzos y las tiradas del motor 2.0 se definen en 11.0.2 y 11.0.3, y sus valores se cierran con simulaciones en 11.8.1.
+- Los catálogos de armas, habilidades, mascotas y refuerzos se definen en 11.0.3; las constantes `K_…` del motor 2.0 (4.10) son provisionales y, junto con los valores de catálogo, se cierran con simulaciones en 11.8.1.
 - Los valores de 4.1–4.5 (presupuesto de 13 puntos, vida base 45 y 5 por punto, curva de XP, umbrales de 2 y 8 niveles) son los aprobados en 11.0.1 y se reconfirman en 11.8.1.
 - Límites técnicos de frecuencia de creación y umbrales de detección de automatización.
 - Posibles recompensas futuras del dojo; no están aprobadas ni se conceden hasta una decisión de producto explícita.
