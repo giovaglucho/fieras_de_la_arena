@@ -11,6 +11,14 @@ Este repositorio desarrolla **Fieras de la Arena**, un juego web MERN de combate
 5. Al terminar, detenerse y presentar el resultado. Nunca pasar al siguiente paso automáticamente.
 6. El usuario decide cuándo avanzar y cambia el ID activo en `CURRENT_STEP.md`.
 
+## Etapa 11 (rediseño)
+
+- Trabajar siempre en la rama `etapa-11`; nunca commitear ni pushear a `master` en esta etapa.
+- Commitear y pushear únicamente cuando el usuario apruebe el paso supervisado.
+- Se adaptan sistemas y estructura de fórmulas del juego de referencia, pero **no se copian** nombres, tablas de valores, código, sprites, sonidos ni textos de *El Bruto* ni de su remake. Los catálogos, cifras y recursos son propios.
+- No escribir código de compatibilidad con datos de la etapa 10: la base de prueba se reinicia.
+- Los pasos 11.0.x solo modifican documentos.
+
 ## Antes de editar
 
 - Inspeccionar el estado actual del repositorio y los archivos relacionados con la tarea.

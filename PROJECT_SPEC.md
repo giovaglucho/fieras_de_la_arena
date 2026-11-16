@@ -1,6 +1,6 @@
 # Fieras de la Arena — Documento de Diseño Técnico
 
-**Versión:** 0.1 · **Estado:** vigente para el MVP; reglas de producto de la expansión aprobadas en 4.8. Los valores de balance pendientes no son definitivos.
+**Versión:** 0.2 · **Estado:** la etapa 11 (sección 4.9) rediseña el juego sobre la mecánica del remake de referencia. Donde la sección 4.9 contradiga las secciones 4.1–4.8, 6 o 7, **prevalece la 4.9**; esas reglas anteriores quedan como historia de las etapas 0–10 hasta que el paso 11.1.1 limpie el código que las implementa. Los valores de balance pendientes no son definitivos.
 **Idioma de la interfaz:** español  
 **Stack obligatorio:** MongoDB, Express, React y Node.js (MERN)  
 **Enfoque de desarrollo:** una tarea pequeña por vez mediante GitHub Copilot
@@ -504,6 +504,49 @@ Las técnicas son automáticas, no elecciones manuales. Si una de estas técnica
 - No se aprueban recompensas de dojo. No hay premios competitivos ni cosméticos/sociales, ni recompensas retroactivas. Una decisión futura debe definir primero las condiciones medibles y controles contra duplicados; la sección 3.3 establece los requisitos mínimos.
 - La unicidad e idempotencia del servidor se aplican a creación, desafíos, progresión y desbloqueos. Si una decisión futura aprobara recompensas de dojo, cada evento tendría que tener origen único y no podría liquidarse dos veces, ni por concurrencia ni al repetir solicitudes.
 - Los controles contra automatización incluyen límites por cuenta e IP, validación y autorización en servidor, no aceptar propiedad/estadísticas/recompensas desde el cliente, restricciones a desafíos repetidos, exclusión de luchadores privados como rivales y de luchadores o cuentas suspendidos de cualquier participación, registro de decisiones y moderación. La privacidad no oculta la aplicación de estas reglas al servidor.
+
+### 4.9 Rediseño de la etapa 11 (contrato vigente)
+
+Esta sección recoge las decisiones aprobadas para rehacer el juego tomando como referencia **la mecánica** del remake comunitario de *El Bruto* (investigación en `docs/research/el-bruto-investigacion-tecnica.md`). Los pasos 11.0.x concretan sus números; hasta entonces, todo valor marcado como provisional no se implementa.
+
+#### Principio de originalidad
+
+Se adaptan **sistemas y estructura de fórmulas** (iniciativa por tempo, esquiva por diferencia de agilidad, combos, armas con tipos, súper con usos, refuerzos, árbol de destino). **No se copian** nombres de armas, habilidades, rangos, tablas de valores, código, sprites, sonidos ni textos del juego original ni del remake (su código es PolyForm Noncommercial y sus recursos CC BY-NC-SA). Catálogos, cifras, arte y textos son propios. Las técnicas y cifras de etapas anteriores que coinciden con el original («Red», «Grito de los Condenados», «Hipnosis», 14/26/110 de vida de mascotas) se renombran y reajustan en 11.0.3.
+
+#### Decisiones aprobadas
+
+| Tema | Decisión |
+|---|---|
+| Datos existentes | Se **borra todo** (cuentas, luchadores, combates) en el entorno de prueba. No hay migración ni compatibilidad con datos de la etapa 10. El reinicio de la base de Render ocurre solo en 11.8.3 y con confirmación explícita. |
+| Código legado | Se unifica en **una sola API**: se eliminan rutas `/api/v1` duplicadas, `legacyFighter`, `migrateFighterOwnershipV1`, el `userId` legado de `DailyActivity`, el motor 1.x, el matchmaking automático, el rival de entrenamiento y las armaduras (11.1.1). |
+| Estadísticas | Vida, **fuerza**, **agilidad** y velocidad. La defensa plana desaparece; la agilidad aporta esquiva y probabilidad de combo, la velocidad reduce el tempo (más turnos). |
+| Motor | Motor **2.x** nuevo, determinista con semilla. Orden por iniciativa (menor actúa primero), pelea hasta KO con tope de seguridad de turnos, **sin empates**. Defensas: esquiva, bloqueo, contraataque, reversión; ofensivas: combo, crítico, desarme, lanzamiento de arma. Sin armaduras: la reducción de daño viene de habilidades. |
+| Armas | Un luchador posee varias; en combate **saca y cambia** armas con probabilidad ponderada (incluida la opción de pelear sin arma). Tipos: rápida, pesada, larga, afilada, contundente, arrojadiza. |
+| Habilidades | Potenciadores de estadística, pasivas y súper con usos limitados; incluyen contramedidas contra mascotas y refuerzos. Niveles de perk acotados por 11.0.3. |
+| Mascotas | Tres especies con costo de vida para el dueño, reajustadas a valores propios. |
+| Refuerzos | Un luchador propio de menor nivel puede acudir como refuerzo con una habilidad específica (11.2.6). |
+| Creación | Reparto aleatorio con presupuesto de puntos y un perk inicial garantizado. **Máximo 3 luchadores por cuenta**, además de los límites técnicos por cuenta e IP. Se conservan nombres únicos, apariencia, selección activa y privacidad. |
+| Subida de nivel | Al subir, el jugador **elige 1 de 2 opciones**: un perk (arma, habilidad o mascota) o un aumento de estadísticas. La ruta se guarda como árbol de destino (`destinyPath`) y es obligatorio resolver la elección antes de volver a pelear. Si el perk sorteado no es elegible, la opción se sustituye por +1/+1 en dos estadísticas. |
+| XP | Victoria o derrota otorgan XP pequeña y según diferencia de nivel; cero XP contra rivales muy inferiores. Curva de nivel y valores exactos en 11.0.1. |
+| Arena | **6 rivales asignados y persistidos**, de nivel igual o ligeramente inferior, ordenados por nombre. La lista solo se regenera al pelear contra uno de ellos. Si faltan rivales reales se completa con luchadores generados por el sistema; esas peleas cuentan como normales. Se excluyen rivales privados, suspendidos o de la propia cuenta. Se elimina el catálogo con búsqueda y el rango de ELO. |
+| Cupo diario | **6 combates por luchador y día UTC**, +2 con la habilidad de regeneración. El contador se reinicia de forma perezosa por fecha, sin tarea programada. Se eliminan el límite por pareja y el cupo especial del primer día. |
+| ELO | **Se elimina.** No hay ELO ni desafíos por rango. Las clasificaciones son por nivel, victorias y alumnos activos; el rango de torneo queda fuera de esta etapa. |
+| Torneos, clanes, jefes, oro | Fuera de alcance de la etapa 11. |
+| Dojo | Se mantiene el diseño 10.9.1 (relación entre cuentas, `referredByUserId`, sin premios). Se implementa en 11.7.x. |
+| Presentación | Primero se adapta la animación actual a los eventos 2.x (11.6.1); después una arena 2D en canvas con personajes y efectos originales, por etapas (11.6.2 y 11.6.3). |
+| Combates y reproducibilidad | Se conservan semilla, versión de motor, snapshots, eventos, idempotencia por `requestId` y transacciones. La semilla por dominio SHA-256 de la creación sigue vigente. |
+
+#### Reglas de las etapas 0–10 superadas
+
+- 4.1 estadísticas iniciales fijas y 4.8 perfiles iniciales (Resistente/Equilibrado/Vitalidad).
+- 4.2–4.3 cupo por cuenta, selección automática y rival de entrenamiento.
+- 4.4 motor `1.x` (30 acciones, defensa plana, empates) y 4.6 ELO.
+- 4.8 catálogo de rivales con ±200 ELO, 5 desafíos diarios y límite por pareja, crecimiento de +1 estadística automático, equipo de un arma y una armadura sorteadas por combate, técnicas de una pasiva y una activa y mascotas v1.
+- Sección 6 (`Fighter.elo`, `Battle` con ELO, `DailyActivity.userId`) y sección 7 (`/api/v1/*` y `/api/v2/arena/opponents|challenges`): se reescriben en 11.0.1 y 11.3.1 y se sustituyen por una única API.
+
+#### Pendiente de definir en 11.0.x
+
+Estadísticas iniciales y presupuesto, fórmula de vida, curva de XP, tiradas de combate, catálogos y valores provisionales, forma exacta de los eventos del motor 2.x y contrato de la nueva API. Ninguno de esos valores está aprobado.
 
 ---
 

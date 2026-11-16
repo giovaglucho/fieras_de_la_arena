@@ -269,6 +269,8 @@ Esta hoja ordena el desarrollo desde cero hasta una versión publicable. **No se
 
 ## Etapa 10 — Construir el ciclo ampliado de luchadores y arena
 
+> **Estado histórico.** Los pasos 10.1 a 10.9.1 están implementados o diseñados y quedan como están. Los pasos 10.9.2, 10.9.3 y 10.10.x **no se ejecutan**: la etapa 11 rediseña el juego y los absorbe (ver la tabla de equivalencias al final de la etapa 11).
+
 Esta etapa amplía el MVP hacia un juego de personajes coleccionables y combates automáticos: cada cuenta puede gestionar varios luchadores; cada luchador evoluciona mediante reglas parcialmente aleatorias; el jugador decide a quién desafiar; y los sistemas de equipo, habilidades, mascotas y dojo dan variedad a la progresión.
 
 La inspiración en *El Bruto* se limita a ideas generales de diseño y al ciclo de juego explicado por el usuario. Fieras de la Arena tendrá nombres, reglas, probabilidades, estadísticas, personajes, textos, arte, interfaz y presentación propios. No se copiarán código, recursos ni expresiones creativas. Este roadmap define trabajo futuro; no autoriza a saltarse el paso activo de `CURRENT_STEP.md`.
@@ -491,11 +493,15 @@ La inspiración en *El Bruto* se limita a ideas generales de diseño y al ciclo 
 
 #### 10.9.2 — Implementar relaciones, consultas y acciones del dojo
 
+> **Reemplazado por 11.7.1.**
+
 - **Aceptación:** propietario y aprendiz se determinan en servidor; no se puede cambiar relación mediante payload; conteos y clasificaciones son consistentes; cambios parciales y solicitudes repetidas no duplican relaciones ni premios; los datos referidos existentes se conservan.
 - **Pruebas:** alta válida, conflictos, autorización, idempotencia, abuso y fixtures de invitación antiguos.
 - **Dependencia:** 10.9.1.
 
 #### 10.9.3 — Presentar dojo y aprendices
+
+> **Reemplazado por 11.7.2.**
 
 - **Aceptación:** la interfaz explica maestro/aprendiz, lista solo información pública permitida y comunica estados vacío/error; no ofrece premios no definidos ni expone correos u otros datos privados.
 - **Pruebas:** dojo vacío/lleno, privacidad, errores y accesibilidad.
@@ -507,12 +513,16 @@ La inspiración en *El Bruto* se limita a ideas generales de diseño y al ciclo 
 
 #### 10.10.1 — Ejecutar pruebas de integración y regresión
 
+> **Reemplazado por 11.8.2.**
+
 - **Alcance:** recorrido desde cuenta existente y nueva, varios luchadores, creación aleatoria, selección de rival, cupos diarios, pelea automática, progresión, desbloqueos, equipo, habilidades, mascotas, dojo e historial.
 - **Aceptación:** pruebas relevantes pasan; autorización y propiedad resisten IDs manipulados; concurrencia e idempotencia no duplican peleas, límites ni recompensas; los datos legados y replays sobreviven; interfaz y API coinciden. Las rutas v1 que requieren un luchador único responden `409 MULTIPLE_FIGHTERS_REQUIRE_V2` cuando la cuenta autenticada posee varios, incluida la consulta singular de detalle de combate `GET /api/v1/battles/:id`.
 - **Pruebas:** suites focalizadas y completas de los scripts existentes; pruebas con fixtures antiguos y varios luchadores, verificando que todas las rutas v1 singulares rechacen de forma consistente las cuentas con varios luchadores (incluido `GET /api/v1/battles/:id`); no usar cuentas ni datos reales de producción.
 - **Dependencia:** 10.2 a 10.9.
 
 #### 10.10.2 — Medir balance, seguridad operativa y recuperación
+
+> **Reemplazado por 11.8.1.**
 
 - **Alcance:** simulaciones reproducibles a gran escala; revisar distribución de atributos, progreso, poder de armas/habilidades/mascotas, ventajas de cuentas múltiples y abuso de desafíos/reclutamiento; documentar métricas y rollback.
 - **Aceptación:** resultados reproducibles apoyan los límites de balance; no hay combinaciones que bloqueen la pelea o excedan límites; cada cambio de esquema tiene plan probado de respaldo/recuperación; problemas conocidos quedan documentados antes de cerrar la etapa.
@@ -521,10 +531,162 @@ La inspiración en *El Bruto* se limita a ideas generales de diseño y al ciclo 
 
 #### 10.10.3 — Cerrar la etapa y preparar activación controlada
 
+> **Reemplazado por 11.8.3.**
+
 - **Alcance:** documentar comandos, cambios de contrato, migraciones, monitorización, soporte y comunicación del lanzamiento; activar funciones solo según el procedimiento aprobado.
 - **Aceptación:** criterios de 10.1–10.10 cumplidos; PROJECT_SPEC y ROADMAP coinciden con lo implementado; no hay migraciones/despliegues de producción sin autorización explícita; se informa cualquier limitación pendiente.
 - **Pruebas/verificación:** revisión final de checklist, documentación y plan de rollback. No implica desplegar por sí misma.
 - **Dependencia:** 10.10.2.
+
+## Etapa 11 — Rediseño sobre la mecánica del remake
+
+**Objetivo:** rehacer el combate, la progresión y la arena con la mecánica del remake de *El Bruto* (investigación en `docs/research/el-bruto-investigacion-tecnica.md`), conservando la infraestructura ya construida. Las decisiones aprobadas están en `PROJECT_SPEC.md` sección 4.9, que prevalece sobre las reglas de las etapas 0–10.
+
+### Reglas de la etapa
+
+- **Rama:** todo el trabajo ocurre en la rama `etapa-11`. Cada paso aprobado se commitea y pushea a esa rama. `master` (y por tanto Render) no cambia hasta 11.8.3.
+- **Ritmo:** un paso por vez. Se implementa, se informa, el usuario supervisa y aprueba, se pushea y solo entonces se activa el siguiente en `CURRENT_STEP.md`.
+- **Originalidad:** se adaptan sistemas y estructura de fórmulas; nombres, valores, arte y textos son propios (sección 4.9 de la especificación).
+- **Sin migración:** los datos del entorno de prueba se borran; no se escribe código de compatibilidad con la etapa 10.
+- **Documentación primero:** los pasos 11.0.x solo tocan documentos. Ningún paso de código usa valores que 11.0.x no haya fijado.
+- **Entre 11.3.1 y 11.3.2** la aplicación queda temporalmente incompleta en la rama; es aceptable porque `master` no se toca.
+
+### 11.0 Diseño del contrato
+
+#### 11.0.1 — Contrato de producto del rediseño
+- **Alcance:** fijar estadísticas iniciales y presupuesto de puntos, fórmula de vida, curva de XP, XP por combate según diferencia de nivel, perfil de creación, opciones de subida de nivel (reglas de elegibilidad y sustitución), estructura del árbol de destino, regeneración y contrato de la nueva API única (rutas y modelos de `Fighter`, `Battle`, `DailyActivity`). Reescribir las secciones 4.1–4.7, 6 y 7 para que describan solo el juego nuevo.
+- **Archivos permitidos:** `PROJECT_SPEC.md`.
+- **Aceptación:** ningún valor del contrato queda como «pendiente» salvo los de balance de 11.8.1; no hay contradicciones con 4.9; cada regla tiene un ejemplo de caso límite.
+- **Dependencia:** ninguna.
+
+#### 11.0.2 — Especificación del motor 2.0
+- **Alcance:** modelo de iniciativa y tempo, orden de turnos y desempates con semilla, tiradas de esquiva, bloqueo, contraataque, reversión, combo, crítico y desarme, fórmula de daño, lanzamiento de armas, sacar y cambiar armas, condición de KO y tope de seguridad, y la forma exacta de cada evento. Dominios aleatorios por semilla.
+- **Archivos permitidos:** `PROJECT_SPEC.md`.
+- **Aceptación:** el motor se puede implementar sin decisiones adicionales; hay tablas de casos límite; los eventos están enumerados con sus campos.
+- **Dependencia:** 11.0.1.
+
+#### 11.0.3 — Catálogos originales
+- **Alcance:** armas (tipos, tempo, daño, rasgos, peso de aparición), habilidades (potenciadores, pasivas, súper con usos), mascotas, refuerzos y sus reglas de obtención y topes por nivel. Renombrar y reajustar los elementos que coinciden con el original. Marcar como provisionales los valores de balance.
+- **Archivos permitidos:** `PROJECT_SPEC.md`.
+- **Aceptación:** todo elemento tiene identificador estable, nombre y texto propios y reglas completas; ningún nombre ni cifra coincide con el catálogo del remake; interacciones con casos límite documentadas.
+- **Dependencia:** 11.0.2.
+
+### 11.1 Limpieza
+
+#### 11.1.1 — Eliminar el código legado y unificar la API
+- **Alcance:** retirar rutas `/api/v1` duplicadas, `legacyFighter`, `migrateFighterOwnershipV1` (script y pruebas), `userId` legado de `DailyActivity`, motor 1.x, matchmaking automático, rival de entrenamiento, catálogo de armaduras y sus pruebas y componentes. Dejar una sola versión de rutas. Añadir un script de reinicio de la base local.
+- **Archivos permitidos:** servidor, cliente y pruebas afectados; `README.md`.
+- **Aceptación:** la aplicación compila y las pruebas restantes pasan; no queda referencia a código eliminado; las funciones que dependían de lo eliminado quedan documentadas como pendientes de pasos posteriores.
+- **Dependencia:** 11.0.3.
+
+### 11.2 Motor 2.0 (dominio puro, sin HTTP ni base de datos)
+
+#### 11.2.1 — Núcleo: iniciativa y defensas
+- **Alcance:** nueva estructura de contratos, iniciativa y tempo, orden de turnos, ataque a mano limpia, esquiva, fórmula de daño, KO y tope de seguridad. Determinista con semilla.
+- **Aceptación:** misma entrada y semilla producen el mismo resultado; pruebas de límites y distribución de las tiradas; todavía no está conectado al servidor.
+- **Dependencia:** 11.0.3, 11.1.1.
+
+#### 11.2.2 — Armas
+- **Alcance:** sacar, cambiar, lanzar y perder armas; tipos; bloqueo, contraataque, reversión, combo, crítico y desarme.
+- **Dependencia:** 11.2.1.
+
+#### 11.2.3 — Potenciadores y pasivas
+- **Alcance:** efectos de estadísticas y pasivas del catálogo, con acumulación y topes.
+- **Dependencia:** 11.2.2.
+
+#### 11.2.4 — Súper con usos
+- **Alcance:** súper con usos limitados y selección contextual, incluidas las contramedidas contra mascotas y refuerzos.
+- **Dependencia:** 11.2.3.
+
+#### 11.2.5 — Mascotas
+- **Alcance:** mascotas como combatientes con iniciativa y vida propias, costo de vida del dueño, objetivos y eventos.
+- **Dependencia:** 11.2.4.
+
+#### 11.2.6 — Refuerzos y súper avanzadas
+- **Alcance:** refuerzos, robo de armas y las demás súper avanzadas del catálogo.
+- **Dependencia:** 11.2.5.
+
+### 11.3 Integración con el servidor y la interfaz
+
+#### 11.3.1 — Modelos, creación y combate con el motor 2.0
+- **Alcance:** nuevo `Fighter` (estadísticas, inventario, destino, límite de 3 por cuenta), creación con presupuesto de puntos y perk inicial, `Battle` y `DailyActivity` sin ELO, servicio de combate con el motor 2.0, retirada de los catálogos y motor anteriores.
+- **Dependencia:** 11.2.6.
+
+#### 11.3.2 — Interfaz mínima con los datos nuevos
+- **Alcance:** creación, ficha, colecciones y resultado con el modelo nuevo para que la aplicación vuelva a funcionar de punta a punta en la rama.
+- **Dependencia:** 11.3.1.
+
+### 11.4 Progresión
+
+#### 11.4.1 — XP, niveles y destino de dos opciones
+- **Alcance:** XP, subida de nivel, generación de las dos opciones, elección idempotente, árbol de destino y bloqueo de combates mientras haya una elección pendiente.
+- **Dependencia:** 11.3.2.
+
+#### 11.4.2 — Interfaz de subida de nivel
+- **Alcance:** presentar las opciones, confirmar la elección y mostrar el árbol de destino.
+- **Dependencia:** 11.4.1.
+
+### 11.5 Arena
+
+#### 11.5.1 — Rivales asignados, cupo y XP
+- **Alcance:** lista persistente de 6 rivales, regeneración al pelear, relleno con luchadores del sistema, cupo diario de 6 por luchador, XP según diferencia de nivel.
+- **Dependencia:** 11.4.1.
+
+#### 11.5.2 — Interfaz de arena y resultado
+- **Alcance:** arena con los 6 rivales, cupo y resultado del combate.
+- **Dependencia:** 11.5.1.
+
+### 11.6 Presentación del combate
+
+#### 11.6.1 — Animación básica y registro adaptados
+- **Alcance:** adaptar la animación y el registro textual a los eventos del motor 2.x.
+- **Dependencia:** 11.5.2.
+
+#### 11.6.2 — Arena en canvas: escena y personajes originales
+- **Alcance:** escena 2D y personajes con movimientos base, con recursos propios.
+- **Dependencia:** 11.6.1.
+
+#### 11.6.3 — Canvas: armas, lanzamientos, mascotas y súper
+- **Alcance:** efectos de armas, proyectiles, mascotas y súper.
+- **Dependencia:** 11.6.2.
+
+### 11.7 Dojo y clasificaciones
+
+#### 11.7.1 — Dojo: alumnos activos
+- **Alcance:** implementar el diseño 10.9.1 (relación entre cuentas, alumnos activos, sin premios). Reemplaza 10.9.2.
+- **Dependencia:** 11.5.1.
+
+#### 11.7.2 — Dojo: interfaz
+- **Alcance:** presentar maestro, alumnos y enlace. Reemplaza 10.9.3.
+- **Dependencia:** 11.7.1.
+
+#### 11.7.3 — Clasificaciones sin ELO
+- **Alcance:** clasificaciones por nivel, victorias y alumnos activos, en servidor e interfaz.
+- **Dependencia:** 11.7.1.
+
+### 11.8 Cierre
+
+#### 11.8.1 — Balance con simulaciones reproducibles
+- **Alcance:** simulaciones a gran escala con semillas fijas; cerrar los valores provisionales; documentar métricas. Reemplaza 10.10.2.
+- **Dependencia:** 11.7.3.
+
+#### 11.8.2 — Pruebas de extremo a extremo y regresión
+- **Alcance:** actualizar la suite e2e y ejecutar la regresión completa. Reemplaza 10.10.1.
+- **Dependencia:** 11.8.1.
+
+#### 11.8.3 — Reinicio de datos y despliegue
+- **Alcance:** documentar y ejecutar el reinicio de la base de Render y el merge de `etapa-11` a `master`. **Solo con confirmación explícita del usuario en ese momento.** Reemplaza 10.10.3.
+- **Dependencia:** 11.8.2.
+
+### Equivalencias con la etapa 10
+
+| Paso retirado | Lo absorbe |
+|---|---|
+| 10.9.2 | 11.7.1 |
+| 10.9.3 | 11.7.2 |
+| 10.10.1 | 11.8.2 |
+| 10.10.2 | 11.8.1 |
+| 10.10.3 | 11.8.3 |
 
 ## Propuestas futuras no priorizadas
 
