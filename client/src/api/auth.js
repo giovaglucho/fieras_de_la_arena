@@ -1,3 +1,4 @@
+import { apiErrorMessage } from './errorMessage.js'
 async function authRequest(path, options = {}, allowUnauthenticated = false) {
   let response
 
@@ -27,7 +28,7 @@ async function authRequest(path, options = {}, allowUnauthenticated = false) {
   }
 
   if (!response.ok) {
-    throw new Error(result?.error?.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.')
+    throw new Error(apiErrorMessage(result))
   }
 
   return result

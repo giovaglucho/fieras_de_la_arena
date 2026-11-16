@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "node --env-file=../.env --watch src/server.js",
     "start": "node --env-file-if-exists=../.env src/server.js",
-    "test": "node --env-file=../.env --test"
+    "test": "node scripts/runTests.js",
+    "test:unit": "node --test test/petCatalog.test.js test/petCombat.test.js test/equipmentCatalog.test.js test/equipmentSerialization.test.js test/techniqueCatalog.test.js test/techniqueCombat.test.js test/combatSimulation.test.js test/fighterCreation.test.js test/fighterStats.test.js test/fighterGrowth.test.js test/progression.test.js",
+    "check:mongo": "node scripts/checkMongoReplicaSet.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

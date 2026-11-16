@@ -257,6 +257,12 @@ const fighterSchema = new mongoose.Schema(
       maxLength: 18,
       unique: true
     },
+    displayName: {
+      type: String,
+      trim: true,
+      minLength: 3,
+      maxLength: 18
+    },
     status: {
       type: String,
       enum: ["active", "suspended"],

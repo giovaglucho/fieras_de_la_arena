@@ -42,7 +42,8 @@ export function SessionProvider({ children }) {
   const register = useCallback(async (values) => {
     const user = await registerUser(values)
     requestVersion.current += 1
-    setSession({ status: 'authenticated', user, error: '' })
+    // Marca el alta reciente para que GuestRoute lleve a crear el luchador y no al panel vacío.
+    setSession({ status: 'authenticated', user, error: '', justRegistered: true })
     return user
   }, [])
 

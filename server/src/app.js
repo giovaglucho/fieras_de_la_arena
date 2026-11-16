@@ -16,6 +16,7 @@ import fightersV2Router from "./routes/fightersV2.js";
 import leaderboardsRouter from "./routes/leaderboards.js";
 import profilesRouter from "./routes/profiles.js";
 import referralsRouter from "./routes/referrals.js";
+import referralsV2Router from "./routes/referralsV2.js";
 
 const isProduction = process.env.NODE_ENV === "production";
 const clientBuildPath = fileURLToPath(new URL("../../client/dist", import.meta.url));
@@ -48,6 +49,7 @@ app.use("/api/v2/arena", arenaV2Router);
 app.use("/api/v1/leaderboards", leaderboardsRouter);
 app.use("/api/v1/profiles", profilesRouter);
 app.use("/api/v1/referrals", referralsRouter);
+app.use("/api/v2/referrals", referralsV2Router);
 
 app.get("/api/v1/health", (request, response) => {
   const databaseConnected = isDatabaseConnected();

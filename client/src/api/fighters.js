@@ -1,3 +1,4 @@
+import { apiErrorMessage } from './errorMessage.js'
 import { isFighterAppearance } from '../fighterAppearance.js'
 
 const FIGHTERS_URL = '/api/v1/fighters'
@@ -25,7 +26,7 @@ async function apiRequest(url, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(result?.error?.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.')
+    const error = new Error(apiErrorMessage(result))
     error.code = result?.error?.code
     throw error
   }
@@ -396,7 +397,7 @@ export async function createFighter(name, { requestId, appearance }) {
   })).fighter)
 
   if (
-    fighter.name !== name.trim().toLowerCase() ||
+    fighter.name.toLowerCase() !== name.normalize('NFC').trim().replace(/ {2,}/g, ' ').toLowerCase() ||
     !isFighterAppearance(fighter.appearance) ||
     Object.keys(appearance).some((field) => fighter.appearance[field] !== appearance[field])
   ) {

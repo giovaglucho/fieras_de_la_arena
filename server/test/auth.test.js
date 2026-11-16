@@ -218,12 +218,11 @@ test("limita los intentos de inicio de sesión por IP", async () => {
   const exceeded = await requestLogin("unknown-rate-limit-user", "incorrecta", ip);
   assert.equal(exceeded.status, 429);
   assert.equal(exceeded.headers.get("set-cookie"), null);
-  assert.deepEqual(await exceeded.json(), {
-    error: {
-      code: "RATE_LIMIT_EXCEEDED",
-      message: "Has enviado demasiadas solicitudes. Inténtalo de nuevo más tarde."
-    }
-  });
+  const exceededBody = await exceeded.json();
+  assert.equal(exceededBody.error.code, "RATE_LIMIT_EXCEEDED");
+  assert.equal(exceededBody.error.message, "Has enviado demasiadas solicitudes. Inténtalo de nuevo más tarde.");
+  assert.ok(exceededBody.error.retryAfterSeconds > 0);
+  assert.equal(exceeded.headers.get("retry-after"), String(exceededBody.error.retryAfterSeconds));
 });
 
 test("limita las consultas privadas por cuenta", async () => {

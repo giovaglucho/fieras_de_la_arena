@@ -1,4 +1,5 @@
-const REFERRALS_URL = '/api/v1/referrals'
+import { apiErrorMessage } from './errorMessage.js'
+const REFERRALS_URL = '/api/v2/referrals'
 const REFERRAL_CODE_PATTERN = /^[a-f0-9]{32}$/i
 
 async function apiRequest(url) {
@@ -19,7 +20,7 @@ async function apiRequest(url) {
   }
 
   if (!response.ok) {
-    throw new Error(result?.error?.message || 'No se pudo completar la solicitud. Inténtalo de nuevo.')
+    throw new Error(apiErrorMessage(result))
   }
 
   return result

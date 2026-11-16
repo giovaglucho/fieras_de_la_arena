@@ -21,7 +21,7 @@ router.get("/:username", async (request, response, next) => {
 
     const fighter = await findSingleFighterForUser(
       user._id,
-      "_id name level xp elo baseStats wins losses draws visibility",
+      "_id name displayName level xp elo baseStats wins losses draws visibility",
       user.activeFighterId
     );
 

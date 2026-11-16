@@ -23,6 +23,23 @@ export async function connectToDatabase(uri = process.env.MONGODB_URI) {
   }
 
   console.log("Conexión con MongoDB establecida.");
+  await warnIfNotReplicaSet();
+}
+
+// Las transacciones (crear luchador, combates) exigen un replica set; se avisa al arrancar
+// en vez de fallar más tarde con errores poco claros.
+async function warnIfNotReplicaSet() {
+  try {
+    const hello = await mongoose.connection.db.admin().command({ hello: 1 });
+    if (!hello.setName && hello.msg !== "isdbgrid") {
+      console.warn(
+        "AVISO: MongoDB no es un replica set. Las transacciones del juego fallarán. " +
+          "Consulta la sección Requisitos del README (comando: npm run check:mongo)."
+      );
+    }
+  } catch {
+    // Si no se puede consultar (permisos), no se bloquea el arranque.
+  }
 }
 
 export function isDatabaseConnected() {

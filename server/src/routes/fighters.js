@@ -1,3 +1,4 @@
+import { fighterNameKey } from "../utils/fighterName.js";
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import mongoose from "mongoose";
@@ -25,7 +26,7 @@ router.get("/me", requireAuth, sensitiveReadRateLimit, async (request, response,
   try {
     const fighter = await findSingleFighterForUser(
       request.user._id,
-      "_id name level xp elo baseStats progression appearance wins losses draws",
+      "_id name displayName level xp elo baseStats progression appearance wins losses draws",
       request.user.activeFighterId
     );
 
@@ -57,7 +58,7 @@ router.get("/:id", async (request, response, next) => {
 
   try {
     const fighter = await Fighter.findById(request.params.id)
-      .select("_id userId name level xp elo baseStats appearance wins losses draws visibility");
+      .select("_id userId name displayName level xp elo baseStats appearance wins losses draws visibility");
 
     if (!fighter || fighter.visibility === "private") {
       return next(
@@ -137,7 +138,8 @@ router.post("/", requireAuth, async (request, response, next) => {
         fighter = new Fighter({
           _id: fighterId,
           userId: request.user._id,
-          name: fighterData.name,
+          name: fighterNameKey(fighterData.name),
+          displayName: fighterData.name,
           ...initialData,
           progression: createFighterGrowthState(initialData.baseStats),
           appearance: { ...NEUTRAL_FIGHTER_APPEARANCE },

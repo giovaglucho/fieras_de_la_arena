@@ -167,6 +167,7 @@ export async function listArenaOpponents(
             $project: {
               _id: 1,
               name: 1,
+              displayName: 1,
               username: "$owner.username",
               level: 1,
               elo: 1,
@@ -183,7 +184,7 @@ export async function listArenaOpponents(
   ]);
   const fighters = (result?.fighters ?? []).map((opponent) => ({
     id: opponent._id.toString(),
-    name: opponent.name,
+    name: opponent.displayName ?? opponent.name,
     username: opponent.username,
     level: opponent.level,
     elo: opponent.elo,

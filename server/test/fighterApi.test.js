@@ -267,7 +267,8 @@ test("crea un luchador con valores iniciales del servidor y limita uno por cuent
     draws: 0
   });
   assert.ok(
-    [fighterName.trim().toLowerCase(), "concurrente"].includes(body.fighter.name)
+    [fighterName.trim(), "Concurrente"].includes(body.fighter.name),
+    "el nombre conserva las mayúsculas elegidas"
   );
   assert.equal(responseBodies[conflictIndex].error.code, "FIGHTER_ALREADY_EXISTS");
   fighterName = body.fighter.name;
@@ -478,7 +479,7 @@ test("los perfiles públicos exponen solo los campos de juego permitidos", async
   const publicByUsernameBody = await publicByUsername.json();
   const expectedProfile = {
     id: fighter._id.toString(),
-    name: fighter.name,
+    name: fighter.displayName ?? fighter.name,
     level: fighter.level,
     xp: fighter.xp,
     elo: fighter.elo,

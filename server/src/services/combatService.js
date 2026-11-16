@@ -1,3 +1,4 @@
+import { fighterDisplayName } from "../utils/fighterName.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import Battle from "../models/Battle.js";
@@ -285,7 +286,7 @@ function createSnapshot(fighter, seed, includeTechniques, includePets) {
   });
   const snapshot = {
     fighterId: fighter._id.toString(),
-    name: fighter.name,
+    name: fighterDisplayName(fighter),
     level: fighter.level,
     elo: fighter.elo,
     stats,

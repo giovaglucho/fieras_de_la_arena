@@ -165,7 +165,7 @@ Los valores fijos de estadísticas de esta sección pertenecen al MVP. En la exp
 
 Campos de diseño iniciales:
 
-- Nombre visible único, entre 3 y 18 caracteres.
+- Nombre visible único, entre 3 y 18 caracteres: letras (con acentos), números y separadores simples (espacio, guion o guion bajo) entre grupos; sin HTML, emojis ni símbolos. Se conservan las mayúsculas elegidas (`displayName`); la unicidad se evalúa sobre la versión en minúsculas (`name`).
 - Nivel inicial: 1.
 - Experiencia inicial: 0.
 - ELO inicial: 1000.
@@ -752,12 +752,15 @@ Estas rutas son el contrato objetivo, no una orden de implementarlas todas de in
 | `GET` | `/api/v1/battles/:id` | Condicional | Ver un combate si el solicitante es participante o el contenido es público |
 | `GET` | `/api/v1/leaderboards` | No | Consultar clasificación paginada |
 | `GET` | `/api/v1/referrals/me` | Sí | Obtener enlace y lista/resumen de alumnos |
+| `GET` | `/api/v2/referrals/me` | Sí | Igual que v1 pero válido con varios luchadores: el dojo pertenece a la cuenta (código del luchador activo o de la ficha más antigua) |
 
 Requisitos de API:
 
 - Validar toda entrada del cliente en el servidor.
 - Aplicar límites a registro, inicio de sesión y solicitudes de combate.
 - Usar paginación en historiales y clasificaciones.
+- Las clasificaciones muestran una fila por cuenta (su mejor ficha para la categoría) y excluyen luchadores privados o suspendidos.
+- Los límites de peticiones guardan sus contadores en MongoDB, no cuentan los errores corregibles por la persona (excepto los 409 del registro) e informan `Retry-After` / `retryAfterSeconds` en el 429.
 - No aceptar `userId`, ELO, XP, nivel, ganador ni estadísticas finales desde el cliente como datos autoritativos.
 - Evitar respuestas que permitan enumerar correos o averiguar si una contraseña es correcta.
 - Comprobar permisos en servidor, no solo ocultar botones en React.

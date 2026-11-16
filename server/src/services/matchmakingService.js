@@ -52,7 +52,7 @@ async function findActiveCandidates(requester, eloRange) {
       $lte: requester.elo + eloRange
     }
   })
-    .select("_id userId name level elo baseStats")
+    .select("_id userId name displayName level elo baseStats")
     .populate({
       path: "userId",
       model: User,

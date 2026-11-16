@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { cleanFighterName } from "../utils/fighterName.js";
 import { validatePagination } from "./pagination.js";
 import { validateFighterAppearance } from "../game-engine/fighterCreation.js";
 
@@ -45,11 +46,10 @@ export function validateManagedFighterCreation(body) {
     return null;
   }
 
-  const name = body.name.trim();
+  const name = cleanFighterName(body.name);
   const { requestId } = body;
   if (
-    name.length < 3 ||
-    name.length > 18 ||
+    !name ||
     requestId.length === 0 ||
     requestId.length > MAX_REQUEST_ID_LENGTH ||
     requestId.trim() !== requestId ||

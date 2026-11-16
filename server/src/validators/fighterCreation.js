@@ -1,3 +1,5 @@
+import { cleanFighterName } from "../utils/fighterName.js";
+
 const ALLOWED_FIELDS = new Set(["name"]);
 
 export function validateFighterCreation(body) {
@@ -15,9 +17,9 @@ export function validateFighterCreation(body) {
     return null;
   }
 
-  const name = body.name.trim();
+  const name = cleanFighterName(body.name);
 
-  if (name.length < 3 || name.length > 18) {
+  if (!name) {
     return null;
   }
 

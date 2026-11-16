@@ -1,3 +1,4 @@
+import { fighterDisplayName, fighterNameKey } from "../utils/fighterName.js";
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
 import Fighter from "../models/Fighter.js";
@@ -16,7 +17,7 @@ import { calculateFighterStats } from "../game-engine/fighterStats.js";
 import { getXpRequiredForNextLevel } from "../game-engine/progression.js";
 
 const FIGHTER_FIELDS =
-  "_id name level xp elo baseStats appearance wins losses draws status visibility createdAt";
+  "_id name displayName level xp elo baseStats appearance wins losses draws status visibility createdAt";
 const FIGHTER_COLLECTION_FIELDS =
   `${FIGHTER_FIELDS} progression equipment equipmentUnlocks techniques techniqueUnlocks pets petUnlocks`;
 
@@ -80,7 +81,7 @@ export function serializeManagedFighter(
     : fighter.baseStats;
   return {
     id: fighter._id.toString(),
-    name: fighter.name,
+    name: fighterDisplayName(fighter),
     level: fighter.level,
     xp: fighter.xp,
     elo: fighter.elo,
@@ -319,7 +320,7 @@ async function findCreationRetry(userId, requestId, name, appearance) {
     return null;
   }
   if (
-    existing.name !== name.trim().toLowerCase() ||
+    existing.name !== fighterNameKey(name) ||
     !sameAppearance(
       getFighterAppearance(existing.appearance),
       appearance ?? NEUTRAL_FIGHTER_APPEARANCE
@@ -339,7 +340,7 @@ export async function createOwnedFighter(
   userId,
   { name, requestId, appearance = null }
 ) {
-  const normalizedName = name.trim().toLowerCase();
+  const normalizedName = fighterNameKey(name);
   const requestedAppearance = appearance ?? NEUTRAL_FIGHTER_APPEARANCE;
   const existing = await findCreationRetry(
     userId,
@@ -384,6 +385,7 @@ export async function createOwnedFighter(
         _id: fighterId,
         userId,
         name: normalizedName,
+        displayName: name,
         creationRequestId: requestId,
         ...initialData,
         progression: createFighterGrowthState(initialData.baseStats),

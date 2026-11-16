@@ -24,7 +24,7 @@ El cliente React con Vite incluye registro e inicio de sesión conectados a la A
 - Node.js `20.19+` o `22.12+` (requisito de la versión actual de Vite).
 - npm, incluido con Node.js.
 - MongoDB Community Server local en ejecución para iniciar el servidor y ejecutar las pruebas de integración.
-- MongoDB configurado como replica set local (por ejemplo, `rs0`) para las transacciones de integración.
+- MongoDB configurado como replica set local (por ejemplo, `rs0`): las transacciones de crear luchadores y resolver combates lo exigen. Comprueba tu instalación con `npm run check:mongo` desde la raíz; el servidor también avisa al arrancar si no lo es.
 - PowerShell para seguir los comandos de esta guía en Windows.
 - En el entorno donde se comprobó el proyecto: Node.js `v24.20.0` y npm `11.19.0`.
 
@@ -78,13 +78,14 @@ El servidor no empieza a escuchar si faltan variables obligatorias o no puede co
 
 `POST /api/v1/auth/register` recibe `username`, `email` y `password`, con `referralCode` opcional. Un código válido vincula la cuenta nueva con su referente y uno inválido se rechaza con HTTP 400. Un registro correcto crea una sesión autenticada y devuelve la cookie segura de sesión junto con los datos públicos de la cuenta; el cliente continúa al flujo de creación del luchador.
 El endpoint `POST /api/v1/auth/login` recibe `identifier` (nombre de usuario o correo) y `password`. `POST /api/v1/auth/logout` destruye una sesión iniciada.
-La API limita el registro a 5 solicitudes por hora y por IP, el inicio de sesión a 10 cada 15 minutos por IP, los combates a 5 por minuto y cuenta, y las consultas privadas a 60 por minuto y cuenta. Estas consultas son `GET /api/v1/auth/me`, `/api/v1/fighters/me`, `/api/v1/arena/attempts`, `/api/v1/arena/history`, `/api/v1/battles/:id` y `/api/v1/referrals/me`. El exceso responde HTTP 429 con el código `RATE_LIMIT_EXCEEDED`. Los contadores residen en memoria local: se reinician al reiniciar el servidor y no se comparten entre varias instancias.
+La API limita el registro a 5 solicitudes por hora y por IP, el inicio de sesión a 10 intentos fallidos cada 15 minutos por IP, la creación de luchadores (5 por hora y cuenta, 30 por IP), los combates a 5 por minuto y cuenta, y las consultas privadas a 60 por minuto y cuenta. Estas consultas son `GET /api/v1/auth/me`, `/api/v1/fighters/me`, `/api/v1/arena/attempts`, `/api/v1/arena/history`, `/api/v1/battles/:id` y `/api/v1/referrals/me` (y sus equivalentes v2). Las peticiones que la persona puede corregir no consumen cupo: los errores de formato (HTTP 400) del registro, los 400/409 de la creación de luchadores y los 400/404/409 de los desafíos; los inicios de sesión correctos tampoco. Los conflictos 409 del registro sí cuentan, para que no se pueda averiguar sin límite qué usuarios o correos existen. El exceso responde HTTP 429 con el código `RATE_LIMIT_EXCEEDED`, la cabecera `Retry-After` y `retryAfterSeconds` en el cuerpo; la interfaz muestra cuánto esperar. Los contadores se guardan en MongoDB (colección `ratelimits`, con caducidad automática): sobreviven a reinicios y se comparten entre instancias. Los límites se pueden ajustar con las variables opcionales `REGISTRATION_RATE_LIMIT`, `LOGIN_RATE_LIMIT`, `SENSITIVE_READ_RATE_LIMIT`, `FIGHTER_CREATION_ACCOUNT_LIMIT`, `FIGHTER_CREATION_IP_LIMIT` y `FIGHTER_CREATION_WINDOW_MS`; `RATE_LIMIT_STORE=memory` usa contadores en memoria (lo emplean las pruebas).
 `GET /api/v1/auth/me` requiere la cookie de sesión y devuelve únicamente `id`, `username` y `email` de la cuenta autenticada; sin sesión responde HTTP 401.
 `GET /api/v1/fighters/me` requiere sesión y devuelve `{ "fighter": null }` si la cuenta aún no creó un luchador, o el perfil propio con `id`, `username`, `name`, `level`, `xp`, `elo`, `baseStats`, `stats` (estadísticas efectivas calculadas por el servidor), `xpToNextLevel`, `wins`, `losses` y `draws`; sin sesión responde HTTP 401.
 `GET /api/v1/fighters/:id` y `GET /api/v1/profiles/:username` son públicos y devuelven los campos públicos del luchador por ID o nombre de usuario, sin las estadísticas efectivas ni el umbral de XP del endpoint propio. Si el perfil no existe, responden HTTP 404. Ninguna respuesta de perfil incluye correo, `userId`, `referralCode`, contraseña ni datos de sesión.
-`POST /api/v1/fighters` requiere esa misma sesión y recibe únicamente `{ "name": "Nombre" }`. El servidor valida un nombre de 3 a 18 caracteres y asigna los valores iniciales; las cuentas que ya tienen un luchador reciben HTTP 409.
+`POST /api/v1/fighters` requiere esa misma sesión y recibe únicamente `{ "name": "Nombre" }`. El nombre tiene de 3 a 18 caracteres: letras (con acentos), números y separadores simples (espacio, guion o guion bajo) entre grupos; se rechazan HTML, emojis y símbolos, y los espacios repetidos se colapsan. El servidor conserva las mayúsculas elegidas (`displayName`) y usa la versión en minúsculas como clave única (`name`); los luchadores anteriores sin `displayName` se muestran con su nombre guardado. Asigna los valores iniciales; las cuentas que ya tienen un luchador reciben HTTP 409.
 `GET /api/v1/referrals/me` requiere sesión y un luchador; devuelve el `referralCode` propio y `students`, una lista de cuentas asociadas con el nombre de usuario público y, si existe, el nombre y nivel del luchador. No incluye correos, IDs ni otros datos privados. Responde HTTP 404 si la cuenta todavía no tiene luchador. El código se genera en el servidor al crear el luchador y no se acepta como entrada. La sección `/students` permite copiar un enlace de invitación y consultar esta lista.
-`GET /api/v1/leaderboards?category=students` es público, paginado y ordena por la cantidad de cuentas registradas cuyo `referredByUserId` apunta al dueño del luchador; los empates se resuelven por ID. La cantidad se calcula en el servidor y no se acepta como entrada del cliente.
+`GET /api/v2/referrals/me` devuelve lo mismo pero funciona con cuentas de uno o varios luchadores, porque el dojo pertenece a la cuenta: usa el código del luchador activo o, si no hay uno activo, el de la ficha más antigua. Es la ruta que usa la sección `/students`; la v1 responde 409 `MULTIPLE_FIGHTERS_REQUIRE_V2` con varias fichas.
+`GET /api/v1/leaderboards` es público y paginado (`category=elo|level|students`). Muestra **una fila por cuenta**, representada por su mejor ficha para la categoría, y excluye luchadores privados o suspendidos. `category=students` ordena por la cantidad de cuentas registradas cuyo `referredByUserId` apunta a la cuenta dueña; los empates se resuelven por ID de cuenta. La cantidad se calcula en el servidor y no se acepta como entrada del cliente.
 `GET /api/v2/arena/opponents` requiere sesión y devuelve rivales públicos elegibles dentro de ±200 ELO, ordenados por diferencia de ELO, con búsqueda por nombre, filtros de nivel y paginación. La respuesta solo incluye ID, nombre, nombre de usuario, nivel, ELO, apariencia y contadores públicos; perfiles privados, cuentas suspendidas, luchadores propios y rivales ya desafiados ese día quedan excluidos.
 `GET /api/v2/arena/attempts` requiere sesión y devuelve la ficha activa junto con `dateKey`, `limit`, `used` y `remaining` del día UTC. `GET /api/v2/arena/history` requiere sesión y devuelve el historial paginado de todas las fichas propias; cada combate identifica `ownFighterId` para representar correctamente resultados de cuentas con varios luchadores. Se puede añadir `fighterId` para filtrar por una ficha propia; el servidor valida la propiedad y responde 404 para IDs que no pertenecen a la cuenta.
 `GET /api/v2/fighters/active` requiere sesión y devuelve la ficha activa propia con sus colecciones de equipo, habilidades y mascotas, incluidos nombres, efectos y desbloqueos sin semillas ni claves internas. Los perfiles públicos, el catálogo de rivales y la lista paginada de luchadores propios no exponen estas colecciones; los perfiles privados responden como inexistentes tanto por nombre como por identificador.
@@ -123,7 +124,10 @@ La respuesta debe incluir `status` con valor `ok` y `database` con valor `connec
 client/
   src/api/          Llamadas del cliente a la API
   src/context/      Estado compartido de sesión
-  src/              Aplicación React, estilos y recursos
+  src/pages/        Una pantalla por archivo (Dashboard, Arena, Alumnos, Clasificación…)
+  src/routes/       Guardas de ruta (invitados, sesión, luchador)
+  src/components/   Componentes compartidos
+  src/              App.jsx (rutas), estilos y utilidades
   vite.config.js    Servidor de desarrollo y proxy /api
 server/
   src/config/       Configuración del servidor y del juego
@@ -135,7 +139,11 @@ server/
   src/services/     Casos de uso y lógica de aplicación
   src/utils/        Utilidades del servidor
   src/validators/   Validación de entradas
+  scripts/          Migraciones, comprobación del replica set y runner de pruebas
   test/             Pruebas del servidor
+e2e/                Pruebas end-to-end (Playwright)
+playwright.config.js Configuración de Playwright (servidor 3100 + cliente 5174, base `fieras_e2e`)
+package.json        Atajos de la raíz (no tiene dependencias de ejecución)
 render.yaml         Configuración del despliegue de prueba en Render
 .env.example        Plantilla de configuración local
 PROJECT_SPEC.md     Especificación funcional y técnica
@@ -143,11 +151,11 @@ ROADMAP.md          Pasos ordenados del proyecto
 CURRENT_STEP.md     Único paso autorizado
 ```
 
-Las reglas de juego y el acceso a datos pertenecen al servidor; React presenta la interfaz y consume la API. No hay un `package.json` en la raíz: los comandos npm se ejecutan en `client` o `server`.
+Las reglas de juego y el acceso a datos pertenecen al servidor; React presenta la interfaz y consume la API. El `package.json` de la raíz solo contiene Playwright y atajos (`npm run test:server`, `test:client`, `test:e2e`, `check:mongo`); la aplicación se instala y ejecuta desde `client` y `server`.
 
 ## Comandos y pruebas
 
-Ejecuta estos comandos desde la carpeta indicada. No hay actualmente un script de pruebas configurado para el cliente.
+Ejecuta estos comandos desde la carpeta indicada.
 
 | Carpeta | Comando | Resultado |
 | --- | --- | --- |
@@ -159,9 +167,14 @@ Ejecuta estos comandos desde la carpeta indicada. No hay actualmente un script d
 | `client` | `node --test test/equipmentUi.test.js` | Prueba colecciones, participación de mascotas, desbloqueos, snapshots nuevos/legados, errores y accesibilidad. |
 | `client` | `node --test test/dashboardApi.test.js` | Prueba las consultas v2 de cupos e historial filtrado del panel. |
 | `client` | `node --test test/favicon.test.js` | Comprueba que `/favicon.ico` devuelve un recurso visual válido en desarrollo. |
+| `client` | `npm.cmd test` | Ejecuta todas las pruebas del cliente (`node --test test/*.test.js`). |
 | `server` | `npm.cmd run dev` | Inicia el servidor con recarga al cambiar archivos. |
 | `server` | `npm.cmd start` | Inicia el servidor sin modo de observación. |
-| `server` | `npm.cmd test` | Ejecuta todas las pruebas con el runner integrado de Node.js. |
+| `server` | `npm.cmd test` | Verifica el replica set y ejecuta todas las pruebas contra una base **nueva y desechable** (se elimina al terminar), con tiempo máximo por prueba. Acepta archivos: `npm.cmd test -- test/auth.test.js`. |
+| `server` | `npm.cmd run test:unit` | Ejecuta solo las pruebas unitarias del motor (no necesitan MongoDB). |
+| `server` | `npm.cmd run check:mongo` | Comprueba que `MONGODB_URI` apunte a un replica set. |
+| raíz | `npm.cmd run test:e2e` | Pruebas end-to-end con Playwright (levanta su propio servidor, cliente y base `fieras_e2e`). |
+| raíz | `npm.cmd run test:e2e:headed` | Igual, con el navegador visible. |
 
 Las pruebas unitarias del motor y de progresión no necesitan MongoDB. Desde `server`, puedes ejecutarlas de forma aislada:
 
@@ -169,19 +182,22 @@ Las pruebas unitarias del motor y de progresión no necesitan MongoDB. Desde `se
 node --test test/petCatalog.test.js test/petCombat.test.js test/equipmentCatalog.test.js test/equipmentSerialization.test.js test/techniqueCatalog.test.js test/techniqueCombat.test.js test/combatSimulation.test.js test/fighterCreation.test.js test/fighterStats.test.js test/fighterGrowth.test.js test/progression.test.js
 ```
 
-La suite completa incluye pruebas de API e integración que se conectan a MongoDB. Inicia MongoDB y ejecútalas contra una base de datos de pruebas separada, no contra datos que quieras conservar. En la terminal de pruebas, configura una URI exclusiva para las pruebas antes de ejecutarlas:
+La suite completa incluye pruebas de API e integración que se conectan a MongoDB (replica set). `npm.cmd test` crea una base temporal `fieras_test_*` a partir de `MONGODB_URI`, la elimina al terminar y no toca tus datos; así una base de pruebas antigua (por ejemplo con índices legados) no puede romper ni colgar la suite. Variable opcional: `TEST_TIMEOUT_MS` (60000 por defecto).
 
 ```powershell
 Set-Location server
-$env:MONGODB_URI = "mongodb://127.0.0.1:27017/fieras_de_la_arena_test"
 npm.cmd test
 ```
 
-Después de las pruebas, elimina esa variable de la terminal para volver a usar el valor de `.env`:
+### Pruebas end-to-end (Playwright)
+
+Desde la raíz del repositorio, la primera vez instala el navegador: `npm.cmd install` y `npx.cmd playwright install chromium`. Después:
 
 ```powershell
-Remove-Item Env:MONGODB_URI
+npm.cmd run test:e2e
 ```
+
+Playwright levanta el servidor en el puerto `3100`, el cliente en `5174` y usa la base `fieras_e2e`, que se recrea en cada ejecución; no necesita que tengas el entorno de desarrollo corriendo ni toca tus datos. El informe HTML queda en `playwright-report/`.
 
 Las bases que aún conservan el esquema legado de propiedad deben migrarse antes de crear varios luchadores por cuenta. El script ofrece un preflight de solo lectura y un modo de aplicación. En producción, el modo de aplicación exige confirmar el nombre exacto de la base, un respaldo verificado y declarar que las escrituras están pausadas. Primero ejecuta el preflight contra la base correcta; no compartas ni guardes la URI en Git:
 

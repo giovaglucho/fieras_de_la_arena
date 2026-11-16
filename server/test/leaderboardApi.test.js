@@ -159,3 +159,37 @@ test("la clasificación de alumnos cuenta las cuentas vinculadas y desempata por
   assert.ok(body.pagination.totalItems >= 3);
   assert.doesNotMatch(JSON.stringify(body), /email|password|referralCode|userId/i);
 });
+
+test("la clasificación muestra una sola ficha por cuenta y excluye privadas o suspendidas", async () => {
+  const multi = await User.create({
+    username: `multi_${runId.slice(0, 10)}`,
+    email: `multi-${runId}@example.test`,
+    passwordHash: "not-a-real-password-hash"
+  });
+  userIds.push(multi._id);
+  const created = await Fighter.create([
+    { userId: multi._id, name: `ma${runId.slice(0, 10)}`, referralCode: `multi-a-${runId}`, elo: 1500, level: 3 },
+    { userId: multi._id, name: `mb${runId.slice(0, 10)}`, referralCode: `multi-b-${runId}`, elo: 1700, level: 9 },
+    { userId: multi._id, name: `mc${runId.slice(0, 10)}`, referralCode: `multi-c-${runId}`, elo: 9000, level: 99, visibility: "private" },
+    { userId: multi._id, name: `md${runId.slice(0, 10)}`, referralCode: `multi-d-${runId}`, elo: 9500, level: 98, status: "suspended" }
+  ]);
+  fighterIds.push(...created.map((fighter) => fighter._id));
+  const ids = new Set(created.map((fighter) => fighter._id.toString()));
+
+  for (const category of ["elo", "level", "students"]) {
+    const response = await fetch(`${baseUrl}/api/v1/leaderboards?category=${category}&limit=50`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    const rows = body.fighters.filter(({ id }) => ids.has(id));
+    assert.equal(rows.length, 1, `${category}: una sola fila para la cuenta`);
+    assert.equal(rows[0].id, created[1]._id.toString(), `${category}: la mejor ficha pública activa`);
+    // Solo se revisan las filas de las cuentas de esta prueba: la base es compartida y otros
+    // archivos (en paralelo) pueden borrar usuarios entre consultas.
+    const ownRows = body.fighters.filter(({ id }) => fighterIds.some((fighterId) => fighterId.toString() === id));
+    assert.equal(
+      new Set(ownRows.map(({ username }) => username)).size,
+      ownRows.length,
+      `${category}: sin cuentas repetidas`
+    );
+  }
+});
