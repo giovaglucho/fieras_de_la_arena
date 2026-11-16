@@ -108,9 +108,35 @@ No se debe implementar nada de esta sección durante el MVP, aunque parezca fác
 
 ### 3.3 Alumnos e invitaciones
 
-Cada luchador tendrá un código y enlace de invitación propios. El código identifica al luchador referente, pero la nueva cuenta queda asociada una sola vez al dueño de ese luchador, no al personaje ni a cada luchador que posea esa cuenta. La relación queda registrada de forma permanente y no puede cambiarse desde la interfaz; es distinta de la relación de dojo entre luchadores.
+#### Comportamiento actual de invitaciones
 
-Para evitar que invitar cuentas propias sea la única estrategia de progreso, el MVP no concede aumentos de estadísticas ni ELO por reclutar alumnos. La cantidad de alumnos puede mostrarse en el perfil y tener una clasificación separada. Cualquier recompensa futura deberá limitar abuso y cuentas duplicadas.
+- Cada luchador recibe un código único; el código identifica al luchador cuyo dueño invita, pero el registro guarda únicamente el ID de la cuenta referente en `referredByUserId`.
+- El código es opcional en el registro. Si se proporciona, se normaliza (espacios exteriores y mayúsculas) y debe corresponder a un luchador existente. Un código con formato inválido se rechaza como dato de registro inválido; un código bien formado que no existe se rechaza como invitación inválida y no crea la cuenta.
+- Un registro válido vincula la cuenta nueva al dueño del luchador del código. No se guarda qué luchador de esa cuenta originó la invitación. Si una cuenta ya posee varios luchadores, sus códigos atribuyen al mismo referente.
+- La atribución se establece al crear la cuenta. Un nuevo registro con credenciales ya usadas entra en conflicto y no sustituye al referente existente. No existe una acción de salida, transferencia o cambio de referente.
+- La comprobación de cuenta propia rechaza que el referente resuelto coincida con la cuenta que se registra. En el flujo normal, la cuenta nueva todavía no existe cuando se valida el código.
+- Los códigos se pueden reutilizar para registros de cuentas distintas; no hay un límite de aprendices por referente. El registro referido no concede XP, ELO, estadísticas ni otros premios.
+- `GET /api/v1/referrals/me` requiere sesión y el luchador seleccionado o único de la cuenta; entrega su código y las cuentas referidas, con nombre de usuario y, cuando puede determinarse, luchador seleccionado (nombre y nivel). En el código actual, esa ficha se incluye sin comprobar su visibilidad.
+- La clasificación actual `category=students` devuelve una fila por luchador y calcula para cada fila el número de cuentas cuyo `referredByUserId` apunta al dueño de ese luchador. Por ello, si una cuenta tiene varios luchadores, el mismo total puede aparecer repetido. El desempate actual es por ID de luchador.
+
+#### Reglas aprobadas para el diseño del dojo (10.9.1)
+
+- **Propietario y vínculo:** el dojo pertenece a una cuenta, no a un luchador. Cada código de luchador resuelve a su cuenta dueña. `referredByUserId` es la atribución permanente del aprendiz a una única cuenta maestra y constituye el vínculo directo del dojo; no se crea otra atribución paralela ni se reasignan los registros existentes.
+- **Dirección y límites:** cada cuenta puede tener como máximo un maestro directo durante toda su vida, y puede ser a su vez maestra de otras cuentas. Las relaciones son directas, no transitivas: tener alumnos de alumnos no aumenta el total propio. Como el registro solo puede apuntar a una cuenta ya existente y el vínculo es inmutable, no pueden formarse ciclos. Se permiten múltiples aprendices; no hay un máximo de invitaciones por cuenta ni un cupo de aprendices. Los códigos pueden reutilizarse. Se mantienen los controles técnicos existentes de registro y moderación.
+- **Autorreclutamiento y cambios:** el servidor debe rechazar siempre un código cuyo dueño sea la propia cuenta que intenta registrarse. La atribución se decide solo en el registro y es inmutable: no se puede salir del vínculo, transferirlo, cambiar de maestro ni volver a atribuirlo a través de otra invitación. Las solicitudes repetidas no crean una segunda relación ni alteran la primera. El estado suspendido o la falta de luchadores no borra el vínculo histórico.
+- **Aprendiz que cuenta para la clasificación:** el vínculo se registra al completar el registro aunque el aprendiz todavía no haya creado un luchador. Para contarlo como aprendiz activo se requiere que su cuenta esté activa, tenga al menos un luchador activo y haya completado al menos un combate PvP válido. No se usa la última conexión como medida de actividad. Una cuenta suspendida o sin luchadores activos queda fuera del total activo hasta volver a cumplir las condiciones; la relación histórica se conserva.
+- **Visibilidad y clasificación:** el maestro autenticado puede consultar sus aprendices directos y sus nombres de usuario públicos; solo se muestran datos de luchador que sean públicos. La vista pública del dojo y la clasificación muestran el nombre de usuario del maestro y el total agregado de aprendices activos, no la lista ni los datos privados de sus aprendices. La clasificación tiene una fila por cuenta maestra (nunca una por cada luchador), cuenta solo aprendices directos activos y ordena por total descendente, con ID de cuenta ascendente para desempatar. Una cuenta que también sea aprendiz no transfiere a su maestro el crédito de sus propios aprendices.
+- **Premios:** no se aprueba ninguna recompensa por invitar, registrarse mediante invitación ni pertenecer a un dojo. No se otorgan XP, ELO, estadísticas, objetos, moneda ni ventajas competitivas por estos hechos. Cualquier recompensa futura requiere una decisión de producto separada que defina de antemano elegibilidad medible, límites, tratamiento de inactividad y suspensión, protección contra duplicados y persistencia idempotente; no se concederá retroactivamente por cambiar de maestro.
+
+#### Escenarios de aceptación del diseño
+
+| Escenario | Resultado requerido |
+|---|---|
+| Registro con código válido | Se crea una sola atribución al dueño de la cuenta del luchador indicado. |
+| Código repetido en registros de cuentas distintas | Cada cuenta nueva puede quedar atribuida al mismo maestro; no se duplica ni modifica una atribución ya persistida. |
+| Código propio | Se rechaza; nunca se registra una relación de la cuenta consigo misma. |
+| Aprendiz sin luchador activo o sin combate PvP válido | Se conserva el vínculo, pero no suma en la clasificación activa hasta cumplir todas las condiciones. |
+| Recompensa duplicada | No aplica: el diseño no aprueba recompensas de dojo. Si se aprueba alguna en una decisión futura, debe registrarse de forma idempotente y única por cuenta/condición. |
 
 ### 3.4 Casos de error visibles
 
@@ -472,10 +498,11 @@ Las técnicas son automáticas, no elecciones manuales. Si una de estas técnica
 
 #### Dojos, invitaciones y límites de abuso
 
-- La relación de invitación actual sigue perteneciendo a la cuenta y permanece única e inmutable. No se transforma silenciosamente en una relación de dojo ni se multiplica por cada luchador de esa cuenta.
-- El dojo es una relación distinta entre luchadores: un luchador puede tener como máximo un maestro y un maestro puede tener varios aprendices. No se admiten autorreferencias, relaciones entre luchadores del mismo dueño, ciclos ni cambios de maestro para volver a cobrar recompensas. La relación y su fecha de alta deben poder auditarse.
-- Las recompensas del dojo no aumentan ELO, estadísticas de combate ni cupos. La recompensa aprobada para la primera versión del sistema es cosmética/social; catálogo, hitos y cantidades quedan pendientes de diseño en el paso específico del dojo. No hay recompensa retroactiva por crear varias cuentas o luchadores.
-- El servidor impone unicidad e idempotencia en creación, desafíos, progresión, desbloqueos y premios de dojo. Cada evento de recompensa tiene un origen único y no puede liquidarse dos veces, ni mediante peticiones concurrentes ni al repetir una solicitud.
+- La relación de invitación actual sigue perteneciendo a la cuenta y permanece única e inmutable; al introducir el dojo no se reasigna, duplica ni multiplica por cada luchador de esa cuenta.
+- Según el diseño aprobado en 10.9.1 y documentado en la sección 3.3, el dojo es una relación entre cuentas y reutiliza `referredByUserId`; los códigos siguen perteneciendo a luchadores únicamente para resolver la cuenta maestra. Un maestro es una cuenta, no cada uno de sus luchadores.
+- El vínculo se asigna al registrarse, es único e inmutable, y no admite autorreferencias, transferencias ni ciclos. Una cuenta puede ser aprendiz y maestra de otras cuentas; el conteo es directo, no transitivo.
+- No se aprueban recompensas de dojo. No hay premios competitivos ni cosméticos/sociales, ni recompensas retroactivas. Una decisión futura debe definir primero las condiciones medibles y controles contra duplicados; la sección 3.3 establece los requisitos mínimos.
+- La unicidad e idempotencia del servidor se aplican a creación, desafíos, progresión y desbloqueos. Si una decisión futura aprobara recompensas de dojo, cada evento tendría que tener origen único y no podría liquidarse dos veces, ni por concurrencia ni al repetir solicitudes.
 - Los controles contra automatización incluyen límites por cuenta e IP, validación y autorización en servidor, no aceptar propiedad/estadísticas/recompensas desde el cliente, restricciones a desafíos repetidos, exclusión de luchadores privados como rivales y de luchadores o cuentas suspendidos de cualquier participación, registro de decisiones y moderación. La privacidad no oculta la aplicación de estas reglas al servidor.
 
 ---
@@ -673,7 +700,7 @@ Control de los desafíos iniciados por luchador, no por cuenta. Ser elegido como
 
 ### 6.5 Relaciones de invitación
 
-En el MVP puede representarse con `User.referredByUserId` y los códigos de invitación de `Fighter`. Si más adelante se requieren estadísticas, recompensas, prevención de abuso o auditoría, migrar a una colección `Referral` documentada sin alterar silenciosamente el historial.
+La atribución del maestro al aprendiz se representa con `User.referredByUserId`; los códigos de `Fighter` resuelven al dueño de la cuenta que invita. Esta es también la relación directa del dojo definida en la sección 3.3, no una relación paralela. Si más adelante se requiere una colección para métricas o auditoría, deberá conservar una sola atribución por cuenta, ser idempotente y migrar el historial sin reasignarlo. No se implementan ni se conceden recompensas de dojo sin una decisión de producto posterior.
 
 ### 6.6 Índices previstos
 
@@ -977,9 +1004,9 @@ No fijar proveedor ni desplegar hasta que el usuario lo decida en el paso corres
 - Experiencia, nivel y ELO calculados por el servidor.
 - Rival de entrenamiento de respaldo en el MVP cuando no haya jugadores; no puntúa ELO. La expansión no lo selecciona automáticamente como reemplazo de un rival elegido que no esté disponible.
 - Registro de usuarios y perfiles públicos.
-- Invitaciones/alumnos con relación persistente, sin bonus competitivo en el MVP.
+- Invitaciones/alumnos con relación persistente por cuenta, sin bonus competitivo ni cosmético/social aprobado.
 - La semilla y versión del generador permiten reproducir creación, progresión y combate aleatorios.
-- Las recompensas de dojo no dan ventaja competitiva; su catálogo, hitos y cantidades aún están pendientes.
+- No hay recompensas de dojo aprobadas. Cualquier recompensa requerirá una nueva decisión de producto con condiciones medibles y protección contra abuso.
 - Las decisiones aún no implementadas no autorizan a Copilot a anticipar trabajo.
 
 ### Valores de balance pendientes
@@ -987,7 +1014,7 @@ No fijar proveedor ni desplegar hasta que el usuario lo decida en el paso corres
 - Aprobar o ajustar los valores provisionales de armas y armaduras de «Equipo aleatorio v1» mediante pruebas reproducibles de balance antes de implementarlos.
 - Los valores de «Mascotas v1» se aprobaron para implementación, pero todavía no se validaron mediante simulaciones de balance. Las habilidades ajenas a las contramedidas antimascota mantienen sus decisiones pendientes hasta sus etapas respectivas.
 - Límites técnicos de frecuencia de creación y umbrales de detección de automatización.
-- Catálogo, hitos y cantidades de las recompensas cosméticas/sociales del dojo.
+- Posibles recompensas futuras del dojo; no están aprobadas ni se conceden hasta una decisión de producto explícita.
 
 ### Revisiones futuras permitidas
 

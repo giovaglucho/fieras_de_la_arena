@@ -1,63 +1,44 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `10.8.3`
-**Estado:** completado; QA aprobado e integrado en `master`
-**Título:** Mostrar colección y participación de mascotas
+**Paso activo:** `10.9.1`
+**Estado:** completado; diseño documentado
+**Título:** Definir reglas de dojo y recompensas
 
 ## Objetivo
 
-Permitir que los luchadores obtengan acompañantes originales que influyan de forma limitada y explícita en la simulación.
+Convertir las invitaciones existentes en una función social/progresiva de reclutamiento que no permita cuentas propias ni recompensas abusables.
 
 ## Tareas permitidas
 
-- Mostrar qué mascotas posee el luchador.
-- Mostrar qué aportó su acompañante al combate.
-- Conservar una pantalla normal cuando el luchador no tiene mascotas.
-- Usar textos y recursos visuales propios.
+- Decidir si el dojo pertenece a una cuenta o luchador.
+- Definir la asociación de aprendices, invitaciones, límites, salida/transferencia, visibilidad, clasificación y recompensas.
+- Coordinar las reglas con `referredByUserId` y los códigos actuales.
+- Documentar el comportamiento actual de invitaciones.
 
 ## Fuera de alcance
 
+- Implementar relaciones, consultas o acciones del dojo (paso 10.9.2).
+- Presentar el dojo y los aprendices en la interfaz (paso 10.9.3).
+- Otorgar nuevas recompensas antes de aprobar este diseño.
 - Implementar cualquier otro paso de la hoja de ruta.
-
-## Correcciones puntuales de QA autorizadas
-
-En esta iteración se autoriza además corregir únicamente estas incidencias reportadas en el QA:
-
-- Evitar que el panel use rutas v1 singulares cuando la cuenta posee varios luchadores; debe mostrar los datos del luchador activo seleccionado usando la API v2.
-- Servir un favicon válido para que `/favicon.ico` no responda 404.
-
-No ampliar estos arreglos a otras inconsistencias de API o interfaz.
-
-## Incidencia de despliegue autorizada
-
-Se autoriza resolver, sin cambiar el ID del paso, el error de creación de varios luchadores en Render mediante un preflight y una migración versionada de los índices/actividades legados. La ejecución en producción requiere respaldo recuperable y escrituras pausadas; no autoriza reasignar, borrar ni fusionar luchadores o actividades ambiguas.
 
 ## Criterios de aceptación
 
-- Se muestra qué mascotas posee el luchador y qué aportó su acompañante al combate.
-- Sin mascotas se conserva una pantalla normal.
-- Los textos y recursos visuales son propios.
-- Una cuenta con varios luchadores puede cargar el panel del luchador activo sin errores 409.
-- La solicitud de `/favicon.ico` responde correctamente con un recurso válido.
-- La migración puede verificar previamente los índices y actividades sin escribir datos.
-- La migración sustituye el índice único legado de `fighters.userId` y conserva las actividades diarias asociables de forma inequívoca.
-- Las actividades legadas ambiguas se rechazan sin cambios para revisión explícita.
+- La relación es inequívoca, no se puede reclutar a uno mismo ni cambiar retroactivamente de maestro para obtener premios, y toda recompensa (si se aprueba) tiene condiciones medibles y resistentes a abuso; el comportamiento actual de invitaciones se documenta.
 
 ## Pruebas y verificación
 
-- Vacío.
-- Colección.
-- Combate.
-- Historial.
-- Privacidad.
-- Accesibilidad.
-- Panel con varios luchadores.
-- Recurso favicon.
+- Escenarios de registro referido existente.
+- Invitación repetida.
+- Cuenta propia.
+- Aprendiz inactivo.
+- Recompensa duplicada.
 
 ## Dependencia
 
-- 10.8.2.
+- 10.1.1.
+- No otorgar nuevas recompensas antes de aprobar este diseño.
 
 ## Al terminar
 
-Informar resultados y detenerse. No iniciar ningún paso posterior.
+Informar resultados y detenerse. No implementar los pasos posteriores.
