@@ -1,48 +1,47 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `11.0.2`
+**Paso activo:** `11.0.3`
 **Estado:** pendiente de iniciar; esperando la decisión del usuario
 **Rama de trabajo:** `etapa-11`
-**Título:** Especificación del motor 2.0
+**Título:** Catálogos originales
 
 ## Objetivo
 
-Fijar en `PROJECT_SPEC.md` el motor de combate 2.0 con todas sus reglas, fórmulas y eventos, para que el paso 11.2.1 pueda implementarlo sin tomar decisiones de diseño.
+Fijar en `PROJECT_SPEC.md` los catálogos de armas, habilidades, mascotas y refuerzos, con sus reglas de obtención y topes por nivel, usando solo los campos que define la sección 4.10, para que los pasos de implementación no tomen decisiones de diseño.
 
 ## Tareas permitidas
 
-- Definir el modelo de iniciativa y tempo, el orden de turnos y los desempates con semilla.
-- Definir las tiradas de esquiva, bloqueo, contraataque, reversión, combo, crítico y desarme, con sus fórmulas y topes.
-- Definir la fórmula de daño y la condición de KO.
-- Definir el lanzamiento de armas y el cambio de arma durante el combate.
-- Definir el tope de seguridad de turnos y la forma en que garantiza un ganador (sin empates).
-- Enumerar los eventos del motor con sus campos.
-- Definir los dominios aleatorios por semilla de combate.
-- Escribir tablas de casos límite para cada regla.
+- Definir las armas: tipos, tempo, daño, rasgos, peso de aparición y tiers.
+- Definir las habilidades: potenciadores de estadística, pasivas y súper con usos.
+- Definir las mascotas y los refuerzos, con sus campos para el motor.
+- Definir las reglas de obtención, elegibilidad, prerrequisitos, incompatibilidades y topes de tier por nivel.
+- Renombrar y reajustar los elementos que coinciden con el original (4.9, principio de originalidad).
+- Marcar como provisionales los valores de balance (11.8.1).
+- Documentar interacciones y casos límite.
 
 ## Fuera de alcance
 
 - Cambiar código, modelos, rutas o pruebas.
-- Definir catálogos de armas, habilidades o mascotas (paso 11.0.3). Las reglas del motor pueden referirse a sus campos, pero no fijar sus valores.
-- Modificar `ROADMAP.md` salvo para marcar este paso como completado.
+- Modificar las reglas del motor de 4.10 (si hace falta un campo nuevo, se señala, no se añade).
+- Modificar `ROADMAP.md`.
 - Implementar cualquier otro paso de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- El motor puede implementarse solo con lo escrito en la especificación, sin decisiones adicionales.
-- Cada fórmula tiene al menos un ejemplo numérico y un caso límite.
-- Los eventos están enumerados con sus campos y su orden.
-- No hay contradicciones con las secciones 4.1–4.7 y 4.9 ni con el modelo de la sección 6.3.
+- Todo elemento tiene identificador estable, nombre y texto propios y reglas completas.
+- Ningún nombre ni cifra coincide con el catálogo del remake.
+- Las interacciones tienen casos límite documentados.
+- Sin contradicciones con 4.1–4.7, 4.9 y 4.10.
 - Ningún valor queda como pendiente, salvo los de balance reservados para 11.8.1.
 
 ## Pruebas y verificación
 
-- Revisión cruzada de la sección de motor con 4.1 (estadísticas), 4.4 (contrato del motor), 4.5 (XP) y 6.3 (`Battle`).
-- Comprobación manual de los ejemplos numéricos con cálculos a mano.
+- Revisión cruzada con 4.1 (vida y perk inicial), 4.5 (opciones de subida de nivel) y 4.10 (campos de instantánea).
+- Comprobación manual de los ejemplos numéricos.
 
 ## Dependencia
 
-- 11.0.1 (completado en `e8585b7`).
+- 11.0.2 (completado en `6bb8fdf`).
 
 ## Flujo de trabajo de la etapa
 
