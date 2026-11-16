@@ -1,45 +1,48 @@
 # Paso activo de desarrollo
 
-**Paso activo:** `11.0.1`
-**Estado:** pendiente de implementar
+**Paso activo:** `11.0.2`
+**Estado:** pendiente de iniciar; esperando la decisión del usuario
 **Rama de trabajo:** `etapa-11`
-**Título:** Contrato de producto del rediseño
+**Título:** Especificación del motor 2.0
 
 ## Objetivo
 
-Fijar los valores y reglas del producto rediseñado (sección 4.9 de `PROJECT_SPEC.md`) para que los pasos posteriores no necesiten tomar decisiones de diseño.
+Fijar en `PROJECT_SPEC.md` el motor de combate 2.0 con todas sus reglas, fórmulas y eventos, para que el paso 11.2.1 pueda implementarlo sin tomar decisiones de diseño.
 
 ## Tareas permitidas
 
-- Definir estadísticas iniciales y presupuesto de puntos, fórmula de vida y reparto aleatorio de creación.
-- Definir la curva de XP, la XP por combate según la diferencia de nivel y las reglas de subida de nivel.
-- Definir las dos opciones de subida de nivel, su elegibilidad, la sustitución cuando un perk no es elegible y la estructura del árbol de destino.
-- Definir el límite de 3 luchadores por cuenta y la habilidad de regeneración (+2 combates).
-- Definir el contrato de la API única y los modelos `Fighter`, `Battle` y `DailyActivity` sin ELO.
-- Reescribir las secciones 4.1–4.7, 6 y 7 de `PROJECT_SPEC.md` para que describan solo el juego nuevo.
+- Definir el modelo de iniciativa y tempo, el orden de turnos y los desempates con semilla.
+- Definir las tiradas de esquiva, bloqueo, contraataque, reversión, combo, crítico y desarme, con sus fórmulas y topes.
+- Definir la fórmula de daño y la condición de KO.
+- Definir el lanzamiento de armas y el cambio de arma durante el combate.
+- Definir el tope de seguridad de turnos y la forma en que garantiza un ganador (sin empates).
+- Enumerar los eventos del motor con sus campos.
+- Definir los dominios aleatorios por semilla de combate.
+- Escribir tablas de casos límite para cada regla.
 
 ## Fuera de alcance
 
 - Cambiar código, modelos, rutas o pruebas.
-- Especificar el motor de combate (paso 11.0.2) o los catálogos (paso 11.0.3).
+- Definir catálogos de armas, habilidades o mascotas (paso 11.0.3). Las reglas del motor pueden referirse a sus campos, pero no fijar sus valores.
 - Modificar `ROADMAP.md` salvo para marcar este paso como completado.
 - Implementar cualquier otro paso de la hoja de ruta.
 
 ## Criterios de aceptación
 
-- Ningún valor del contrato queda como «pendiente», salvo los de balance reservados para 11.8.1.
-- No hay contradicciones con la sección 4.9.
-- Cada regla incluye un ejemplo de caso límite.
-- Las secciones reescritas no conservan reglas de ELO, defensa plana, un solo luchador por cuenta ni selección automática de rival, salvo como nota histórica explícita.
+- El motor puede implementarse solo con lo escrito en la especificación, sin decisiones adicionales.
+- Cada fórmula tiene al menos un ejemplo numérico y un caso límite.
+- Los eventos están enumerados con sus campos y su orden.
+- No hay contradicciones con las secciones 4.1–4.7 y 4.9 ni con el modelo de la sección 6.3.
+- Ningún valor queda como pendiente, salvo los de balance reservados para 11.8.1.
 
 ## Pruebas y verificación
 
-- Revisión cruzada de las secciones 3, 4, 6, 7, 8 y 9 de `PROJECT_SPEC.md` para detectar reglas contradictorias.
-- Revisión de que las rutas del contrato cubren todo el flujo: registro, creación, selección, arena, subida de nivel, historial y dojo.
+- Revisión cruzada de la sección de motor con 4.1 (estadísticas), 4.4 (contrato del motor), 4.5 (XP) y 6.3 (`Battle`).
+- Comprobación manual de los ejemplos numéricos con cálculos a mano.
 
 ## Dependencia
 
-- Ninguna.
+- 11.0.1 (completado en `e8585b7`).
 
 ## Flujo de trabajo de la etapa
 
